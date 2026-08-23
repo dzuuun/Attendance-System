@@ -1,6 +1,16 @@
 const model = require("./attendance.model");
 const eventModel = require("../events/event.model");
 
+const isToday = (timestamp, now = new Date()) => {
+  const date = new Date(timestamp);
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+};
+
 exports.getAll = async (_req, res) => res.json(await model.getAll());
 
 exports.scan = async (req, res) => {
@@ -44,7 +54,11 @@ exports.scan = async (req, res) => {
   }
 
   const latest = await model.findLatest(person, eventId);
-  const action = latest?.action === "Time In" ? "Time Out" : "Time In";
+  // Daily entrance attendance starts a new in/out cycle every calendar day.
+  // Keep the timestamp check here as a safeguard against database timezone
+  // differences causing yesterday's final Time In to be returned after midnight.
+  const previous = !eventId && latest && !isToday(latest.timestamp) ? null : latest;
+  const action = previous?.action === "Time In" ? "Time Out" : "Time In";
 
   if (event) {
     const counts = await model.getActionCounts(person, eventId);
@@ -75,8 +89,8 @@ exports.scan = async (req, res) => {
     eventName: event?.name || null,
     action,
     timestamp: new Date().toISOString(),
-    previousAction: latest?.action || null,
-    previousTimestamp: latest?.timestamp || null,
+    previousAction: previous?.action || null,
+    previousTimestamp: previous?.timestamp || null,
   });
 };
 
