@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Attendance — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">RECORDS</p>
+            <h1>Attendance log</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <section>
+          <div class="section-header">
+            <p>
+              Daily entrance and special-event scans from both attendance
+              tables.
+            </p>
+            <button class="secondary-button admin-only" id="clearBtn">
+              Clear log
+            </button>
+          </div>
+          <article class="table-card">
+            <div class="filter-row">
+              <div class="search-box">
+                ⌕ <input id="search" placeholder="Search name or ID" />
+              </div>
+              <select id="type">
+                <option value="all">All people</option>
+                <option>Student</option>
+                <option>Employee</option></select
+              ><button class="primary-button" id="exportBtn">Export CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>PERSON</th>
+                    <th>ID NUMBER</th>
+                    <th>TYPE</th>
+                    <th>CONTEXT</th>
+                    <th>DATE</th>
+                    <th>TIME</th>
+                    <th>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/attendance/script.js"></script>
+  </body>
+</html>

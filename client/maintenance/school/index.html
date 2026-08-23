@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>School Maintenance — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body data-entity="school" data-label="Schools">
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">ACADEMIC HIERARCHY</p>
+            <h1>Schools</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>Top-level institutions in the academic hierarchy.</p>
+          <button class="primary-button" id="addBtn">+ Add school</button>
+        </div>
+        <article class="table-card">
+          <div class="filter-row">
+            <div class="search-box">
+              ⌕ <input id="search" placeholder="Search schools" />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>SCHOOL</th>
+                  <th>CODE</th>
+                  <th>STATUS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form id="form">
+        <div class="modal-head">
+          <h2>Add school</h2>
+          <button class="close-button">×</button>
+        </div>
+        <div class="form-grid">
+          <label class="full">School name<input id="name" required /></label
+          ><label class="full">Code<input id="code" required /></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button value="cancel" class="secondary-button">Cancel</button
+          ><button class="primary-button">Save</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/maintenance/academic.js"></script>
+  </body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Students — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">MAINTENANCE</p>
+            <h1>Students</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>
+            Student records are retained permanently and may be edited or
+            deactivated.
+          </p>
+          <button class="primary-button" id="addBtn">+ Add student</button>
+        </div>
+        <article class="table-card">
+          <div class="filter-row">
+            <div class="search-box">
+              ⌕ <input id="search" placeholder="Search students" />
+            </div>
+            <select id="statusFilter">
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option></select
+            ><span id="count"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>STUDENT</th>
+                  <th>ID NUMBER</th>
+                  <th>PROGRAM</th>
+                  <th>YEAR LEVEL</th>
+                  <th>GENDER</th>
+                  <th>STATUS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form id="form">
+        <input type="hidden" id="recordId" />
+        <div class="modal-head">
+          <div>
+            <span class="section-kicker">STUDENT RECORD</span>
+            <h2 id="dialogTitle">Add student</h2>
+          </div>
+          <button class="close-button">×</button>
+        </div>
+        <div class="form-grid">
+          <label>First name<input id="firstName" required /></label
+          ><label>Middle name (optional)<input id="middleName" /></label
+          ><label>Last name<input id="lastName" required /></label
+          ><label>ID number<input id="idNumber" required /></label
+          ><label>Program<select id="program" required></select></label
+          ><label
+            >Year level<select id="yearLevel" required>
+              <option value="">Select year level</option>
+              <option>1st Year</option>
+              <option>2nd Year</option>
+              <option>3rd Year</option>
+              <option>4th Year</option>
+              <option>5th Year</option>
+              <option>Graduate</option>
+            </select></label
+          ><label>Birthday<input id="birthday" type="date" required /></label
+          ><label
+            >Gender<select id="gender" required>
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+              <option>Prefer not to say</option>
+            </select></label
+          ><label class="full"
+            >Institutional email<input
+              id="institutionalEmail"
+              type="email"
+              required
+              placeholder="student@university.edu"
+          /></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button value="cancel" class="secondary-button">Cancel</button
+          ><button class="primary-button">Save student</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/maintenance/student/script.js"></script>
+  </body>
+</html>

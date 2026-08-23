@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Special Events — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">EVENT ATTENDANCE</p>
+            <h1>Special events</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>Scheduled sessions for students, employees, or both.</p>
+          <button class="primary-button" id="addBtn">+ Create event</button>
+        </div>
+        <article class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>EVENT</th>
+                  <th>AUDIENCE</th>
+                  <th>DURATION</th>
+                  <th>ALLOWED SCANS</th>
+                  <th>STATUS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form id="form">
+        <div class="modal-head">
+          <h2>Create event</h2>
+          <button class="close-button">×</button>
+        </div>
+        <div class="form-grid">
+          <label class="full">Event name<input id="name" required /></label
+          ><label class="full"
+            >Audience<select id="audience" required>
+              <option value="Both">Students and employees</option>
+              <option value="Students">Students only</option>
+              <option value="Employees">Employees only</option>
+            </select></label
+          ><label
+            >Starts at<input id="start" type="datetime-local" required /></label
+          ><label
+            >Ends at<input id="end" type="datetime-local" required /></label
+          ><label
+            >Maximum Time Ins<input
+              id="ins"
+              type="number"
+              min="1"
+              value="1"
+              required /></label
+          ><label
+            >Maximum Time Outs<input
+              id="outs"
+              type="number"
+              min="1"
+              value="1"
+              required /></label
+          ><label class="full">Description<input id="description" /></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button value="cancel" class="secondary-button">Cancel</button
+          ><button class="primary-button">Create</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/events/script.js"></script>
+  </body>
+</html>

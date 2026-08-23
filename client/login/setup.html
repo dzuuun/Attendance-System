@@ -1,3 +1,44 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Initial setup — TapTrack</title><link rel="stylesheet" href="portal.css"></head><body class="auth-page">
-<aside class="auth-side"><a class="portal-brand" href="/"><i>⌁</i> TapTrack</a><div class="auth-quote"><h1>Set up your workspace.</h1><p>Create the first administrator account to secure the attendance system.</p></div><small>ONE-TIME INITIAL SETUP</small></aside><main class="auth-form-wrap"><form class="auth-card" id="setupForm"><small>INITIAL SETUP</small><h2>Create administrator</h2><p>This page disables automatically after setup.</p><label>Full name<input id="fullName" required autofocus></label><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" minlength="8" required></label><button class="button" type="submit">Create and continue →</button><div class="auth-error" id="authError"></div></form></main><script src="auth.js"></script>
-</body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Initial setup — TapTrack</title>
+    <link rel="stylesheet" href="portal.css" />
+  </head>
+  <body class="auth-page">
+    <aside class="auth-side">
+      <a class="portal-brand" href="/"><i>⌁</i> TapTrack</a>
+      <div class="auth-quote">
+        <h1>Set up your workspace.</h1>
+        <p>
+          Create the first administrator account to secure the attendance
+          system.
+        </p>
+      </div>
+      <small>ONE-TIME INITIAL SETUP</small>
+    </aside>
+    <main class="auth-form-wrap">
+      <form class="auth-card" id="setupForm">
+        <small>INITIAL SETUP</small>
+        <h2>Create administrator</h2>
+        <p>This page disables automatically after setup.</p>
+        <label>Full name<input id="fullName" required autofocus /></label
+        ><label
+          >Username<input
+            id="username"
+            autocomplete="username"
+            required /></label
+        ><label
+          >Password<input
+            id="password"
+            type="password"
+            minlength="8"
+            required /></label
+        ><button class="button" type="submit">Create and continue →</button>
+        <div class="auth-error" id="authError"></div>
+      </form>
+    </main>
+    <script src="auth.js"></script>
+  </body>
+</html>

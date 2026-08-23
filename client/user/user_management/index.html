@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>User Management — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">ACCESS CONTROL</p>
+            <h1>User management</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>Create staff accounts and manage access.</p>
+          <button class="primary-button" id="addBtn">+ Add user</button>
+        </div>
+        <article class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>USER</th>
+                  <th>USERNAME</th>
+                  <th>ROLE</th>
+                  <th>STATUS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form id="form">
+        <div class="modal-head">
+          <h2>Add user</h2>
+          <button class="close-button">×</button>
+        </div>
+        <div class="form-grid">
+          <label class="full">Full name<input id="name" required /></label
+          ><label>Username<input id="username" required /></label
+          ><label
+            >Role<select id="role">
+              <option>Staff</option>
+              <option>Administrator</option>
+              <option>Superadmin</option>
+            </select></label
+          ><label class="full"
+            >Temporary password<input
+              id="password"
+              type="password"
+              minlength="8"
+              required
+          /></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button value="cancel" class="secondary-button">Cancel</button
+          ><button class="primary-button">Create</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/user/user_management/script.js"></script>
+  </body>
+</html>

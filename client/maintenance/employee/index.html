@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Employees — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body data-type="Employee">
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">MAINTENANCE</p>
+            <h1>Employees</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>Manage employee NFC and barcode IDs.</p>
+          <button class="primary-button" id="addBtn">+ Add employee</button>
+        </div>
+        <article class="table-card">
+          <div class="filter-row">
+            <div class="search-box">
+              ⌕ <input id="search" placeholder="Search employees" />
+            </div>
+            <span id="count"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>EMPLOYEE</th>
+                  <th>ID NUMBER</th>
+                  <th>DEPARTMENT / ROLE</th>
+                  <th>CONTACT</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form id="form">
+        <div class="modal-head">
+          <h2>Add employee</h2>
+          <button class="close-button">×</button>
+        </div>
+        <div class="form-grid">
+          <label class="full">Full name<input id="name" required /></label
+          ><label>ID number<input id="idNumber" required /></label
+          ><label>Department / Role<input id="group" required /></label
+          ><label class="full">Contact<input id="contact" /></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button value="cancel" class="secondary-button">Cancel</button
+          ><button class="primary-button">Save</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/maintenance/directory.js"></script>
+  </body>
+</html>

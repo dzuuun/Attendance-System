@@ -1,1 +1,6 @@
-const router=require('express').Router(),controller=require('./employee.controller');router.get('/',controller.getAll);router.post('/',controller.create);router.delete('/:id',controller.remove);module.exports=router;
+const router = require("express").Router(),
+  controller = require("./employee.controller");
+router.get("/", controller.getAll);
+router.post("/", controller.create);
+router.delete("/:id", controller.remove);
+module.exports = router;

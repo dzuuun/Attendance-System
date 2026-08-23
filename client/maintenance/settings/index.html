@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Maintenance — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">ADMINISTRATION</p>
+            <h1>Maintenance</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="settings-grid">
+          <article class="table-card settings-card">
+            <span class="section-kicker">GENERAL</span>
+            <h2>System settings</h2>
+            <form id="form">
+              <label>Organization name<input id="schoolName" required /></label
+              ><label
+                >Daily entrance behavior<select>
+                  <option>Alternating Time In / Time Out</option>
+                </select></label
+              ><button class="primary-button">Save settings</button
+              ><span id="message"></span>
+            </form>
+          </article>
+          <article class="table-card settings-card">
+            <span class="section-kicker">DATA</span>
+            <h2>Attendance records</h2>
+            <p>
+              View, export, or clear student and employee attendance from the
+              attendance module.
+            </p>
+            <a class="primary-button" href="/attendance"
+              >Open attendance log →</a
+            >
+          </article>
+        </div>
+      </main>
+    </div>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/maintenance/settings/script.js"></script>
+  </body>
+</html>

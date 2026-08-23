@@ -1,0 +1,79 @@
+<aside class="sidebar">
+  <a class="brand" href="/app"
+    ><span class="brand-mark"><span></span><span></span><span></span></span
+    ><span>TapTrack</span></a
+  >
+  <button
+    class="sidebar-toggle"
+    id="sidebarToggle"
+    aria-label="Collapse sidebar"
+    aria-expanded="true"
+  >
+    ‹
+  </button>
+  <nav class="nav" aria-label="Main navigation">
+    <a class="nav-item" data-nav="dashboard" href="/app"
+      ><span class="nav-icon">⌂</span>Overview</a
+    >
+    <a class="nav-item" data-nav="attendance" href="/attendance"
+      ><span class="nav-icon">⌁</span>Attendance</a
+    >
+    <a class="nav-item admin-only" data-nav="events" href="/events"
+      ><span class="nav-icon">◈</span>Special events</a
+    >
+    <a class="nav-item" data-nav="students" href="/maintenance/student"
+      ><span class="nav-icon">♙</span>Students</a
+    >
+    <a class="nav-item" data-nav="employees" href="/maintenance/employee"
+      ><span class="nav-icon">♜</span>Employees</a
+    >
+    <div class="nav-group admin-only" id="maintenanceGroup">
+      <button
+        class="nav-item nav-group-toggle"
+        id="maintenanceToggle"
+        aria-expanded="false"
+      >
+        <span class="nav-icon">⚙</span><span class="nav-label">Maintenance</span
+        ><span class="nav-chevron">⌄</span>
+      </button>
+      <div class="nav-submenu" id="maintenanceSubmenu">
+        <a class="nav-subitem" data-nav="school" href="/maintenance/school"
+          >Schools</a
+        >
+        <a class="nav-subitem" data-nav="college" href="/maintenance/college"
+          >Colleges</a
+        >
+        <a
+          class="nav-subitem"
+          data-nav="department"
+          href="/maintenance/department"
+          >Departments</a
+        >
+        <a class="nav-subitem" data-nav="program" href="/maintenance/program"
+          >Programs</a
+        >
+        <a
+          class="nav-subitem"
+          data-nav="maintenance"
+          href="/maintenance/settings"
+          >System settings</a
+        >
+      </div>
+    </div>
+    <a class="nav-item admin-only" data-nav="users" href="/user/user-management"
+      ><span class="nav-icon">♟</span>User management</a
+    >
+  </nav>
+  <div class="sidebar-foot">
+    <div class="system-status">
+      <span class="status-dot"></span>
+      <div><strong>Scanner ready</strong><small>NFC & barcode</small></div>
+    </div>
+    <p>
+      <strong id="signedInName">Signed in</strong><br /><span
+        id="signedInRole"
+      ></span>
+    </p>
+    <button class="logout-button" id="logoutBtn">Sign out</button>
+  </div>
+</aside>

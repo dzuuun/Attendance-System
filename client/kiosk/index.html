@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#123d2e" />
+    <title>University Entrance — TapTrack</title>
+    <link rel="stylesheet" href="/client/kiosk/style.css" />
+    <link rel="stylesheet" href="/client/kiosk/last-log.css" />
+    <link rel="stylesheet" href="/client/kiosk/fullscreen.css" />
+  </head>
+  <body>
+    <main class="kiosk">
+      <header>
+        <a class="brand" href="/"><i>⌁</i><span>TapTrack</span></a>
+        <div class="terminal-status">
+          <span></span> ENTRANCE TERMINAL ONLINE
+        </div>
+      </header>
+
+      <section class="terminal-card">
+        <div class="intro">
+          <p>UNIVERSITY ENTRANCE</p>
+          <h1>Tap your ID</h1>
+          <span
+            >Use your NFC card or scan the barcode on your university ID.</span
+          >
+        </div>
+
+        <div class="scanner" id="scannerVisual">
+          <div class="rings"><div class="card-icon">⌁</div></div>
+          <div class="scan-beam"></div>
+        </div>
+
+        <form id="kioskForm">
+          <label for="kioskInput">ID NUMBER</label>
+          <div class="input-row">
+            <span>⌁</span
+            ><input
+              id="kioskInput"
+              autocomplete="off"
+              placeholder="Tap card or enter ID..."
+              autofocus
+            /><button>Submit →</button>
+          </div>
+        </form>
+        <div class="result" id="kioskResult" role="status" aria-live="polite">
+          <span class="result-icon">⌁</span>
+          <div class="result-content">
+            <strong>Ready to scan</strong
+            ><small>The next scan will record Time In or Time Out.</small>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div>
+          <strong id="clock">--:--</strong
+          ><span id="date">Loading date...</span>
+        </div>
+        <a href="/login">Staff login</a>
+      </footer>
+    </main>
+    <script src="/client/kiosk/script.js"></script>
+  </body>
+</html>
