@@ -25,6 +25,17 @@
           <span
             >Use your NFC card or scan the barcode on your university ID.</span
           >
+          <div class="scanner-config" id="scannerConfig">
+            <span>SCANNER ASSIGNMENTS</span>
+            <div class="assignment-row">
+              <b>Time In</b><small id="timeInDevice">Not assigned</small>
+              <button type="button" data-pair="Time In">Assign</button>
+            </div>
+            <div class="assignment-row">
+              <b>Time Out</b><small id="timeOutDevice">Not assigned</small>
+              <button type="button" data-pair="Time Out">Assign</button>
+            </div>
+          </div>
         </div>
 
         <div class="scanner" id="scannerVisual">
@@ -41,14 +52,16 @@
               autocomplete="off"
               placeholder="Tap card or enter ID..."
               autofocus
-            /><button>Submit →</button>
+            /><select id="manualAction" aria-label="Manual attendance action">
+              <option>Time In</option><option>Time Out</option>
+            </select><button>Submit →</button>
           </div>
         </form>
         <div class="result" id="kioskResult" role="status" aria-live="polite">
           <span class="result-icon">⌁</span>
           <div class="result-content">
             <strong>Ready to scan</strong
-            ><small>The next scan will record Time In or Time Out.</small>
+            ><small id="readyMessage">Waiting for the scanner service.</small>
           </div>
         </div>
       </section>

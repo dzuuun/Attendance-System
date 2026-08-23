@@ -1,4 +1,5 @@
 const { $, api, escapeHtml, formatTime, personCell, emptyRow, init } = TapTrack;
+const ACTION_KEY = "taptrack_dashboard_action";
 let people = [],
   attendance = [],
   events = [];
@@ -54,6 +55,7 @@ async function scan(value) {
       body: JSON.stringify({
         idNumber,
         eventId: Number($("#attendanceMode").value) || null,
+        action: $("#attendanceAction").value,
       }),
     });
     attendance.unshift(record);
@@ -72,6 +74,11 @@ $("#scanForm").addEventListener("submit", (event) => {
   $("#scanInput").focus();
 });
 $("#attendanceMode").addEventListener("change", render);
+$("#attendanceAction").value =
+  localStorage.getItem(ACTION_KEY) === "Time Out" ? "Time Out" : "Time In";
+$("#attendanceAction").addEventListener("change", (event) =>
+  localStorage.setItem(ACTION_KEY, event.target.value),
+);
 $("#exportBtn").addEventListener(
   "click",
   () => (location.href = "/attendance"),

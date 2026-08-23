@@ -18,8 +18,13 @@ exports.scan = async (req, res) => {
     .trim()
     .toUpperCase();
   const eventId = req.body.eventId ? Number(req.body.eventId) : null;
+  const action = String(req.body.action || "").trim();
   if (!idNumber)
     return res.status(400).json({ message: "Enter an ID number." });
+  if (!["Time In", "Time Out"].includes(action))
+    return res.status(400).json({
+      message: "Choose whether this device records Time In or Time Out.",
+    });
 
   const person = await model.findPerson(idNumber);
   if (!person)
@@ -58,7 +63,15 @@ exports.scan = async (req, res) => {
   // Keep the timestamp check here as a safeguard against database timezone
   // differences causing yesterday's final Time In to be returned after midnight.
   const previous = !eventId && latest && !isToday(latest.timestamp) ? null : latest;
-  const action = previous?.action === "Time In" ? "Time Out" : "Time In";
+
+  if (!previous && action === "Time Out")
+    return res.status(409).json({
+      message: `${person.name} must record Time In before Time Out.`,
+    });
+  if (previous?.action === action)
+    return res.status(409).json({
+      message: `${person.name} is already recorded as ${action}.`,
+    });
 
   if (event) {
     const counts = await model.getActionCounts(person, eventId);

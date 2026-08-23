@@ -90,6 +90,48 @@ footer {
   color: var(--muted);
   font-size: 13px;
 }
+.scanner-config {
+  margin-top: 20px;
+  text-align: left;
+}
+.scanner-config > span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.assignment-row {
+  display: grid;
+  grid-template-columns: 65px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 6px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 9px;
+  background: #f0f3ed;
+}
+.assignment-row b {
+  color: var(--green);
+  font-size: 11px;
+}
+.assignment-row small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assignment-row button {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: var(--green);
+  color: white;
+  font: 700 10px "DM Sans";
+  cursor: pointer;
+}
 .scanner {
   height: 245px;
   margin: 28px 0 24px;
@@ -158,6 +200,15 @@ form label {
   padding: 14px;
   width: 100%;
   font: 600 15px "DM Sans";
+}
+.input-row select {
+  align-self: stretch;
+  border: 0;
+  border-left: 1px solid #e2e5e0;
+  outline: 0;
+  background: white;
+  color: var(--green);
+  font: 700 11px "DM Sans";
 }
 .input-row button {
   border: 0;

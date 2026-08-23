@@ -10,6 +10,7 @@ const {
 const app = express(),
   port = Number(process.env.PORT) || 3000,
   client = path.join(__dirname, "client");
+const scannerBridge = require("./scanner/scanner-bridge");
 app.use(express.json({ limit: "1mb" }));
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -38,6 +39,37 @@ app.post(
     return require("./api/attendance/attendance.controller").scan(req, res);
   }),
 );
+app.get("/api/kiosk/scanners", (_req, res) => res.json(scannerBridge.status()));
+app.post("/api/kiosk/scanners/pair", (req, res) => {
+  try {
+    scannerBridge.pair(req.body.action);
+    res.json(scannerBridge.status());
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+app.get("/api/kiosk/scanners/events", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  const send = (event, value) =>
+    res.write(`event: ${event}\ndata: ${JSON.stringify(value)}\n\n`);
+  const status = () => send("status", scannerBridge.status());
+  const scan = (value) => send("scan", value);
+  const assigned = (value) => send("assigned", value);
+  const unassigned = (value) => send("unassigned", value);
+  scannerBridge.on("status", status);
+  scannerBridge.on("scan", scan);
+  scannerBridge.on("assigned", assigned);
+  scannerBridge.on("unassigned", unassigned);
+  status();
+  req.on("close", () => {
+    scannerBridge.off("status", status);
+    scannerBridge.off("scan", scan);
+    scannerBridge.off("assigned", assigned);
+    scannerBridge.off("unassigned", unassigned);
+  });
+});
 app.use("/api", checkSession);
 app.use("/api/attendance", wrapRouter(attendanceRouter));
 app.use("/api/events", wrapRouter(eventRouter));

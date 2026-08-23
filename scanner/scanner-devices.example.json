@@ -1,0 +1,10 @@
+{
+  "Time In": {
+    "deviceId": "assigned by the kiosk configurator",
+    "name": "USB scanner"
+  },
+  "Time Out": {
+    "deviceId": "assigned by the kiosk configurator",
+    "name": "USB scanner"
+  }
+}

@@ -15,7 +15,11 @@
 }
 .terminal-card .intro {
   grid-area: intro;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
+}
+.terminal-card .scanner-config {
+  width: min(580px, 100%);
+  margin: 18px auto 0;
 }
 .terminal-card .scanner {
   grid-area: scanner;
