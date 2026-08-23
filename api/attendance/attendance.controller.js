@@ -1,0 +1,4 @@
+const model=require('./attendance.model');
+exports.getAll=async(_req,res)=>res.json(await model.getAll());
+exports.scan=async(req,res)=>{const idNumber=String(req.body.idNumber||'').trim().toUpperCase();if(!idNumber)return res.status(400).json({message:'Enter an ID number.'});const person=await model.findPerson(idNumber);if(!person)return res.status(404).json({message:`ID “${idNumber}” is not registered.`});const old=await model.findToday(person);if(old)return res.status(409).json({message:`${person.name} already checked in today.`,timestamp:old.timestamp});const result=await model.record(person);res.status(201).json({id:result.insertId,personId:person.id,idNumber:person.idNumber,name:person.name,type:person.type,timestamp:new Date().toISOString()});};
+exports.clear=async(_req,res)=>{await model.clear();res.status(204).end();};

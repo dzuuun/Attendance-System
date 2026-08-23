@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f2e9">
+  <title>TapTrack Attendance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="TapTrack home">
+        <span class="brand-mark"><span></span><span></span><span></span></span>
+        <span>TapTrack</span>
+      </a>
+
+      <nav class="nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span>Overview</button>
+        <button class="nav-item" data-view="attendance"><span class="nav-icon">⌁</span>Attendance</button>
+        <button class="nav-item" data-view="students"><span class="nav-icon">♙</span>Students</button>
+        <button class="nav-item" data-view="employees"><span class="nav-icon">♜</span>Employees</button>
+        <button class="nav-item admin-only" data-view="maintenance"><span class="nav-icon">⚙</span>Maintenance</button>
+        <button class="nav-item admin-only" data-view="users"><span class="nav-icon">♟</span>User management</button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="system-status"><span class="status-dot"></span><div><strong>Scanner ready</strong><small>NFC & barcode</small></div></div>
+        <p><strong id="signedInName">Signed in</strong><br><span id="signedInRole"></span></p>
+        <button class="logout-button" id="logoutBtn">Sign out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">ATTENDANCE TERMINAL</p>
+          <h1 id="pageTitle">Good morning</h1>
+        </div>
+        <div class="top-actions">
+          <div class="live-time"><span id="liveTime">08:42</span><small id="liveDate">Monday, August 23</small></div>
+          <button class="icon-button" id="exportBtn" title="Export attendance" aria-label="Export attendance">⇩</button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboardView">
+        <div class="hero-grid">
+          <article class="scanner-card">
+            <div class="card-heading">
+              <div><span class="section-kicker">QUICK CHECK-IN</span><h2>Tap or scan your ID</h2></div>
+              <span class="connection-pill"><span></span>ONLINE</span>
+            </div>
+            <p class="muted">Hold an NFC card near the reader or scan a barcode. You can also type the ID below.</p>
+
+            <div class="scanner-visual" id="scannerVisual">
+              <div class="scan-corners"><i></i><i></i><i></i><i></i><div class="nfc-glyph">)))<b>▮</b></div></div>
+              <div class="scan-line"></div>
+            </div>
+
+            <form class="scan-form" id="scanForm">
+              <label for="scanInput">ID NUMBER</label>
+              <div class="input-wrap"><span>⌁</span><input id="scanInput" autocomplete="off" placeholder="Tap card or enter ID..." autofocus><button type="submit">Check in <span>→</span></button></div>
+            </form>
+            <div class="scan-message" id="scanMessage" role="status" aria-live="polite"></div>
+          </article>
+
+          <div class="stats-column">
+            <article class="stat-card accent"><div class="stat-icon">✓</div><div><small>PRESENT TODAY</small><strong id="presentCount">0</strong><p><span id="attendanceRate">0%</span> of registered</p></div></article>
+            <article class="stat-card"><div class="stat-icon student">♙</div><div><small>STUDENTS</small><strong id="studentCount">0</strong><p><span id="studentsToday">0</span> checked in today</p></div></article>
+            <article class="stat-card"><div class="stat-icon employee">♜</div><div><small>EMPLOYEES</small><strong id="employeeCount">0</strong><p><span id="employeesToday">0</span> checked in today</p></div></article>
+          </div>
+        </div>
+
+        <article class="table-card recent-card">
+          <div class="table-toolbar"><div><span class="section-kicker">LIVE LOG</span><h2>Recent attendance</h2></div><button class="text-button" data-go="attendance">View all <span>→</span></button></div>
+          <div class="table-wrap"><table><thead><tr><th>PERSON</th><th>ID NUMBER</th><th>TYPE</th><th>TIME</th><th>STATUS</th></tr></thead><tbody id="recentBody"></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="attendanceView">
+        <div class="section-header"><div><span class="section-kicker">RECORDS</span><h2>Attendance log</h2><p>All scans recorded on this device.</p></div><button class="secondary-button admin-only" id="clearAttendance">Clear log</button></div>
+        <article class="table-card">
+          <div class="filter-row"><div class="search-box">⌕ <input id="attendanceSearch" placeholder="Search name or ID"></div><select id="attendanceFilter"><option value="all">All people</option><option value="Student">Students</option><option value="Employee">Employees</option></select></div>
+          <div class="table-wrap"><table><thead><tr><th>PERSON</th><th>ID NUMBER</th><th>TYPE</th><th>DATE</th><th>TIME</th><th>STATUS</th></tr></thead><tbody id="attendanceBody"></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="studentsView">
+        <div class="section-header"><div><span class="section-kicker">DIRECTORY</span><h2>Students</h2><p>Manage student IDs for NFC cards and barcodes.</p></div><button class="primary-button add-person" data-type="Student">+ Add student</button></div>
+        <article class="table-card"><div class="filter-row"><div class="search-box">⌕ <input id="studentSearch" placeholder="Search students"></div><span class="record-count" id="studentRecordCount"></span></div><div class="table-wrap"><table><thead><tr><th>STUDENT</th><th>ID NUMBER</th><th>PROGRAM / SECTION</th><th>CONTACT</th><th></th></tr></thead><tbody id="studentsBody"></tbody></table></div></article>
+      </section>
+
+      <section class="view" id="employeesView">
+        <div class="section-header"><div><span class="section-kicker">DIRECTORY</span><h2>Employees</h2><p>Manage employee IDs for NFC cards and barcodes.</p></div><button class="primary-button add-person" data-type="Employee">+ Add employee</button></div>
+        <article class="table-card"><div class="filter-row"><div class="search-box">⌕ <input id="employeeSearch" placeholder="Search employees"></div><span class="record-count" id="employeeRecordCount"></span></div><div class="table-wrap"><table><thead><tr><th>EMPLOYEE</th><th>ID NUMBER</th><th>DEPARTMENT / ROLE</th><th>CONTACT</th><th></th></tr></thead><tbody id="employeesBody"></tbody></table></div></article>
+      </section>
+      <section class="view" id="maintenanceView"><div class="section-header"><div><span class="section-kicker">ADMINISTRATION</span><h2>Maintenance</h2><p>Configure the organization and maintain attendance data.</p></div></div><div class="settings-grid"><article class="table-card settings-card"><span class="section-kicker">GENERAL</span><h2>System settings</h2><form id="settingsForm"><label>Organization name<input id="schoolName" required></label><label>Duplicate scan policy<select id="duplicateWindow"><option value="daily">One check-in per day</option></select></label><button class="primary-button">Save settings</button><span id="settingsMessage"></span></form></article><article class="table-card settings-card danger-zone"><span class="section-kicker">DATA MAINTENANCE</span><h2>Attendance records</h2><p>Export records before clearing them. Clearing the log cannot be reversed.</p><button class="secondary-button" id="maintenanceExport">Export CSV</button><button class="danger-button" id="maintenanceClear">Clear attendance log</button></article></div></section>
+      <section class="view" id="usersView"><div class="section-header"><div><span class="section-kicker">ACCESS CONTROL</span><h2>User management</h2><p>Create staff accounts and manage access.</p></div><button class="primary-button" id="addUserBtn">+ Add user</button></div><article class="table-card"><div class="table-wrap"><table><thead><tr><th>USER</th><th>USERNAME</th><th>ROLE</th><th>STATUS</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div></article></section>
+    </main>
+  </div>
+
+  <dialog id="personDialog">
+    <form method="dialog" id="personForm">
+      <div class="modal-head"><div><span class="section-kicker" id="modalKicker">NEW RECORD</span><h2 id="modalTitle">Add student</h2></div><button class="close-button" value="cancel" aria-label="Close">×</button></div>
+      <input type="hidden" id="personType">
+      <div class="form-grid">
+        <label class="full">Full name<input id="personName" required placeholder="e.g. Maria Santos"></label>
+        <label>ID number<input id="personId" required placeholder="e.g. STU-2026-001"></label>
+        <label>Program / Department<input id="personGroup" required placeholder="e.g. BSIT 2A"></label>
+        <label class="full">Email or contact<input id="personContact" placeholder="e.g. maria@school.edu"></label>
+      </div>
+      <p class="form-error" id="formError"></p>
+      <div class="modal-actions"><button value="cancel" class="secondary-button">Cancel</button><button type="submit" value="default" class="primary-button">Save record</button></div>
+    </form>
+  </dialog>
+  <dialog id="userDialog"><form method="dialog" id="userForm"><div class="modal-head"><div><span class="section-kicker">ACCESS CONTROL</span><h2>Add user</h2></div><button class="close-button" value="cancel">×</button></div><div class="form-grid"><label class="full">Full name<input id="userFullName" required></label><label>Username<input id="newUsername" required></label><label>Role<select id="userRole"><option>Staff</option><option>Administrator</option><option>Superadmin</option></select></label><label class="full">Temporary password<input id="newPassword" type="password" minlength="8" required></label></div><p class="form-error" id="userError"></p><div class="modal-actions"><button value="cancel" class="secondary-button">Cancel</button><button class="primary-button">Create user</button></div></form></dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

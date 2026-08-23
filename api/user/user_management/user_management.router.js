@@ -1,0 +1,1 @@
+const router=require('express').Router(),controller=require('./user_management.controller');router.get('/',controller.getAll);router.post('/',controller.create);router.patch('/:id/status',controller.setStatus);module.exports=router;
