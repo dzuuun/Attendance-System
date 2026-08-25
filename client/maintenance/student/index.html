@@ -49,7 +49,7 @@
                   <th>YEAR LEVEL</th>
                   <th>GENDER</th>
                   <th>STATUS</th>
-                  <th></th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody id="body"></tbody>
@@ -58,6 +58,13 @@
         </article>
       </main>
     </div>
+    <dialog id="studentLoadingDialog" class="satp-modal student-loading-modal">
+      <div class="student-loading-body">
+        <span class="student-loading-spinner" aria-hidden="true"></span>
+        <strong>Loading students</strong>
+        <p>Please wait while student records are prepared.</p>
+      </div>
+    </dialog>
     <dialog id="dialog">
       <form id="form">
         <input type="hidden" id="recordId" />
@@ -77,12 +84,23 @@
           ><label
             >Year level<select id="yearLevel" required>
               <option value="">Select year level</option>
+              <option>Grade 1</option>
+              <option>Grade 2</option>
+              <option>Grade 3</option>
+              <option>Grade 4</option>
+              <option>Grade 5</option>
+              <option>Grade 6</option>
+              <option>Grade 7</option>
+              <option>Grade 8</option>
+              <option>Grade 9</option>
+              <option>Grade 10</option>
+              <option>Grade 11</option>
+              <option>Grade 12</option>
               <option>1st Year</option>
               <option>2nd Year</option>
               <option>3rd Year</option>
               <option>4th Year</option>
               <option>5th Year</option>
-              <option>Graduate</option>
             </select></label
           ><label>Birthday<input id="birthday" type="date" required /></label
           ><label
@@ -94,11 +112,15 @@
               <option>Prefer not to say</option>
             </select></label
           ><label class="full"
-            >Institutional email<input
+            >Institutional email (optional)<input
               id="institutionalEmail"
               type="email"
-              required
-              placeholder="student@university.edu"
+              placeholder="student@university.edu" /></label
+          ><label class="full status-toggle-field"
+            ><span
+              ><strong>Active student</strong
+              ><small>Available throughout the system</small></span
+            ><input id="isActive" type="checkbox" checked
           /></label>
         </div>
         <p id="error" class="form-error"></p>
@@ -110,5 +132,6 @@
     </dialog>
     <script src="/client/shared-ui.js"></script>
     <script src="/client/maintenance/student/script.js"></script>
+    <script src="/client/maintenance/import.js"></script>
   </body>
 </html>

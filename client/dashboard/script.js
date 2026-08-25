@@ -1,101 +1,64 @@
 const { $, api, escapeHtml, formatTime, personCell, emptyRow, init } = TapTrack;
-const ACTION_KEY = "taptrack_dashboard_action";
 let people = [],
-  attendance = [],
-  events = [];
+  attendance = [];
 const today = (date) =>
   new Date(date).toLocaleDateString("en-CA") ===
   new Date().toLocaleDateString("en-CA");
-function row(a) {
-  const p = people.find((x) => x.id === a.personId && x.type === a.type) || {
-    name: a.name,
-  };
-  return `<tr><td>${personCell(p)}</td><td>${escapeHtml(a.idNumber)}</td><td><span class="type-pill ${a.type}">${a.type}</span></td><td>${formatTime(a.timestamp)}</td><td><span class="status-pill ${a.action === "Time Out" ? "time-out" : ""}">${a.action}</span></td></tr>`;
+function row(record) {
+  const person = people.find(
+    (item) => item.id === record.personId && item.type === record.type,
+  ) || { name: record.name };
+  return `<tr><td>${personCell(person)}</td><td>${escapeHtml(record.idNumber)}</td><td><span class="type-pill ${record.type}">${record.type}</span></td><td>${formatTime(record.timestamp)}</td><td><span class="status-pill ${record.action === "Time Out" ? "time-out" : ""}">${record.action}</span></td></tr>`;
 }
 function render() {
-  const eventId = Number($("#attendanceMode").value) || null,
-    records = attendance.filter((a) =>
-      eventId
-        ? Number(a.eventId) === eventId
-        : !a.eventId && today(a.timestamp),
+  const recentTable = $("#recentBody").closest("table");
+  TapTrack.destroyDataTable(recentTable);
+  const records = attendance.filter(
+      (record) => !record.eventId && today(record.timestamp),
     ),
     latest = new Map();
-  records.forEach((a) => {
-    const key = `${a.type}-${a.personId}`;
-    if (!latest.has(key)) latest.set(key, a);
+  records.forEach((record) => {
+    const key = `${record.type}-${record.personId}`;
+    if (!latest.has(key)) latest.set(key, record);
   });
   const inside = new Set(
-      [...latest].filter(([, a]) => a.action === "Time In").map(([key]) => key),
+      [...latest]
+        .filter(([, record]) => record.action === "Time In")
+        .map(([key]) => key),
     ),
-    students = people.filter((p) => p.type === "Student"),
-    employees = people.filter((p) => p.type === "Employee");
+    students = people.filter((person) => person.type === "Student"),
+    employees = people.filter((person) => person.type === "Employee");
   $("#presentCount").textContent = inside.size;
   $("#studentCount").textContent = students.length;
   $("#employeeCount").textContent = employees.length;
-  $("#studentsToday").textContent = students.filter((p) =>
-    inside.has(`Student-${p.id}`),
+  $("#studentsToday").textContent = students.filter((person) =>
+    inside.has(`Student-${person.id}`),
   ).length;
-  $("#employeesToday").textContent = employees.filter((p) =>
-    inside.has(`Employee-${p.id}`),
+  $("#employeesToday").textContent = employees.filter((person) =>
+    inside.has(`Employee-${person.id}`),
   ).length;
   $("#attendanceRate").textContent = people.length
     ? `${Math.round((inside.size / people.length) * 100)}%`
     : "0%";
   $("#recentBody").innerHTML =
     records.slice(0, 5).map(row).join("") ||
-    emptyRow(5, "No attendance records in this mode.");
+    emptyRow(5, "No entrance attendance records today.");
+  TapTrack.initDataTable(recentTable, {
+    paging: false,
+    searching: false,
+    info: false,
+    lengthChange: false,
+  });
 }
-async function scan(value) {
-  const idNumber = value.trim().toUpperCase();
-  if (!idNumber) return;
-  const message = $("#scanMessage");
-  try {
-    const record = await api("/api/attendance/scan", {
-      method: "POST",
-      body: JSON.stringify({
-        idNumber,
-        eventId: Number($("#attendanceMode").value) || null,
-        action: $("#attendanceAction").value,
-      }),
-    });
-    attendance.unshift(record);
-    render();
-    message.className = "scan-message success";
-    message.textContent = `${record.name} · ${record.action} at ${formatTime(record.timestamp)}`;
-  } catch (error) {
-    message.className = "scan-message error";
-    message.textContent = error.message;
-  }
-}
-$("#scanForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  scan($("#scanInput").value);
-  $("#scanInput").value = "";
-  $("#scanInput").focus();
-});
-$("#attendanceMode").addEventListener("change", render);
-$("#attendanceAction").value =
-  localStorage.getItem(ACTION_KEY) === "Time Out" ? "Time Out" : "Time In";
-$("#attendanceAction").addEventListener("change", (event) =>
-  localStorage.setItem(ACTION_KEY, event.target.value),
-);
 $("#exportBtn").addEventListener(
   "click",
   () => (location.href = "/attendance"),
 );
 (async () => {
   await init("dashboard");
-  [people, attendance, events] = await Promise.all([
+  [people, attendance] = await Promise.all([
     api("/api/people"),
     api("/api/attendance"),
-    api("/api/events"),
   ]);
-  $("#attendanceMode").innerHTML += [...events]
-    .filter((e) => e.isActive)
-    .map(
-      (e) =>
-        `<option value="${e.id}">${escapeHtml(e.name)} · ${escapeHtml(e.targetAudience || "Both")}</option>`,
-    )
-    .join("");
   render();
 })();

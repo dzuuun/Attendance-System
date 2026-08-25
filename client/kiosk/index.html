@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/client/kiosk/style.css" />
     <link rel="stylesheet" href="/client/kiosk/last-log.css" />
     <link rel="stylesheet" href="/client/kiosk/fullscreen.css" />
+    <link rel="stylesheet" href="/client/camera-scanner.css" />
   </head>
   <body>
     <main class="kiosk">
@@ -21,10 +22,7 @@
       <section class="terminal-card">
         <div class="intro">
           <p>UNIVERSITY ENTRANCE</p>
-          <h1>Tap your ID</h1>
-          <span
-            >Use your NFC card or scan the barcode on your university ID.</span
-          >
+          <h1>Tap your ID</h1>       
           <div class="scanner-config" id="scannerConfig">
             <span>SCANNER ASSIGNMENTS</span>
             <div class="assignment-row">
@@ -53,10 +51,18 @@
               placeholder="Tap card or enter ID..."
               autofocus
             /><select id="manualAction" aria-label="Manual attendance action">
-              <option>Time In</option><option>Time Out</option>
-            </select><button>Submit →</button>
+              <option>Time In</option>
+              <option>Time Out</option></select
+            ><button>Submit →</button>
           </div>
         </form>
+        <button
+          type="button"
+          class="camera-scan-button kiosk-camera-button"
+          id="kioskCameraScan"
+        >
+          Scan barcode with camera
+        </button>
         <div class="result" id="kioskResult" role="status" aria-live="polite">
           <span class="result-icon">⌁</span>
           <div class="result-content">
@@ -74,6 +80,8 @@
         <a href="/login">Staff login</a>
       </footer>
     </main>
+    <script src="/client/camera-scanner.js"></script>
     <script src="/client/kiosk/script.js"></script>
+    <script src="/client/brand-ui.js?v=20260824-5" data-brand-ui></script>
   </body>
 </html>

@@ -4,10 +4,20 @@ const { $, api, escapeHtml, emptyRow, init } = TapTrack,
   label = document.body.dataset.label;
 let records = [],
   parents = [];
+$("#form").insertAdjacentHTML(
+  "afterbegin",
+  '<input type="hidden" id="recordId">',
+);
+$("#form .form-grid").insertAdjacentHTML(
+  "beforeend",
+  '<label class="full status-toggle-field"><span><strong>Active record</strong><small>Available throughout the system</small></span><input id="isActive" type="checkbox" checked></label>',
+);
 function parentName(row) {
   return row.schoolName || row.collegeName || row.departmentName || "—";
 }
 function render() {
+  const table = $("#body").closest("table");
+  TapTrack.destroyDataTable(table);
   const q = $("#search").value.toLowerCase(),
     rows = records.filter(
       (row) =>
@@ -18,10 +28,11 @@ function render() {
     rows
       .map(
         (row) =>
-          `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.code)}</td>${parentEntity ? `<td>${escapeHtml(parentName(row))}</td>` : ""}<td><span class="status-pill">${row.isActive ? "Active" : "Inactive"}</span></td><td><button class="row-action" data-id="${row.id}" data-name="${escapeHtml(row.name)}">×</button></td></tr>`,
+          `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.code)}</td>${parentEntity ? `<td>${escapeHtml(parentName(row))}</td>` : ""}<td><span class="status-pill">${row.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${row.id}" aria-label="Edit ${escapeHtml(row.name)}" title="Edit"></button></td></tr>`,
       )
       .join("") ||
     emptyRow(parentEntity ? 5 : 4, `No ${label.toLowerCase()} records.`);
+  TapTrack.initDataTable(table);
 }
 function renderParents() {
   $("#parent").innerHTML =
@@ -33,52 +44,62 @@ function renderParents() {
       )
       .join("");
 }
-$("#search").addEventListener("input", render);
-$("#addBtn").addEventListener("click", () => {
+function open(record = null) {
   $("#form").reset();
+  $("#recordId").value = record?.id || "";
+  $("#dialog .modal-head h2").textContent = record
+    ? `Edit ${entity}`
+    : `Add ${entity}`;
+  $("#isActive").checked = record ? Boolean(record.isActive) : true;
   $("#error").textContent = "";
   if (parentEntity) renderParents();
+  if (record) {
+    $("#name").value = record.name;
+    $("#code").value = record.code;
+    if (parentEntity) $("#parent").value = record.parentId;
+  }
   $("#dialog").showModal();
-});
-document.addEventListener("click", async (event) => {
+}
+$("#search").addEventListener("input", render);
+$("#addBtn").addEventListener("click", () => open());
+document.addEventListener("click", (event) => {
   if (event.target.matches('.close-button,button[value="cancel"]')) {
     event.preventDefault();
     event.target.closest("dialog").close();
     return;
   }
-  if (!event.target.dataset.id) return;
-  if (confirm(`Remove ${event.target.dataset.name}?`)) {
-    try {
-      await api(`/api/${entity}/${event.target.dataset.id}`, {
-        method: "DELETE",
-      });
-      records = records.filter(
-        (row) => String(row.id) !== event.target.dataset.id,
-      );
-      render();
-    } catch (error) {
-      alert(error.message);
-    }
-  }
+  if (!event.target.classList.contains("edit")) return;
+  const record = records.find(
+    (row) => String(row.id) === event.target.dataset.id,
+  );
+  if (record) open(record);
 });
 $("#form").addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
-    const record = await api(`/api/${entity}`, {
-      method: "POST",
-      body: JSON.stringify({
-        name: $("#name").value,
-        code: $("#code").value,
-        parentId: parentEntity ? $("#parent").value : null,
-      }),
-    });
+    const id = $("#recordId").value,
+      record = await api(id ? `/api/${entity}/${id}` : `/api/${entity}`, {
+        method: id ? "PUT" : "POST",
+        body: JSON.stringify({
+          name: $("#name").value,
+          code: $("#code").value,
+          parentId: parentEntity ? $("#parent").value : null,
+          isActive: $("#isActive").checked,
+        }),
+      });
     if (parentEntity) {
       const parent = parents.find(
         (row) => String(row.id) === $("#parent").value,
       );
       record[`${parentEntity}Name`] = parent.name;
     }
-    records.push(record);
+    record.isActive = $("#isActive").checked;
+    if (id)
+      Object.assign(
+        records.find((row) => String(row.id) === id),
+        record,
+      );
+    else records.push(record);
     render();
     $("#dialog").close();
   } catch (error) {

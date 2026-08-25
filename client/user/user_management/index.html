@@ -32,9 +32,9 @@
                 <tr>
                   <th>USER</th>
                   <th>USERNAME</th>
-                  <th>ROLE</th>
+                  <th>PERMISSION</th>
                   <th>STATUS</th>
-                  <th></th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody id="body"></tbody>
@@ -45,31 +45,67 @@
     </div>
     <dialog id="dialog">
       <form id="form">
+        <input type="hidden" id="recordId" />
         <div class="modal-head">
-          <h2>Add user</h2>
+          <div>
+            <span class="modal-kicker" id="dialogKicker">NEW RECORD</span>
+            <h2 id="dialogTitle">Add user</h2>
+          </div>
           <button class="close-button">×</button>
         </div>
         <div class="form-grid">
-          <label class="full">Full name<input id="name" required /></label
+          <label>First name<input id="firstName" required /></label
+          ><label>Middle name<input id="middleName" /></label
+          ><label>Last name<input id="lastName" required /></label
           ><label>Username<input id="username" required /></label
+          ><label class="full"
+            >Institutional email (optional)<input
+              id="institutionalEmail"
+              type="email"
+              autocomplete="email"
+              placeholder="name@ndmu.edu.ph" /></label
           ><label
-            >Role<select id="role">
-              <option>Staff</option>
-              <option>Administrator</option>
-              <option>Superadmin</option>
+            >Permission<select id="role" required>
+              <option value="">Select permission</option>
             </select></label
           ><label class="full"
-            >Temporary password<input
-              id="password"
-              type="password"
-              minlength="8"
-              required
-          /></label>
+            ><span id="passwordLabel">Temporary password</span
+            ><span class="password-input-wrap"
+              ><input
+                id="password"
+                type="password"
+                minlength="8"
+                required
+              /><button
+                type="button"
+                class="password-visibility"
+                id="passwordVisibility"
+                aria-label="Show password"
+                aria-pressed="false"
+                title="Show password"
+              >
+                <span id="passwordVisibilityText" aria-hidden="true">SHOW</span>
+              </button></span
+            ></label
+          >
+          <label class="full" id="statusField">
+            <span>Account status</span>
+            <span class="account-status-control">
+              <span
+                ><strong class="block text-sm text-[#183128]"
+                  >Active account</strong
+                ><small class="font-normal text-[#65736c]"
+                  >Allow this user to sign in.</small
+                ></span
+              >
+              <input id="isActive" type="checkbox" checked />
+            </span>
+          </label>
         </div>
         <p id="error" class="form-error"></p>
         <div class="modal-actions">
           <button value="cancel" class="secondary-button">Cancel</button
-          ><button class="primary-button">Create</button>
+          ><button class="primary-button" id="saveBtn">Create</button>
         </div>
       </form>
     </dialog>

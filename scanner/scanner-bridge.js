@@ -9,7 +9,8 @@ class ScannerBridge extends EventEmitter {
     this.configFile = path.join(__dirname, "scanner-devices.json");
     this.assignments = this.load();
     this.pendingAction = null;
-    this.available = process.platform === "win32" || process.platform === "linux";
+    this.available =
+      process.platform === "win32" || process.platform === "linux";
     this.connected = false;
     this.start();
   }
@@ -23,16 +24,30 @@ class ScannerBridge extends EventEmitter {
   }
 
   save() {
-    fs.writeFileSync(this.configFile, JSON.stringify(this.assignments, null, 2));
+    fs.writeFileSync(
+      this.configFile,
+      JSON.stringify(this.assignments, null, 2),
+    );
   }
 
   start() {
     if (!this.available) return;
     const helper =
       process.platform === "win32"
-        ? ["powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.join(__dirname, "windows-reader.ps1")]]
+        ? [
+            "powershell.exe",
+            [
+              "-NoProfile",
+              "-ExecutionPolicy",
+              "Bypass",
+              "-File",
+              path.join(__dirname, "windows-reader.ps1"),
+            ],
+          ]
         : ["python3", [path.join(__dirname, "linux-reader.py")]];
-    this.child = spawn(helper[0], helper[1], { stdio: ["ignore", "pipe", "pipe"] });
+    this.child = spawn(helper[0], helper[1], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let buffer = "";
     this.child.stdout.on("data", (chunk) => {
       buffer += chunk;
@@ -100,7 +115,8 @@ class ScannerBridge extends EventEmitter {
   }
 
   pair(action) {
-    if (!["Time In", "Time Out"].includes(action)) throw new Error("Invalid scanner action.");
+    if (!["Time In", "Time Out"].includes(action))
+      throw new Error("Invalid scanner action.");
     this.pendingAction = action;
     this.emit("status");
   }

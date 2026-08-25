@@ -35,15 +35,31 @@ exports.create = async (entity, data) => {
   const item = config[entity];
   if (!item.parent)
     return (
-      await pool.query(`INSERT INTO ${item.table} (name,code) VALUES (?,?)`, [
-        data.name,
-        data.code,
-      ])
+      await pool.query(
+        `INSERT INTO ${item.table} (name,code,is_active) VALUES (?,?,?)`,
+        [data.name, data.code, data.isActive],
+      )
     )[0];
   return (
     await pool.query(
-      `INSERT INTO ${item.table} (name,code,${item.parent.column}) VALUES (?,?,?)`,
-      [data.name, data.code, data.parentId],
+      `INSERT INTO ${item.table} (name,code,${item.parent.column},is_active) VALUES (?,?,?,?)`,
+      [data.name, data.code, data.parentId, data.isActive],
+    )
+  )[0];
+};
+exports.update = async (entity, id, data) => {
+  const item = config[entity];
+  if (!item.parent)
+    return (
+      await pool.query(
+        `UPDATE ${item.table} SET name=?,code=?,is_active=? WHERE id=?`,
+        [data.name, data.code, data.isActive, id],
+      )
+    )[0];
+  return (
+    await pool.query(
+      `UPDATE ${item.table} SET name=?,code=?,${item.parent.column}=?,is_active=? WHERE id=?`,
+      [data.name, data.code, data.parentId, data.isActive, id],
     )
   )[0];
 };

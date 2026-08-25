@@ -1,0 +1,46 @@
+.camera-scan-confirmation {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  margin: 0 24px 16px;
+  padding: 12px 14px;
+  border: 1px solid #91c9aa;
+  border-radius: 11px;
+  background: #eaf6ef;
+  text-align: left;
+}
+.camera-scan-confirmation[hidden] {
+  display: none;
+}
+.camera-scan-confirmation > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #087247;
+  color: #fff;
+  font-weight: 900;
+}
+.camera-scan-confirmation strong {
+  display: block;
+  color: #087247;
+  font-size: 12px;
+}
+.camera-scan-confirmation p {
+  margin: 3px 0 0;
+  color: #526a5f;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.camera-scan-confirmation.error {
+  border-color: #e4aaa5;
+  background: #fff1f0;
+}
+.camera-scan-confirmation.error > span {
+  background: #b93830;
+}
+.camera-scan-confirmation.error strong {
+  color: #a52f28;
+}

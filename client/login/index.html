@@ -36,10 +36,21 @@
             autocomplete="current-password"
             required /></label
         ><button class="button" type="submit">Sign in →</button>
+        <div class="auth-divider" id="googleDivider" hidden>
+          <span>OR</span>
+        </div>
+        <a
+          class="google-signin"
+          id="googleSignIn"
+          href="/api/auth/google"
+          hidden
+          ><span class="google-mark">G</span><span>Sign in with Google</span></a
+        >
         <div class="auth-error" id="authError"></div>
         <a class="back-link" href="/">← Back to landing page</a>
       </form>
     </main>
     <script src="auth.js"></script>
+    <script src="/client/brand-ui.js?v=20260824-5" data-brand-ui></script>
   </body>
 </html>

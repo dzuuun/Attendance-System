@@ -40,7 +40,8 @@
                   <th>ID NUMBER</th>
                   <th>DEPARTMENT / ROLE</th>
                   <th>CONTACT</th>
-                  <th></th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody id="body"></tbody>
@@ -56,7 +57,9 @@
           <button class="close-button">×</button>
         </div>
         <div class="form-grid">
-          <label class="full">Full name<input id="name" required /></label
+          <label>First name<input id="firstName" required /></label
+          ><label>Middle name<input id="middleName" /></label
+          ><label>Last name<input id="lastName" required /></label
           ><label>ID number<input id="idNumber" required /></label
           ><label>Department / Role<input id="group" required /></label
           ><label class="full">Contact<input id="contact" /></label>
@@ -70,5 +73,6 @@
     </dialog>
     <script src="/client/shared-ui.js"></script>
     <script src="/client/maintenance/directory.js"></script>
+    <script src="/client/maintenance/import.js"></script>
   </body>
 </html>

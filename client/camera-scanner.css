@@ -1,0 +1,119 @@
+.camera-scanner-dialog {
+  width: min(620px, calc(100vw - 28px));
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  color: #183128;
+  box-shadow: 0 28px 80px rgba(4, 42, 30, 0.35);
+}
+.camera-scanner-dialog::backdrop {
+  background: rgba(4, 42, 30, 0.68);
+  backdrop-filter: blur(4px);
+}
+.camera-scanner-panel {
+  padding: 0 !important;
+}
+.camera-scanner-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-bottom: 1px solid #dce5e0;
+}
+.camera-scanner-panel header small {
+  color: #087247;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+.camera-scanner-panel h2 {
+  margin: 5px 0 0;
+  font:
+    500 28px/1.1 Georgia,
+    serif;
+}
+.camera-scanner-panel header button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f3;
+  color: #66766e;
+  cursor: pointer;
+  font-size: 24px;
+}
+.camera-preview {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16/10;
+  margin: 22px 24px 0;
+  border-radius: 14px;
+  background: #10251d;
+}
+.camera-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.camera-target {
+  position: absolute;
+  inset: 22% 9%;
+  border: 2px solid #f3c94d;
+  border-radius: 12px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.28);
+}
+.camera-target::after {
+  position: absolute;
+  right: 8%;
+  bottom: 50%;
+  left: 8%;
+  height: 2px;
+  background: #f3c94d;
+  box-shadow: 0 0 10px #f3c94d;
+  content: "";
+}
+.camera-scanner-panel > p {
+  margin: 0;
+  padding: 15px 24px;
+  color: #65736c;
+  font-size: 12px;
+  text-align: center;
+}
+.camera-scanner-panel > p.error {
+  color: #a52f28;
+}
+.camera-scanner-panel footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #dce5e0;
+}
+.camera-scanner-panel footer button,
+.camera-scan-button {
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid #cad8d1;
+  border-radius: 9px;
+  background: #fff;
+  color: #087247;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+.camera-scan-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+@media (max-width: 600px) {
+  .camera-preview {
+    aspect-ratio: 3/4;
+  }
+  .camera-scanner-panel h2 {
+    font-size: 24px;
+  }
+}

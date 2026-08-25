@@ -1,0 +1,136 @@
+.event-scan-layout {
+  display: grid;
+  gap: 22px;
+}
+.event-scan-card {
+  padding: 28px;
+  border: 1px solid #d8e3dd;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 45px rgba(7, 50, 34, 0.08);
+}
+.event-scan-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.event-scan-heading h2 {
+  margin: 6px 0 7px;
+  color: #183128;
+  font:
+    500 30px/1.1 Georgia,
+    serif;
+}
+.event-scan-heading p {
+  color: #65736c;
+  font-size: 13px;
+}
+.action-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 26px 0;
+  padding: 0;
+  border: 0;
+}
+.action-selector legend {
+  grid-column: 1/-1;
+  margin-bottom: 9px;
+  color: #52635b;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+}
+.action-selector label {
+  cursor: pointer;
+}
+.action-selector input {
+  position: absolute;
+  opacity: 0;
+}
+.action-selector span {
+  display: block;
+  padding: 17px;
+  border: 1px solid #d8e3dd;
+  border-radius: 12px;
+  background: #fafcfb;
+  color: #183128;
+  font-size: 14px;
+  font-weight: 800;
+  transition: 0.18s;
+}
+.action-selector small {
+  display: block;
+  margin-top: 5px;
+  color: #718078;
+  font-size: 11px;
+  font-weight: 400;
+}
+.action-selector input:checked + span {
+  border-color: #087247;
+  background: #eaf6ef;
+  box-shadow: inset 3px 0 #f3c94d;
+  color: #087247;
+}
+.event-scan-input {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.event-scan-input input {
+  min-height: 54px;
+  flex: 1;
+  font-size: 16px !important;
+}
+.event-scan-result {
+  display: grid;
+  gap: 5px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #d8e3dd;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+.event-scan-result strong {
+  font-size: 15px;
+}
+.event-scan-result span {
+  color: #65736c;
+  font-size: 12px;
+}
+.event-scan-result.success {
+  border-color: #8fc9aa;
+  background: #eaf6ef;
+  color: #087247;
+}
+.event-scan-result.error {
+  border-color: #e4aaa5;
+  background: #fff1f0;
+  color: #a52f28;
+}
+.event-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.scan-event {
+  min-height: 36px !important;
+  padding: 7px 11px !important;
+  font-size: 11px !important;
+}
+@media (max-width: 700px) {
+  .event-scan-card {
+    padding: 20px;
+  }
+  .event-scan-heading {
+    display: grid;
+  }
+  .action-selector {
+    grid-template-columns: 1fr;
+  }
+  .event-scan-input {
+    display: grid;
+  }
+}

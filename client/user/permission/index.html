@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Permissions — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">USERS &amp; ACCESS</p>
+            <h1>Permissions</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>Manage roles available to user accounts.</p>
+          <button class="primary-button" id="addBtn">+ Add permission</button>
+        </div>
+        <article class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>PERMISSION</th>
+                  <th>DESCRIPTION</th>
+                  <th>STATUS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog" class="permission-dialog">
+      <form id="form">
+        <input type="hidden" id="recordId" />
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">NEW ROLE</p>
+            <h2 id="dialogTitle">Add permission</h2>
+          </div>
+          <button class="close-button">×</button>
+        </div>
+        <div class="form-grid">
+          <label class="full"
+            >Description<input
+              id="name"
+              required
+              placeholder="Example: Administrator"
+          /></label>
+          <div class="full">
+            <p
+              class="mb-2 text-xs font-extrabold tracking-wider text-[#52635b]"
+            >
+              MODULE ACCESS
+            </p>
+            <div class="permission-module-grid">
+              <label
+                class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#f7faf8] p-4"
+                ><span
+                  ><strong class="block text-sm text-[#183128]"
+                    >Attendance</strong
+                  ><small class="font-normal text-[#65736c]"
+                    >View and manage attendance</small
+                  ></span
+                ><input
+                  id="attendanceAccess"
+                  type="checkbox"
+                  class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
+              /></label>
+              <label
+                class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#f7faf8] p-4"
+                ><span
+                  ><strong class="block text-sm text-[#183128]">Events</strong
+                  ><small class="font-normal text-[#65736c]"
+                    >Manage event attendance</small
+                  ></span
+                ><input
+                  id="specialEventsAccess"
+                  type="checkbox"
+                  class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
+              /></label>
+              <label
+                class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#f7faf8] p-4"
+                ><span
+                  ><strong class="block text-sm text-[#183128]"
+                    >Historical data</strong
+                  ><small class="font-normal text-[#65736c]"
+                    >View and export previous periods</small
+                  ></span
+                ><input
+                  id="historicalDataAccess"
+                  type="checkbox"
+                  class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
+              /></label>
+              <label
+                class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#f7faf8] p-4"
+                ><span
+                  ><strong class="block text-sm text-[#183128]">Library</strong
+                  ><small class="font-normal text-[#65736c]"
+                    >View and export library entrance logs</small
+                  ></span
+                ><input
+                  id="libraryAccess"
+                  type="checkbox"
+                  class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
+              /></label>
+              <label
+                class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#f7faf8] p-4"
+                ><span
+                  ><strong class="block text-sm text-[#183128]"
+                    >Maintenance</strong
+                  ><small class="font-normal text-[#65736c]"
+                    >Manage academic records</small
+                  ></span
+                ><input
+                  id="maintenanceAccess"
+                  type="checkbox"
+                  class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
+              /></label>
+              <label
+                class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#f7faf8] p-4"
+                ><span
+                  ><strong class="block text-sm text-[#183128]"
+                    >User &amp; access</strong
+                  ><small class="font-normal text-[#65736c]"
+                    >Manage users and permissions</small
+                  ></span
+                ><input
+                  id="usersAccess"
+                  type="checkbox"
+                  class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
+              /></label>
+            </div>
+          </div>
+          <label class="full"
+            >Visible people<select id="peopleAccess" required>
+              <option value="Both">Students and employees</option>
+              <option value="Students">Students only</option>
+              <option value="Employees">Employees only</option></select
+            ><small class="mt-1 block font-normal text-[#65736c]"
+              >Controls which directory entries this permission can view and
+              manage.</small
+            ></label
+          ><label class="full"
+            ><span
+              class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#fafcfb] p-4"
+              ><span
+                ><strong class="block text-sm text-[#183128]"
+                  >Active permission</strong
+                ><small class="font-normal text-[#65736c]"
+                  >Available when assigning roles</small
+                ></span
+              ><input
+                id="isActive"
+                type="checkbox"
+                class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
+                checked /></span
+          ></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button value="cancel" class="secondary-button">Cancel</button
+          ><button class="primary-button" id="saveBtn">
+            Create permission
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/user/permission/script.js"></script>
+  </body>
+</html>

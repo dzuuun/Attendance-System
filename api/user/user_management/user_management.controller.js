@@ -1,40 +1,71 @@
 const bcrypt = require("bcryptjs"),
-  model = require("./user_management.model");
+  model = require("./user_management.model"),
+  permissionModel = require("../permission/permission.model");
+const validInstitutionalEmail = (email) => {
+  if (!/^\S+@\S+\.\S+$/.test(email)) return false;
+  const domain = String(process.env.GOOGLE_WORKSPACE_DOMAIN || "")
+    .trim()
+    .toLowerCase();
+  return !domain || email.endsWith(`@${domain}`);
+};
 exports.getAll = async (_req, res) => res.json(await model.getAll());
 exports.create = async (req, res) => {
-  const { fullName, username, password, role = "Staff" } = req.body,
-    allowed =
-      req.user.role === "Superadmin"
-        ? ["Superadmin", "Administrator", "Staff"]
-        : ["Administrator", "Staff"];
+  const firstName = String(req.body.firstName || "").trim(),
+    middleName = String(req.body.middleName || "").trim(),
+    lastName = String(req.body.lastName || "").trim(),
+    fullName = [firstName, middleName, lastName].filter(Boolean).join(" "),
+    { username, password } = req.body,
+    institutionalEmail = String(req.body.institutionalEmail || "")
+      .trim()
+      .toLowerCase(),
+    permission = await permissionModel.findById(req.body.permissionId),
+    role = permission?.name || "";
   if (
-    !fullName?.trim() ||
+    !firstName ||
+    !lastName ||
     !username?.trim() ||
+    (institutionalEmail && !validInstitutionalEmail(institutionalEmail)) ||
     String(password).length < 8 ||
-    !allowed.includes(role)
+    !permission?.isActive ||
+    (role === "Superadmin" && req.user.role !== "Superadmin")
   )
     return res
       .status(400)
-      .json({ message: "Complete all fields; passwords need 8 characters." });
+      .json({
+        message: "Complete all required fields; passwords need 8 characters.",
+      });
   try {
     const result = await model.create({
       fullName: fullName.trim(),
+      firstName,
+      middleName,
+      lastName,
       username: username.trim(),
+      institutionalEmail: institutionalEmail || null,
       passwordHash: await bcrypt.hash(password, 12),
       role,
+      permissionId: permission.id,
+      isActive: Boolean(req.body.isActive ?? true),
     });
-    res
-      .status(201)
-      .json({
-        id: result.insertId,
-        fullName: fullName.trim(),
-        username: username.trim(),
-        role,
-        isActive: 1,
-      });
+    res.status(201).json({
+      id: result.insertId,
+      fullName: fullName.trim(),
+      firstName,
+      middleName,
+      lastName,
+      username: username.trim(),
+      institutionalEmail: institutionalEmail || null,
+      role,
+      permissionId: permission.id,
+      isActive: 1,
+    });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY")
-      return res.status(409).json({ message: "That username already exists." });
+      return res
+        .status(409)
+        .json({
+          message: "That username or institutional email already exists.",
+        });
     throw error;
   }
 };
@@ -45,4 +76,75 @@ exports.setStatus = async (req, res) => {
       .json({ message: "You cannot deactivate your account." });
   await model.setStatus(req.params.id, Boolean(req.body.isActive));
   res.status(204).end();
+};
+exports.update = async (req, res) => {
+  const firstName = String(req.body.firstName || "").trim(),
+    middleName = String(req.body.middleName || "").trim(),
+    lastName = String(req.body.lastName || "").trim(),
+    fullName = [firstName, middleName, lastName].filter(Boolean).join(" "),
+    username = String(req.body.username || "").trim(),
+    institutionalEmail = String(req.body.institutionalEmail || "")
+      .trim()
+      .toLowerCase(),
+    password = String(req.body.password || ""),
+    permission = await permissionModel.findById(req.body.permissionId),
+    role = permission?.name || "",
+    isActive = Boolean(req.body.isActive),
+    canAssign =
+      permission?.isActive &&
+      (role !== "Superadmin" || req.user.role === "Superadmin");
+  if (
+    !firstName ||
+    !lastName ||
+    !username ||
+    (institutionalEmail && !validInstitutionalEmail(institutionalEmail)) ||
+    !canAssign ||
+    (password && password.length < 8)
+  )
+    return res
+      .status(400)
+      .json({
+        message:
+          "Complete all required fields; a new password needs 8 characters.",
+      });
+  if (Number(req.params.id) === req.user.id && !isActive)
+    return res
+      .status(400)
+      .json({ message: "You cannot deactivate your account." });
+  try {
+    const result = await model.update(req.params.id, {
+      fullName,
+      firstName,
+      middleName,
+      lastName,
+      username,
+      institutionalEmail: institutionalEmail || null,
+      role,
+      permissionId: permission.id,
+      isActive,
+      passwordHash: password ? await bcrypt.hash(password, 12) : null,
+    });
+    if (!result.affectedRows)
+      return res.status(404).json({ message: "User not found." });
+    res.json({
+      id: Number(req.params.id),
+      fullName,
+      firstName,
+      middleName,
+      lastName,
+      username,
+      institutionalEmail: institutionalEmail || null,
+      permissionId: permission.id,
+      role,
+      isActive,
+    });
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY")
+      return res
+        .status(409)
+        .json({
+          message: "That username or institutional email already exists.",
+        });
+    throw error;
+  }
 };

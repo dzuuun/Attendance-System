@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Historical Data — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Events</p>
+            <h1>Historical data</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>Review events and attendance from any academic period.</p>
+          <label>Academic period<select id="period"></select></label>
+        </div>
+        <article class="table-card">
+          <div class="table-toolbar">
+            <div>
+              <span class="section-kicker">PERIOD EVENTS</span>
+              <h2 id="periodTitle">Events</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>EVENT</th>
+                  <th>AUDIENCE</th>
+                  <th>SCHEDULE</th>
+                  <th>ALLOWED SCANS</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="eventBody"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="table-card recent-card" id="attendanceCard" hidden>
+          <div class="table-toolbar">
+            <div>
+              <span class="section-kicker">EVENT ATTENDANCE</span>
+              <h2 id="attendanceTitle">Attendance</h2>
+            </div>
+            <button class="primary-button" id="exportBtn">Export XLSX</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ATTENDEE</th>
+                  <th>ID NUMBER</th>
+                  <th>TYPE</th>
+                  <th>ACTION</th>
+                  <th>TIME</th>
+                </tr>
+              </thead>
+              <tbody id="scanBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/history/script.js"></script>
+  </body>
+</html>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Special Events — TapTrack</title>
+    <title>Events — TapTrack</title>
     <link rel="stylesheet" href="/client/dashboard/style.css" />
     <link rel="stylesheet" href="/client/dashboard/events.css" />
     <link rel="stylesheet" href="/client/page-shell.css" />
@@ -15,7 +15,7 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">EVENT ATTENDANCE</p>
-            <h1>Special events</h1>
+            <h1>Events</h1>
           </div>
           <div class="live-time">
             <span id="liveTime"></span><small id="liveDate"></small>
@@ -35,7 +35,7 @@
                   <th>DURATION</th>
                   <th>ALLOWED SCANS</th>
                   <th>STATUS</th>
-                  <th></th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody id="body"></tbody>
@@ -46,14 +46,16 @@
     </div>
     <dialog id="dialog">
       <form id="form">
+        <input type="hidden" id="recordId" />
         <div class="modal-head">
-          <h2>Create event</h2>
+          <h2 id="dialogTitle">Create event</h2>
           <button class="close-button">×</button>
         </div>
         <div class="form-grid">
           <label class="full">Event name<input id="name" required /></label
           ><label class="full"
             >Audience<select id="audience" required>
+              <option value="" disabled selected>Select audience</option>
               <option value="Both">Students and employees</option>
               <option value="Students">Students only</option>
               <option value="Employees">Employees only</option>
@@ -69,19 +71,24 @@
               min="1"
               value="1"
               required /></label
-          ><label
+          ><label id="outsField"
             >Maximum Time Outs<input
               id="outs"
               type="number"
               min="1"
               value="1"
               required /></label
+          ><label class="full status-toggle-field"
+            ><span
+              ><strong>Record Time Out</strong
+              ><small>Turn off for Time-In-only events</small></span
+            ><input id="recordTimeOut" type="checkbox" checked /></label
           ><label class="full">Description<input id="description" /></label>
         </div>
         <p id="error" class="form-error"></p>
         <div class="modal-actions">
           <button value="cancel" class="secondary-button">Cancel</button
-          ><button class="primary-button">Create</button>
+          ><button class="primary-button" id="saveEvent">Create</button>
         </div>
       </form>
     </dialog>

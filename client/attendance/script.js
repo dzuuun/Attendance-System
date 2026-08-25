@@ -6,6 +6,7 @@ const {
   formatDate,
   personCell,
   emptyRow,
+  loadXlsx,
   init,
 } = TapTrack;
 let records = [],
@@ -21,6 +22,8 @@ function filtered() {
   );
 }
 function render() {
+  const table = $("#body").closest("table");
+  TapTrack.destroyDataTable(table);
   const rows = filtered();
   $("#body").innerHTML =
     rows
@@ -29,6 +32,7 @@ function render() {
           `<tr><td>${personCell(people.find((p) => p.id === a.personId && p.type === a.type) || { name: a.name })}</td><td>${escapeHtml(a.idNumber)}</td><td><span class="type-pill ${a.type}">${a.type}</span></td><td>${escapeHtml(a.eventName || "University entrance")}</td><td>${formatDate(a.timestamp)}</td><td>${formatTime(a.timestamp)}</td><td><span class="status-pill ${a.action === "Time Out" ? "time-out" : ""}">${a.action}</span></td></tr>`,
       )
       .join("") || emptyRow(7, "No matching attendance records.");
+  TapTrack.initDataTable(table, { pageLength: 25 });
 }
 $("#search").addEventListener("input", render);
 $("#type").addEventListener("change", render);
@@ -39,30 +43,32 @@ $("#clearBtn").addEventListener("click", async () => {
     render();
   }
 });
-$("#exportBtn").addEventListener("click", () => {
-  const csv =
-    "Name,ID,Type,Context,Date,Time,Action\n" +
-    filtered()
-      .map((a) =>
-        [
-          a.name,
-          a.idNumber,
-          a.type,
-          a.eventName || "University entrance",
-          formatDate(a.timestamp),
-          formatTime(a.timestamp),
-          a.action,
-        ]
-          .map((v) => `"${String(v).replaceAll('"', '""')}"`)
-          .join(","),
-      )
-      .join("\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
-    link = document.createElement("a");
-  link.href = url;
-  link.download = "attendance.csv";
-  link.click();
-  URL.revokeObjectURL(url);
+$("#exportBtn").addEventListener("click", async () => {
+  await loadXlsx();
+  const rows = filtered().map((a) => ({
+    Name: a.name,
+    "ID Number": a.idNumber,
+    Type: a.type,
+    Context: a.eventName || "University entrance",
+    Date: formatDate(a.timestamp),
+    Time: formatTime(a.timestamp),
+    Action: a.action,
+  }));
+  const sheet = XLSX.utils.json_to_sheet(rows, {
+    header: ["Name", "ID Number", "Type", "Context", "Date", "Time", "Action"],
+  });
+  sheet["!cols"] = [
+    { wch: 28 },
+    { wch: 18 },
+    { wch: 12 },
+    { wch: 28 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 12 },
+  ];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, "Attendance");
+  XLSX.writeFile(workbook, "attendance.xlsx");
 });
 (async () => {
   await init("attendance");

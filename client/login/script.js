@@ -10,6 +10,23 @@ async function request(url, body) {
   return data;
 }
 const error = document.querySelector("#authError");
+const hashToken = new URLSearchParams(location.hash.slice(1)).get("sso_token");
+if (hashToken) {
+  localStorage.setItem(TOKEN_KEY, hashToken);
+  history.replaceState(null, "", "/login");
+  location.replace("/app");
+}
+const googleError = new URLSearchParams(location.search).get("google_error");
+if (googleError) {
+  error.textContent = googleError;
+  history.replaceState(null, "", "/login");
+}
+request("/api/auth/google/status")
+  .then(({ enabled }) => {
+    document.querySelector("#googleDivider").hidden = !enabled;
+    document.querySelector("#googleSignIn").hidden = !enabled;
+  })
+  .catch(() => {});
 document
   .querySelector("#loginForm")
   ?.addEventListener("submit", async (event) => {

@@ -1,31 +1,41 @@
 CREATE DATABASE IF NOT EXISTS attendance_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE attendance_system;
 
+-- Fresh installation schema for TapTrack Attendance System.
+-- Import this file into a new MySQL or MariaDB database.
+
 CREATE TABLE IF NOT EXISTS students (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,
-  full_name VARCHAR(150) NOT NULL,
   program_section VARCHAR(150) NOT NULL,
   contact VARCHAR(150),
-  first_name VARCHAR(80),
+  first_name VARCHAR(80) NOT NULL,
   middle_name VARCHAR(80),
-  last_name VARCHAR(80),
+  last_name VARCHAR(80) NOT NULL,
   program_id INT UNSIGNED NULL,
   year_level VARCHAR(40),
   birthday DATE NULL,
   institutional_email VARCHAR(150),
   gender ENUM('Male','Female','Other','Prefer not to say'),
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_students_name (last_name,first_name),
+  INDEX idx_students_program (program_id),
+  INDEX idx_students_active_name (is_active,last_name,first_name)
 );
 
 CREATE TABLE IF NOT EXISTS employees (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,
-  full_name VARCHAR(150) NOT NULL,
+  first_name VARCHAR(80) NOT NULL,
+  middle_name VARCHAR(80),
+  last_name VARCHAR(80) NOT NULL,
   department_role VARCHAR(150) NOT NULL,
   contact VARCHAR(150),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_employees_name (last_name,first_name),
+  INDEX idx_employees_active_name (is_active,last_name,first_name)
 );
 
 CREATE TABLE IF NOT EXISTS schools (
@@ -33,7 +43,8 @@ CREATE TABLE IF NOT EXISTS schools (
   name VARCHAR(180) NOT NULL UNIQUE,
   code VARCHAR(40) NOT NULL UNIQUE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_schools_active_name (is_active,name)
 );
 
 CREATE TABLE IF NOT EXISTS colleges (
@@ -44,6 +55,7 @@ CREATE TABLE IF NOT EXISTS colleges (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_college_school_code (school_id, code),
+  INDEX idx_colleges_school_name (school_id,name),
   CONSTRAINT fk_college_school FOREIGN KEY (school_id) REFERENCES schools(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
@@ -55,6 +67,7 @@ CREATE TABLE IF NOT EXISTS departments (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_department_college_code (college_id, code),
+  INDEX idx_departments_college_name (college_id,name),
   CONSTRAINT fk_department_college FOREIGN KEY (college_id) REFERENCES colleges(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
@@ -66,25 +79,274 @@ CREATE TABLE IF NOT EXISTS programs (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_program_department_code (department_id, code),
+  INDEX idx_programs_department_name (department_id,name),
+  INDEX idx_programs_code (code),
   CONSTRAINT fk_program_department FOREIGN KEY (department_id) REFERENCES departments(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
-ALTER TABLE students
-  ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL AFTER contact,
-  ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,
-  ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name,
-  ADD COLUMN IF NOT EXISTS program_id INT UNSIGNED NULL AFTER last_name,
-  ADD COLUMN IF NOT EXISTS year_level VARCHAR(40) NULL AFTER program_id,
-  ADD COLUMN IF NOT EXISTS birthday DATE NULL AFTER year_level,
-  ADD COLUMN IF NOT EXISTS institutional_email VARCHAR(150) NULL AFTER birthday,
-  ADD COLUMN IF NOT EXISTS gender ENUM('Male','Female','Other','Prefer not to say') NULL AFTER institutional_email,
-  ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE AFTER gender;
+-- Preliminary academic data imported from the installation templates.
+-- These inserts are idempotent and preserve the school hierarchy.
+INSERT INTO schools (name,code) VALUES ('HIGHER EDUCATION','COLLEGE') ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO schools (name,code) VALUES ('SENIOR HIGH SCHOOL','SHS') ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO schools (name,code) VALUES ('JUNIOR HIGH SCHOOL','JHS') ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO schools (name,code) VALUES ('ELEMENTARY','ELEM') ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'COLLEGE OF ARTS AND SCIENCES','CAS' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'COLLEGE OF ENGINEERING, ARCHITECTURE & COMPUTING','CEAC' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'COLLEGE OF BUSINESS, GOVERNANCE, & ACCOUNTANCY','CBGA' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'COLLEGE OF EDUCATION','CED' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'GRADUATE SCHOOL','GRDSCHL' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'STDPRMT','-' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'COLLEGE OF HEALTH SCIENCES','CHS' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'RSTC','RSTC' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'TESDA PROGRAMS','TESDA' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'SENIOR HIGHSCHOOL','SEN-HISCH' FROM schools WHERE code='SHS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'COLLEGE OF LAW','CL' FROM schools WHERE code='COLLEGE' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'ELEMENTARY','ELEM' FROM schools WHERE code='ELEM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO colleges (school_id,name,code) SELECT id,'JUNIOR HIGH SCHOOL','JHS' FROM schools WHERE code='JHS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'-','-' FROM colleges WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'BACHELOR OF ARTS (GENERAL) - OLD CURRICULUM','AB' FROM colleges WHERE code='CAS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'ACCOUNTANCY','ACCY' FROM colleges WHERE code='CBGA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'BACHELOR OF ARTS','BA' FROM colleges WHERE code='CAS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'BUSN. ADMIN.','BUSN.ADM.' FROM colleges WHERE code='CBGA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'CS/IT','COMSTDS' FROM colleges WHERE code='CEAC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'DEPARTMENT OF EDUCATION PROGRAM','DEPED' FROM colleges WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'EDUCATION','EDUC' FROM colleges WHERE code='CED' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'ENGINEERING','ENGG' FROM colleges WHERE code='CEAC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'ETEEAP','ETEEAP' FROM colleges WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'GUIDANCE','GUID' FROM colleges WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'HEALTH SCIENCES','HLTSCI' FROM colleges WHERE code='CHS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'HRM','HRM' FROM colleges WHERE code='CBGA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'LANGUAGE','LANG' FROM colleges WHERE code='CAS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'LAW DEPARTMENT','LAW' FROM colleges WHERE code='CL' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'MA/MS','MA/MS' FROM colleges WHERE code='GRDSCHL' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'MATHEMATICS','MATH' FROM colleges WHERE code='CAS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'MBA/MPA','MBA/MPA' FROM colleges WHERE code='GRDSCHL' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'MEDTECH','MEDTECH' FROM colleges WHERE code='CHS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'MIP/MIE/MIB/MIT/MIM/MIC','MI PROGRAM' FROM colleges WHERE code='GRDSCHL' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'MN/MAN','MN/MAN' FROM colleges WHERE code='GRDSCHL' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'NATIONAL SERVICE TRAINING PROGRAM','NSTP' FROM colleges WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'NURSING','NURSING' FROM colleges WHERE code='CHS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'OFFICE ADMINISTRATION','OFC ADM' FROM colleges WHERE code='CBGA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'PHYSICAL EDUCATION','P E' FROM colleges WHERE code='CED' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'PHD','PHD' FROM colleges WHERE code='GRDSCHL' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'RELIGIOUS EDUCATION','R E' FROM colleges WHERE code='CED' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'RSTC','RSTC' FROM colleges WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'SCIENCES','SCIENCES' FROM colleges WHERE code='CAS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'SENIOR HIGH SCHOOL','SEN-HISCH' FROM colleges WHERE code='SEN-HISCH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'SOCIAL SCIENCES','SOCSCI' FROM colleges WHERE code='CAS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'CROSS ENROLL, STUDY PERMIT','STDPRMT' FROM colleges WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'TECHNOLOGICAL COURSES','TECH' FROM colleges WHERE code='CEAC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'TECHNICAL & VOCATIONAL PROGRAMS','TECHVOC' FROM colleges WHERE code='TESDA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO departments (college_id,name,code) SELECT id,'GRADUATE SCHOOL','U-GRDSCH' FROM colleges WHERE code='GRDSCHL' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN AGRICULTURAL TECHNOLOGY','AAT' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS (GENERAL) - OLD CURRICULUM','AB' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS IN COMMUNICATION','AB-COMM' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN ECONOMICS','AB-ECON' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN ENGLISH','AB-ENGL' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN HISTORY','AB-HIST' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN LAW ENFORCEMENT & PUBLIC SAFETY','AB-LEPS' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN LIBRARY SCIENCE','AB-LS' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN MASS COMMUNICATION','AB-MSCOM' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN PHILOSOPHY','AB-PHILO' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN POLITICAL SCIENCE','AB-POLSC' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN PSYCHOLOGY','AB-PSYC' FROM departments WHERE code='AB' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ACCOUNTING, BUSINESS & MANAGEMENT','ABM' FROM departments WHERE code='SEN-HISCH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN COMPUTER SCIENCE','ACS' FROM departments WHERE code='COMSTDS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN COMPUTER TECHNOLOGY','ACT' FROM departments WHERE code='COMSTDS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN FOOD TECHNOLOGY','AFT' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN HOTEL & RESTAURANT MANAGEMENT','AHRM' FROM departments WHERE code='HRM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN  HEALTH SCIENCE EDUCATION','AHSE' FROM departments WHERE code='NURSING' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN INDUSTRIAL TECHNOLOGY - ARCHITECTURAL DRAFTING','AIT-AD' FROM departments WHERE code='TECH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN INDUSTRIAL TECHNOLOGY - ELECTRICITY & ELECTRONI','AIT-EE' FROM departments WHERE code='TECH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN INDUSTRIAL TECHNOLOGY - INDUSTRIAL ELECTRICITY','AIT-IE' FROM departments WHERE code='TECH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN NURSING AIDE','ANA' FROM departments WHERE code='HLTSCI' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'ASSOCIATE IN OFFICE ADMINISTRATION','AOA' FROM departments WHERE code='OFC ADM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS (GENERAL)','BA' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS IN COMMUNICATION','BA-COMM' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN ECONOMICS','BA-ECON' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN ENGLISH','BA-ENGL' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN HISTORY','BA-HIST' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN LAW ENFORCEMENT & PUBLIC SAFETY','BA-LEPS' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN LIBRARY SCIENCE','BA-LS' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN MASS COMMUNICATION','BA-MSCOM' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN PHILOSOPHY','BA-PHILO' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN POLITICAL SCIENCE','BA-POLSC' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF ARTS MAJOR IN PSYCHOLOGY','BA-PSYC' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN AGRICULTURAL TECHNOLOGY','BAT' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION','BEED' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BEED-ATTCC','BEED-ATTCC' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - EARLY CHILDHOOD','BEED-ECED' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - ENGLISH','BEED-ENGL' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - FILIPINO','BEED-FIL' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - GUIDANCE & COUNSELING','BEED-GC' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION GENERAL','BEED-GEN' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - MUSIC,ARTS & PHYSICAL ED.','BEED-MAPE' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - MATHEMATICS','BEED-MATH' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - PRE-SCHOOL EDUCATION','BEED-PRESCH' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - SCIENCES & HEALTH','BEED-SH' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - SPECIAL EDUCATION','BEED-SPED' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN ELEMENTARY EDUCATION - SOCIAL SCIENCES','BEED-SS' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BIOLOGY INSTITUTE','BIOL-INSTITUTE' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF LIBRARY AND INFORMATION SCIENCE','BLIS' FROM departments WHERE code='COMSTDS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN LIBRARY AND INFORMATION SCIENCE-ACA. LIB.','BLIS-ACALIB' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN PUBLIC ADMINISTRATION','BPA' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN PHYSICAL EDUCATION MAJOR IN SCHOOL PHYSICAL EDUC','BPE-SPE' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BPE MAJOR IN SPORTS AND WELLNESS MANAGEMENT','BPE-SWM' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN PHYSICAL EDUCATION','BPED' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN ENVIRONMENTAL SCIENCE','BS-ENSCI' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BSMATH','BS-MATH' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN AGRIBUSINESS','BSAB' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN ACCOUNTANCY','BSACCTCY' FROM departments WHERE code='ACCY' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BS IN ACCOUNTING TECHNOLOGY','BSACCTECH' FROM departments WHERE code='ACCY' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN AGRICULTURE','BSAGRI' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN AGRICULTURE - AGRIBUSINESS','BSAGRI-AB' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN AGRICULTURE - ANIMAL SCIENCE','BSAGRI-AS' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN AGRICULTURE - CROP SCIENCE','BSAGRI-CS' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN AGRICULTURE - PLANT PATHOLOGY','BSAGRI-PP' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN APPLIED MATHEMATICS','BSAM' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN ARCHITECTURE','BSARCH' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BSBA-MM WEEKEND SCHEDULE','BSBA(WS)-MM' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BSBA-FINANCIAL MANAGEMENT','BSBA-FINMGT' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BSBA MAJOR IN HUMAN RESOURCE DEVELOPMENT MANAGEMENT','BSBA-HRDM' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BSBA-MARKETING MANAGEMENT','BSBA-MKTMGT' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN BIOLOGY','BSBIO' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMERCE','BSC' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMERECE MAJOR IN ACCOUNTING','BSC-ACCTG' FROM departments WHERE code='ACCY' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMERCE (B.S.C.) MAJOR IN AGRI-BUSN.','BSC-AGRI-BUSN' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMERCE - ECONOMICS','BSC-ECON' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMERCE - MANAGEMENT ACCOUNTING','BSC-M A' FROM departments WHERE code='ACCY' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMERCE - MANAGEMENT','BSC-MGT' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMERCE - MARKETING','BSC-MKTG' FROM departments WHERE code='BUSN.ADM.' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMMUNITY DEVELOPMENT','BSCD' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN CIVIL ENGINEERING','BSCE' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BSCE MAJOR IN STRUCTURAL ENGINEERING','BSCE-SE' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN CHEMISTRY','BSCHEM' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN CHEMICAL ENGINEERING','BSCHEM E' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMPUTER ENGINEERING','BSCOMP E' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN CRIMINOLOGY','BSCRIM' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN COMPUTER SCIENCE','BSCS' FROM departments WHERE code='COMSTDS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN EDUCATION','BSE' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN EDUCATION - INVERTED','BSE-INV.' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN ELECTRONICS ENGINEERING','BSECE' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION','BSED' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - BIOLOGY','BSED-BIO' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - BIOLOGICAL SCIENCE','BSED-BIOSCI' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - CHEMISTRY','BSED-CHEM' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - ENGLISH & FILIPINO','BSED-ENGFIL' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - ENGLISH','BSED-ENGL' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - FILIPINO','BSED-FIL' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - GUIDANCE & COUNSELING','BSED-GC' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - GENERAL SCIENCE','BSED-GENSC' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - HISTORY','BSED-HIST' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - MUSIC, ARTS, PE & HEALTH','BSED-MAPEH' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - MATHEMATICS','BSED-MATH' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - PHYSICAL EDUCATION','BSED-PE' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - PHYSICAL EDUC. & HEALTH','BSED-PE-H' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - PHYSICS','BSED-PHYS' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - PHYSICAL SCIENCES','BSED-PHYSCI' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - RELIGIOUS EDUCATION','BSED-RE' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - RELIGIOUS EDUC. (MAPAC)','BSED-RE-MC' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION MAJOR IN SCIENCE','BSED-SCI' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - SOCIAL STUDIES','BSED-SS' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR IN SECONDARY EDUCATION - VALUES EDUCATION','BSED-VALED' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN ELEMENTARY EDUCATION','BSEED' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN ELECTRICAL ENGINEERING','BSELEC E' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN FOOD TECHNOLOGY','BSFT' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN GUIDANCE AND COUNSELING','BSGC' FROM departments WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN GEODETIC ENGINEERING','BSGE' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN HOSPITALITY MANAGEMENT','BSHM' FROM departments WHERE code='HRM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN HOTEL & RESTAURANT MANAGEMENT','BSHRM' FROM departments WHERE code='HRM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN INDUSTRIAL ENGINEERING','BSIE' FROM departments WHERE code='ENGG' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN INFORMATION SYSTEMS','BSIS' FROM departments WHERE code='COMSTDS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY','BSIT' FROM departments WHERE code='COMSTDS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN MANAGEMENT ACCOUNTING','BSMA' FROM departments WHERE code='ACCY' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN MATHEMATICS','BSMATH' FROM departments WHERE code='MATH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN MEDICAL TECHNOLOGY','BSMEDTECH' FROM departments WHERE code='MEDTECH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN NURSING','BSN' FROM departments WHERE code='NURSING' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN OFFICE ADMINISTRATION-COMPUTER EDUC.','BSOA-CE' FROM departments WHERE code='OFC ADM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN OFFICE ADMINISTRATION-OFFICE MANGT','BSOA-OM' FROM departments WHERE code='OFC ADM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN PHARMACY','BSPHAR' FROM departments WHERE code='HLTSCI' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BS PHYSICS - CERTIFICATION - PROGRAM','BSPHYS-CERT' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN RELIGIOUS STUDIES','BSRS' FROM departments WHERE code='BA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN SECRETARIAL ADMINISTRATION','BSSA' FROM departments WHERE code='OFC ADM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN SOCIAL WORK','BSSW' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BACHELOR OF SCIENCE IN THEOLOGY','BSTHEO' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'CHEMISTRY INSTITUTE','CHEM -INSTITUTE' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'BS CHEMISTRY - CERTIFICATION - PROGRAM','CHEM-CERT-PROG' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'CERTIFICATION PROGRAM IN TECHNOLOGY & LIVELIHOOD EDUCATION','CPTLE' FROM departments WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'DIPLOMA IN AGRICULTURAL TECHNOLOGY','DAT' FROM departments WHERE code='SCIENCES' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'DIPLOMA IN COMMUNICATIONS AND COMPUTER TECHNOLOGY','DCCT' FROM departments WHERE code='TECH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'CERTIFICATE PROGRAM FOR TLE','DEPED-CPTLE' FROM departments WHERE code='DEPED' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'DIPLOMA IN SECRETARIAL SCIENCE','DSS' FROM departments WHERE code='OFC ADM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'EXPANDED TERTIARY EDUCATION EQUIVALENCY & ACCREDITATION PROG','ETEEAP' FROM departments WHERE code='ETEEAP' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'HOUSE KEEPING','HSKEP' FROM departments WHERE code='TECHVOC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'HUMANITIES, SOCIAL SCIENCES','HUMSS' FROM departments WHERE code='SEN-HISCH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'JURIS DOCTOR','JD' FROM departments WHERE code='LAW' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'JUNIOR SECRETARIAL COURSE','JSC' FROM departments WHERE code='OFC ADM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN LIBRARY SCIENCE','MA-LS' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION','MAED' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN BIOLOGY','MAED-BIO' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN CHEMISTRY','MAED-CHEM' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN CULTURAL EDUCATION','MAED-CULED' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION','MAED-EA' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN EDUCATIONAL MANAGEMENT','MAED-EM' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN FILIPINO','MAED-FIL' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN GUIDANCE & COUNSELING','MAED-GC' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN HISTORY','MAED-HIST' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN MATHEMATICS','MAED-MATH' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN PHYSICAL EDUCATION','MAED-PE' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN PHYSICS','MAED-PHYSICS' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN EDUCATION MAJOR IN RELIGIOUS EDUCATION','MAED-RE' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MAED- MAJOR IN TEACHING ENGLISH AS A SECOND LANGUAGE','MAED-TESL' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN NURSING','MAN' FROM departments WHERE code='MN/MAN' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS IN SCIENCE EDUCATION','MASED' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF ARTS TEACHING ELEMENTARY AGRICULTURE','MATEA' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN BUSINESS ADMINISTRATION','MBA' FROM departments WHERE code='MBA/MPA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN BIOLOGY','MIB' FROM departments WHERE code='MI PROGRAM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN CHEMISTRY','MIC' FROM departments WHERE code='MI PROGRAM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN ENGLISH','MIE' FROM departments WHERE code='MI PROGRAM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN MATHEMATICS','MIM' FROM departments WHERE code='MI PROGRAM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN PHYSICS','MIP' FROM departments WHERE code='MI PROGRAM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN INFORMATION TECHNOLOGY','MIT' FROM departments WHERE code='MI PROGRAM' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN LEGAL STUDIES','MLS' FROM departments WHERE code='LAW' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN NURSING','MN' FROM departments WHERE code='MN/MAN' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER IN PUBLIC ADMINISTRATION','MPA' FROM departments WHERE code='MBA/MPA' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF SCIENCE IN BIOLOGY','MS-BIO' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF SCIENCE IN CHEMISTRY','MS-CHEM' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF SCIENCE IN CROP SCIENCE','MS-CRPSCI' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF SCIENCE IN INFORMATION TECHNOLOGY','MS-IT' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF SCIENCE IN MATHEMATICS','MS-MATH' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF SCIENCE IN PHYSICS','MS-PHY' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'MASTER OF SCIENCE IN RURAL EXTENSION AND DEVELOPMENT','MS-RED' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'NURSING AIDE','NA' FROM departments WHERE code='HLTSCI' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'DOCTOR OF PHILOSOPHY IN EDUCATIONAL MANAGEMENT','PH.D - EM' FROM departments WHERE code='PHD' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'DOCTOR OF PHILOSOPHY IN SCIENCE EDUCATION MAJOR IN CHEMISTRY','PH.D.SCI.ED-CHM' FROM departments WHERE code='PHD' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'DOCTOR OF PHILOSOPHY IN SCIENCE EDUCATION MAJOR IN PHYSICS','PH.D.SCI.ED-PHY' FROM departments WHERE code='PHD' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'PHYSICS INSTITUTE','PHYS-INSTITUTE' FROM departments WHERE code='U-GRDSCH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RESIDENCY IN MASTERAL','RESIDE-MA' FROM departments WHERE code='MA/MS' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RESIDENCY IN DOCTORAL','RESIDE-PHD' FROM departments WHERE code='PHD' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'STUDENTS TAKING ROTC ONLY','ROTC' FROM departments WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RSTC','RSTC-BSE-BIO' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RSTC','RSTC-BSE-CHEM' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RSTC','RSTC-BSE-GENSC' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RSTC','RSTC-BSE-MATH' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RSTC','RSTC-BSE-PHYS' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'RSTC','RSTC-CPTLE' FROM departments WHERE code='RSTC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'SPORTS','SPORTS' FROM departments WHERE code='SEN-HISCH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'SUMMER SCIENCE INSTITUTE','SSI' FROM departments WHERE code='EDUC' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'STUDENT PERMIT','STDPRMT' FROM departments WHERE code='-' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
+INSERT INTO programs (department_id,name,code) SELECT id,'SCIENCE, TECHNOLOGY, ENGINEERING & MATHEMATICS','STEM' FROM departments WHERE code='SEN-HISCH' LIMIT 1 ON DUPLICATE KEY UPDATE name=VALUES(name),is_active=TRUE;
 
-UPDATE students SET
-  first_name=COALESCE(first_name,SUBSTRING_INDEX(full_name,' ',1)),
-  last_name=COALESCE(last_name,CASE WHEN full_name LIKE '% %' THEN SUBSTRING_INDEX(full_name,' ',-1) ELSE full_name END),
-  year_level=COALESCE(year_level,CASE WHEN program_section LIKE '%·%' THEN TRIM(SUBSTRING_INDEX(program_section,'·',-1)) ELSE NULL END),
-  institutional_email=COALESCE(institutional_email,contact);
+CREATE TABLE IF NOT EXISTS academic_periods (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_year VARCHAR(20) NOT NULL,
+  term ENUM('First Semester','Second Semester','Summer') NOT NULL,
+  is_current BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_academic_period (school_year,term),
+  INDEX idx_academic_current (is_current)
+);
+INSERT INTO academic_periods (school_year,term,is_current) VALUES ('2026-2027','First Semester',TRUE) ON DUPLICATE KEY UPDATE is_current=TRUE;
 
 CREATE TABLE IF NOT EXISTS events (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -97,104 +359,130 @@ CREATE TABLE IF NOT EXISTS events (
   target_audience ENUM('Students','Employees','Both') NOT NULL DEFAULT 'Both',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_by INT UNSIGNED,
+  academic_period_id INT UNSIGNED NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_event_schedule (starts_at, ends_at)
+  INDEX idx_event_schedule (starts_at, ends_at),
+  INDEX idx_events_period_schedule (academic_period_id,starts_at)
 );
-
-ALTER TABLE events
-  ADD COLUMN IF NOT EXISTS target_audience ENUM('Students','Employees','Both') NOT NULL DEFAULT 'Both' AFTER max_time_outs;
-
-CREATE TABLE IF NOT EXISTS attendance (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  person_type ENUM('Student','Employee') NOT NULL,
-  person_id INT UNSIGNED NOT NULL,
-  id_number VARCHAR(80) NOT NULL,
-  full_name VARCHAR(150) NOT NULL,
-  event_id INT UNSIGNED NULL,
-  attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',
-  checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_attendance_date (checked_in_at),
-  INDEX idx_attendance_person (person_type, person_id),
-  INDEX idx_attendance_event (event_id)
-);
-
-ALTER TABLE attendance
-  ADD COLUMN IF NOT EXISTS attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In' AFTER full_name;
-ALTER TABLE attendance
-  ADD COLUMN IF NOT EXISTS event_id INT UNSIGNED NULL AFTER full_name;
 
 CREATE TABLE IF NOT EXISTS student_attendance (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id INT UNSIGNED NOT NULL,
   id_number VARCHAR(80) NOT NULL,
-  full_name VARCHAR(150) NOT NULL,
   event_id INT UNSIGNED NULL,
   attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  legacy_attendance_id BIGINT UNSIGNED NULL UNIQUE,
+  academic_period_id INT UNSIGNED NULL,
   INDEX idx_student_attendance_date (checked_in_at),
   INDEX idx_student_attendance_person (student_id),
-  INDEX idx_student_attendance_event (event_id)
+  INDEX idx_student_attendance_event (event_id),
+  INDEX idx_student_attendance_event_time (event_id,checked_in_at,id),
+  INDEX idx_student_attendance_person_event_time (student_id,event_id,checked_in_at,id),
+  INDEX idx_student_attendance_period_time (academic_period_id,checked_in_at,id)
 );
 
 CREATE TABLE IF NOT EXISTS employee_attendance (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   employee_id INT UNSIGNED NOT NULL,
   id_number VARCHAR(80) NOT NULL,
-  full_name VARCHAR(150) NOT NULL,
   event_id INT UNSIGNED NULL,
   attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  legacy_attendance_id BIGINT UNSIGNED NULL UNIQUE,
+  academic_period_id INT UNSIGNED NULL,
   INDEX idx_employee_attendance_date (checked_in_at),
   INDEX idx_employee_attendance_person (employee_id),
-  INDEX idx_employee_attendance_event (event_id)
+  INDEX idx_employee_attendance_event (event_id),
+  INDEX idx_employee_attendance_event_time (event_id,checked_in_at,id),
+  INDEX idx_employee_attendance_person_event_time (employee_id,event_id,checked_in_at,id),
+  INDEX idx_employee_attendance_period_time (academic_period_id,checked_in_at,id)
 );
 
--- Preserve records created before student and employee attendance were separated.
-INSERT IGNORE INTO student_attendance
-  (student_id,id_number,full_name,event_id,attendance_action,checked_in_at,legacy_attendance_id)
-SELECT person_id,id_number,full_name,event_id,attendance_action,checked_in_at,id
-FROM attendance WHERE person_type='Student';
-
-INSERT IGNORE INTO employee_attendance
-  (employee_id,id_number,full_name,event_id,attendance_action,checked_in_at,legacy_attendance_id)
-SELECT person_id,id_number,full_name,event_id,attendance_action,checked_in_at,id
-FROM attendance WHERE person_type='Employee';
-
--- The combined legacy table is no longer used after both migrations succeed.
-DROP TABLE attendance;
-
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS permissions (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  full_name VARCHAR(150) NOT NULL,
-  username VARCHAR(80) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  role ENUM('Superadmin','Administrator','Staff') NOT NULL DEFAULT 'Staff',
+  name VARCHAR(80) NOT NULL UNIQUE,
+  description VARCHAR(255),
+  attendance_access BOOLEAN NOT NULL DEFAULT FALSE,
+  special_events_access BOOLEAN NOT NULL DEFAULT FALSE,
+  historical_data_access BOOLEAN NOT NULL DEFAULT FALSE,
+  library_access BOOLEAN NOT NULL DEFAULT FALSE,
+  maintenance_access BOOLEAN NOT NULL DEFAULT FALSE,
+  users_access BOOLEAN NOT NULL DEFAULT FALSE,
+  people_access ENUM('Students','Employees','Both') NOT NULL DEFAULT 'Both',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT IGNORE INTO permissions
+  (name,description,attendance_access,special_events_access,historical_data_access,library_access,maintenance_access,users_access,people_access,is_active)
+VALUES
+  ('Administrator','Administrative access',TRUE,TRUE,FALSE,TRUE,TRUE,TRUE,'Both',TRUE),
+  ('Staff','Standard attendance access',TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,'Both',TRUE),
+  ('Student Organizations',NULL,TRUE,TRUE,FALSE,FALSE,FALSE,FALSE,'Students',TRUE),
+  ('Superadmin','Full system access',TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,'Both',TRUE);
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(80) NOT NULL,
+  middle_name VARCHAR(80),
+  last_name VARCHAR(80) NOT NULL,
+  username VARCHAR(80) NOT NULL UNIQUE,
+  institutional_email VARCHAR(190) NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  permission_id INT UNSIGNED NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_users_institutional_email (institutional_email),
+  INDEX idx_users_permission_name (permission_id,last_name,first_name),
+  CONSTRAINT fk_users_permission FOREIGN KEY (permission_id) REFERENCES permissions(id) ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NULL,
+  actor_name VARCHAR(255) NOT NULL,
+  actor_username VARCHAR(80) NOT NULL,
+  action VARCHAR(40) NOT NULL,
+  module VARCHAR(80) NOT NULL,
+  description VARCHAR(500) NOT NULL,
+  method VARCHAR(10),
+  path VARCHAR(255),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_activity_created (created_at),
+  INDEX idx_activity_created_id (created_at,id),
+  INDEX idx_activity_user (user_id),
+  CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE SET NULL
+);
 CREATE TABLE IF NOT EXISTS system_settings (
   setting_key VARCHAR(80) PRIMARY KEY,
   setting_value VARCHAR(255) NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-ALTER TABLE users MODIFY role ENUM('Superadmin','Administrator','Staff') NOT NULL DEFAULT 'Staff';
-
 -- Initial credentials: superadmin / SuperAdmin@123 (change after first login).
-INSERT INTO users (full_name,username,password_hash,role,is_active)
-VALUES ('System Superadmin','superadmin','$2b$12$D/sggVGojEt0X4jQfj5PmO/eBLIJRZqXh.RBJSaRATuCmH/0NBD7u','Superadmin',TRUE)
-ON DUPLICATE KEY UPDATE role='Superadmin',is_active=TRUE;
+INSERT INTO users (first_name,middle_name,last_name,username,password_hash,permission_id,is_active)
+VALUES ('System',NULL,'Superadmin','superadmin','$2b$12$aJB3GOnmp..x4iiZKAQRFuHFarey8n5qscJswALKSVIBr8nvK7CWa',(SELECT id FROM permissions WHERE name='Superadmin' LIMIT 1),TRUE)
+ON DUPLICATE KEY UPDATE permission_id=(SELECT id FROM permissions WHERE name='Superadmin' LIMIT 1),is_active=TRUE;
 
 INSERT IGNORE INTO system_settings (setting_key,setting_value) VALUES
-('school_name','TapTrack Academy'),('duplicate_window','daily');
+('school_name','Notre Dame of Marbel University'),('duplicate_window','daily');
+CREATE TABLE IF NOT EXISTS library_entrance_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id INT UNSIGNED NULL,
+  employee_id INT UNSIGNED NULL,
+  checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  academic_period_id INT UNSIGNED NULL,
+  INDEX idx_period_time (academic_period_id,checked_in_at,id),
+  INDEX idx_student_time (student_id,checked_in_at,id),
+  INDEX idx_employee_time (employee_id,checked_in_at,id)
+);
 
-INSERT IGNORE INTO students (id_number,full_name,program_section,contact) VALUES
-('STU-2026-001','Mikaela Reyes','BS Information Technology · 2A','mikaela@school.edu'),
-('STU-2026-002','James Navarro','BS Business Administration · 1B','james@school.edu'),
-('STU-2026-003','Alyssa Cruz','BS Computer Science · 3A','alyssa@school.edu');
-INSERT IGNORE INTO employees (id_number,full_name,department_role,contact) VALUES
-('EMP-2026-001','Dr. Elena Garcia','Academic Affairs · Faculty','elena@school.edu'),
-('EMP-2026-002','Marco Villanueva','Administration · Registrar','marco@school.edu');
+CREATE TABLE IF NOT EXISTS internet_section_entrance_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id INT UNSIGNED NULL,
+  employee_id INT UNSIGNED NULL,
+  checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  academic_period_id INT UNSIGNED NULL,
+  INDEX idx_period_time (academic_period_id,checked_in_at,id),
+  INDEX idx_student_time (student_id,checked_in_at,id),
+  INDEX idx_employee_time (employee_id,checked_in_at,id)
+);

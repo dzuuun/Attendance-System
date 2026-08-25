@@ -14,62 +14,24 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">ATTENDANCE TERMINAL</p>
+            <p class="eyebrow">ATTENDANCE SUMMARY</p>
             <h1>Overview</h1>
           </div>
           <div class="top-actions">
             <div class="live-time">
               <span id="liveTime"></span><small id="liveDate"></small>
             </div>
-            <button class="icon-button" id="exportBtn">⇩</button>
+            <button
+              class="icon-button"
+              id="exportBtn"
+              aria-label="View attendance"
+            >
+              ⇩
+            </button>
           </div>
         </header>
         <section class="page-content">
           <div class="hero-grid">
-            <article class="scanner-card">
-              <div class="card-heading">
-                <div>
-                  <span class="section-kicker">QUICK SCAN</span>
-                  <h2>Tap or scan your ID</h2>
-                </div>
-                <span class="connection-pill"><span></span>ONLINE</span>
-              </div>
-              <p class="muted">
-                Choose daily entrance or a special event, then scan an NFC card
-                or barcode.
-              </p>
-              <label class="mode-picker"
-                >ATTENDANCE MODE<select id="attendanceMode">
-                  <option value="">University entrance · Daily</option>
-                </select></label
-              >
-              <label class="mode-picker"
-                >DEVICE ACTION<select id="attendanceAction">
-                  <option>Time In</option>
-                  <option>Time Out</option>
-                </select></label
-              >
-              <div class="scanner-visual">
-                <div class="scan-corners">
-                  <i></i><i></i><i></i><i></i>
-                  <div class="nfc-glyph">)))<b>▮</b></div>
-                </div>
-                <div class="scan-line"></div>
-              </div>
-              <form class="scan-form" id="scanForm">
-                <label>ID NUMBER</label>
-                <div class="input-wrap">
-                  <span>⌁</span
-                  ><input
-                    id="scanInput"
-                    autocomplete="off"
-                    placeholder="Tap card or enter ID..."
-                    autofocus
-                  /><button>Record <span>→</span></button>
-                </div>
-              </form>
-              <div class="scan-message" id="scanMessage"></div>
-            </article>
             <div class="stats-column">
               <article class="stat-card accent">
                 <div class="stat-icon">✓</div>
@@ -98,7 +60,7 @@
           <article class="table-card recent-card">
             <div class="table-toolbar">
               <div>
-                <span class="section-kicker">LIVE LOG</span>
+                <span class="section-kicker">ENTRANCE LOG</span>
                 <h2>Recent attendance</h2>
               </div>
               <a class="text-button" href="/attendance">View all →</a>

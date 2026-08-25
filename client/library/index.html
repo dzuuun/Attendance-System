@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Library — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">LIBRARY SERVICES</p>
+            <h1>Entrance logs</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <label
+            >Location<select id="location">
+              <option value="library">Library</option>
+              <option value="internet">Internet Section</option>
+            </select></label
+          >
+          <div class="event-actions">
+            <a class="secondary-button" id="kioskLink" href="/kiosk/library"
+              >Open kiosk</a
+            ><button class="primary-button" id="exportBtn">Export</button>
+          </div>
+        </div>
+        <article class="table-card">
+          <div class="table-toolbar">
+            <div>
+              <p class="eyebrow">CURRENT ACADEMIC PERIOD</p>
+              <h2 id="tableTitle">Library entrance</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>DATE &amp; TIME</th>
+                  <th>ID NUMBER</th>
+                  <th>FULL NAME</th>
+                  <th>TYPE</th>
+                  <th>COURSE</th>
+                  <th>DEPARTMENT</th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/library/script.js"></script>
+  </body>
+</html>

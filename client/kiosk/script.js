@@ -59,8 +59,18 @@ async function scan(raw, action) {
       previous,
       data,
     );
+    return {
+      success: true,
+      title: `${data.name} · ${data.action}`,
+      detail: `Recorded successfully at ${time(data.timestamp)}.`,
+    };
   } catch (error) {
     show("error", "Scan not recorded", error.message);
+    return {
+      success: false,
+      title: "Scan not recorded",
+      detail: error.message,
+    };
   } finally {
     input.value = "";
     input.focus();
@@ -70,6 +80,13 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   scan(input.value, document.querySelector("#manualAction").value);
 });
+document
+  .querySelector("#kioskCameraScan")
+  .addEventListener("click", () =>
+    TapTrackCameraScanner.open((value) =>
+      scan(value, document.querySelector("#manualAction").value),
+    ),
+  );
 function renderScannerStatus(status) {
   bridgeConnected = status.connected;
   input.readOnly = bridgeConnected;
@@ -77,8 +94,10 @@ function renderScannerStatus(status) {
     ? "Physical scanners are active"
     : "Tap card or enter ID...";
   const assignments = status.assignments || {};
-  document.querySelector("#timeInDevice").textContent = assignments["Time In"]?.name || "Not assigned";
-  document.querySelector("#timeOutDevice").textContent = assignments["Time Out"]?.name || "Not assigned";
+  document.querySelector("#timeInDevice").textContent =
+    assignments["Time In"]?.name || "Not assigned";
+  document.querySelector("#timeOutDevice").textContent =
+    assignments["Time Out"]?.name || "Not assigned";
   document.querySelector("#readyMessage").textContent = status.pendingAction
     ? `Scan any ID using the scanner to assign as ${status.pendingAction}.`
     : status.connected
@@ -93,24 +112,41 @@ document.querySelectorAll("[data-pair]").forEach((button) =>
       body: JSON.stringify({ action: button.dataset.pair }),
     });
     const status = await response.json();
-    if (!response.ok) return show("error", "Configuration failed", status.message);
+    if (!response.ok)
+      return show("error", "Configuration failed", status.message);
     renderScannerStatus(status);
-    show("", `Assign ${button.dataset.pair} scanner`, "Scan any registered card with that physical scanner now.");
+    show(
+      "",
+      `Assign ${button.dataset.pair} scanner`,
+      "Scan any registered card with that physical scanner now.",
+    );
   }),
 );
 const scannerEvents = new EventSource("/api/kiosk/scanners/events");
-scannerEvents.addEventListener("status", (event) => renderScannerStatus(JSON.parse(event.data)));
+scannerEvents.addEventListener("status", (event) =>
+  renderScannerStatus(JSON.parse(event.data)),
+);
 scannerEvents.addEventListener("scan", (event) => {
   const data = JSON.parse(event.data);
   scan(data.idNumber, data.action);
 });
 scannerEvents.addEventListener("assigned", (event) => {
   const data = JSON.parse(event.data);
-  show("success", `${data.action} scanner assigned`, "The assignment was saved on this kiosk.");
-  fetch("/api/kiosk/scanners").then((response) => response.json()).then(renderScannerStatus);
+  show(
+    "success",
+    `${data.action} scanner assigned`,
+    "The assignment was saved on this kiosk.",
+  );
+  fetch("/api/kiosk/scanners")
+    .then((response) => response.json())
+    .then(renderScannerStatus);
 });
 scannerEvents.addEventListener("unassigned", (event) =>
-  show("error", "Scanner not assigned", `${JSON.parse(event.data).name} must be assigned below before use.`),
+  show(
+    "error",
+    "Scanner not assigned",
+    `${JSON.parse(event.data).name} must be assigned below before use.`,
+  ),
 );
 let buffer = "",
   timer;

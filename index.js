@@ -1,12 +1,18 @@
 require("dotenv").config();
 const express = require("express"),
   path = require("path");
-const { checkSession, requireAdmin } = require("./auth/auth_validation");
+const {
+  checkSession,
+  requireAdmin,
+  requireAccess,
+  requirePeopleAccess,
+} = require("./auth/auth_validation");
 const {
   asyncHandler,
   apiNotFound,
   apiErrorHandler,
 } = require("./api/middleware/api_standards");
+const morgan = require("morgan");
 const app = express(),
   port = Number(process.env.PORT) || 3000,
   client = path.join(__dirname, "client");
@@ -25,11 +31,16 @@ const studentRouter = require("./api/maintenance/student/student.router");
 const employeeRouter = require("./api/maintenance/employee/employee.router");
 const settingsRouter = require("./api/maintenance/settings/settings.router");
 const userRouter = require("./api/user/user_management/user_management.router");
+const permissionRouter = require("./api/user/permission/permission.router");
 const eventRouter = require("./api/events/event.router");
 const schoolRouter = require("./api/maintenance/school/school.router");
 const collegeRouter = require("./api/maintenance/college/college.router");
 const departmentRouter = require("./api/maintenance/department/department.router");
 const programRouter = require("./api/maintenance/program/program.router");
+const activityLogRouter = require("./api/user/activity_log/activity_log.router");
+const academicPeriodRouter = require("./api/maintenance/academic_period/academic_period.router");
+const historyRouter = require("./api/history/history.router");
+const libraryRouter = require("./api/library/library.router");
 app.use("/api/auth", asyncHandler(loginRouter));
 // Public kiosk access is intentionally limited to daily entrance scans.
 app.post(
@@ -40,6 +51,10 @@ app.post(
   }),
 );
 app.get("/api/kiosk/scanners", (_req, res) => res.json(scannerBridge.status()));
+app.post(
+  "/api/library-kiosk/:location/scan",
+  asyncHandler(require("./api/library/library.controller").scan),
+);
 app.post("/api/kiosk/scanners/pair", (req, res) => {
   try {
     scannerBridge.pair(req.body.action);
@@ -71,17 +86,80 @@ app.get("/api/kiosk/scanners/events", (req, res) => {
   });
 });
 app.use("/api", checkSession);
-app.use("/api/attendance", wrapRouter(attendanceRouter));
-app.use("/api/events", wrapRouter(eventRouter));
-app.use("/api/student", wrapRouter(studentRouter));
-app.use("/api/employee", wrapRouter(employeeRouter));
-app.use("/api/settings", requireAdmin, wrapRouter(settingsRouter));
-app.use("/api/school", requireAdmin, wrapRouter(schoolRouter));
-app.use("/api/college", requireAdmin, wrapRouter(collegeRouter));
-app.use("/api/department", requireAdmin, wrapRouter(departmentRouter));
-app.use("/api/program", requireAdmin, wrapRouter(programRouter));
+app.use("/api", require("./api/middleware/activity_log"));
+app.get(
+  "/api/current-academic-period",
+  asyncHandler(async (_req, res) =>
+    res.json(
+      await require("./api/maintenance/academic_period/academic_period.model").getCurrent(),
+    ),
+  ),
+);
+app.use(
+  "/api/attendance",
+  requireAccess("attendanceAccess"),
+  wrapRouter(attendanceRouter),
+);
+app.use(
+  "/api/events",
+  requireAccess("specialEventsAccess"),
+  wrapRouter(eventRouter),
+);
+app.use(
+  "/api/history",
+  requireAccess("historicalDataAccess"),
+  wrapRouter(historyRouter),
+);
+app.use(
+  "/api/library",
+  requireAccess("libraryAccess"),
+  wrapRouter(libraryRouter),
+);
+app.use(
+  "/api/student",
+  requireAccess("maintenanceAccess"),
+  requirePeopleAccess("Students"),
+  wrapRouter(studentRouter),
+);
+app.use(
+  "/api/employee",
+  requireAccess("maintenanceAccess"),
+  requirePeopleAccess("Employees"),
+  wrapRouter(employeeRouter),
+);
+app.use(
+  "/api/settings",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(settingsRouter),
+);
+app.use(
+  "/api/school",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(schoolRouter),
+);
+app.use(
+  "/api/college",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(collegeRouter),
+);
+app.use(
+  "/api/department",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(departmentRouter),
+);
+app.use(
+  "/api/program",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(programRouter),
+);
+app.use(
+  "/api/academic-periods",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(academicPeriodRouter),
+);
 app.get(
   "/api/program-options",
+  requireAccess("maintenanceAccess"),
   asyncHandler(async (_req, res) =>
     res.json(
       await require("./api/maintenance/academic/academic.model").getAll(
@@ -90,10 +168,31 @@ app.get(
     ),
   ),
 );
-app.use("/api/user", requireAdmin, wrapRouter(userRouter));
+app.use("/api/user", requireAccess("usersAccess"), wrapRouter(userRouter));
+app.use(
+  "/api/permissions",
+  requireAccess("usersAccess"),
+  wrapRouter(permissionRouter),
+);
+app.use(
+  "/api/activity-log",
+  requireAccess("usersAccess"),
+  wrapRouter(activityLogRouter),
+);
 app.get(
   "/api/people",
-  asyncHandler(async (_req, res) => {
+  requireAccess("maintenanceAccess"),
+  asyncHandler(async (req, res) => {
+    const scope =
+      req.user.role === "Superadmin" ? "Both" : req.user.peopleAccess;
+    if (scope === "Students")
+      return res.json(
+        await require("./api/maintenance/student/student.model").getAll(),
+      );
+    if (scope === "Employees")
+      return res.json(
+        await require("./api/maintenance/employee/employee.model").getAll(),
+      );
     const [students, employees] = await Promise.all([
       require("./api/maintenance/student/student.model").getAll(),
       require("./api/maintenance/employee/employee.model").getAll(),
@@ -103,33 +202,58 @@ app.get(
 );
 app.post(
   "/api/people",
-  asyncHandler((req, res) =>
-    req.body.type === "Student"
+  requireAccess("maintenanceAccess"),
+  asyncHandler((req, res) => {
+    const type = req.body.type === "Student" ? "Students" : "Employees";
+    if (
+      req.user.role !== "Superadmin" &&
+      req.user.peopleAccess !== "Both" &&
+      req.user.peopleAccess !== type
+    )
+      return res
+        .status(403)
+        .json({
+          message: `Your permission does not include ${type.toLowerCase()}.`,
+        });
+    return req.body.type === "Student"
       ? require("./api/maintenance/student/student.controller").create(req, res)
       : require("./api/maintenance/employee/employee.controller").create(
           req,
           res,
-        ),
-  ),
+        );
+  }),
 );
 app.delete(
   "/api/people/:type/:id",
-  asyncHandler((req, res) =>
-    req.params.type === "Student"
-      ? res
-          .status(405)
-          .json({
-            message:
-              "Student records cannot be deleted. Deactivate the record instead.",
-          })
+  requireAccess("maintenanceAccess"),
+  asyncHandler((req, res) => {
+    const type = req.params.type === "Student" ? "Students" : "Employees";
+    if (
+      req.user.role !== "Superadmin" &&
+      req.user.peopleAccess !== "Both" &&
+      req.user.peopleAccess !== type
+    )
+      return res
+        .status(403)
+        .json({
+          message: `Your permission does not include ${type.toLowerCase()}.`,
+        });
+    return req.params.type === "Student"
+      ? res.status(405).json({
+          message:
+            "Student records cannot be deleted. Deactivate the record instead.",
+        })
       : require("./api/maintenance/employee/employee.controller").remove(
           req,
           res,
-        ),
-  ),
+        );
+  }),
 );
 app.get("/api/users", (req, res) => res.redirect(307, "/api/user"));
 app.post("/api/users", (req, res) => res.redirect(307, "/api/user"));
+app.put("/api/users/:id", (req, res) =>
+  res.redirect(307, `/api/user/${req.params.id}`),
+);
 app.patch("/api/users/:id/status", (req, res) =>
   res.redirect(307, `/api/user/${req.params.id}/status`),
 );
@@ -141,6 +265,21 @@ app.use(
     req.path.endsWith(".html") ? res.status(404).end() : next(),
   express.static(client),
 );
+app.use(
+  "/vendor/datatables",
+  express.static(path.join(__dirname, "node_modules", "datatables.net")),
+  express.static(path.join(__dirname, "node_modules", "datatables.net-dt")),
+);
+app.use(
+  "/vendor/xlsx",
+  express.static(path.join(__dirname, "node_modules", "xlsx", "dist")),
+);
+app.use(
+  "/vendor/zxing",
+  express.static(
+    path.join(__dirname, "node_modules", "@zxing", "browser", "umd"),
+  ),
+);
 app.get("/", (_req, res) => res.sendFile(path.join(client, "index.html")));
 app.get("/login", (_req, res) =>
   res.sendFile(path.join(client, "login", "index.html")),
@@ -150,6 +289,12 @@ app.get("/setup", (_req, res) =>
 );
 app.get("/kiosk", (_req, res) =>
   res.sendFile(path.join(client, "kiosk", "index.html")),
+);
+app.get("/kiosk/library", (_req, res) =>
+  res.sendFile(path.join(client, "library-kiosk", "index.html")),
+);
+app.get("/kiosk/internet-section", (_req, res) =>
+  res.sendFile(path.join(client, "library-kiosk", "index.html")),
 );
 app.get("/sidebar.html", checkSession, (_req, res) =>
   res.sendFile(path.join(client, "sidebar.html")),
@@ -168,6 +313,9 @@ app.get(
   protectedPage("maintenance/employee/index.html"),
 );
 app.get("/events", adminPage("events/index.html"));
+app.get("/events/:id/scan", adminPage("events/scan/index.html"));
+app.get("/history", adminPage("history/index.html"));
+app.get("/library", adminPage("library/index.html"));
 app.get("/maintenance/settings", adminPage("maintenance/settings/index.html"));
 app.get("/maintenance/school", adminPage("maintenance/school/index.html"));
 app.get("/maintenance/college", adminPage("maintenance/college/index.html"));
@@ -176,7 +324,13 @@ app.get(
   adminPage("maintenance/department/index.html"),
 );
 app.get("/maintenance/program", adminPage("maintenance/program/index.html"));
+app.get(
+  "/maintenance/academic-periods",
+  adminPage("maintenance/academic_period/index.html"),
+);
 app.get("/user/user-management", adminPage("user/user_management/index.html"));
+app.get("/user/permissions", adminPage("user/permission/index.html"));
+app.get("/user/activity-log", adminPage("user/activity_log/index.html"));
 app.get("/portal.css", (_req, res) =>
   res.sendFile(path.join(client, "login", "style.css")),
 );
@@ -184,9 +338,17 @@ app.get("/auth.js", (_req, res) =>
   res.sendFile(path.join(client, "login", "script.js")),
 );
 app.use(apiErrorHandler);
-app.listen(port, () =>
-  console.log(`TapTrack running at http://localhost:${port}`),
-);
+require("./db/indexes")
+  .ensureIndexes()
+  .catch((error) =>
+    console.error("Database index setup failed:", error.message),
+  )
+  .finally(() =>
+    app.listen(port, () =>
+      console.log(`TapTrack running at http://localhost:${port}`),
+    ),
+  );
+app.use(morgan("combined"));
 
 function wrapRouter(router) {
   router.stack.forEach((layer) => {

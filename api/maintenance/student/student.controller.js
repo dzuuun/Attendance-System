@@ -1,4 +1,29 @@
 const model = require("./student.model");
+const YEAR_LEVELS = new Set([
+  ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`),
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "4th Year",
+  "5th Year",
+]);
+function normalizeBirthday(value) {
+  const input = String(value || "").trim();
+  const slashDate = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (slashDate) {
+    const [, month, day, sourceYear] = slashDate;
+    const year =
+      sourceYear.length === 2
+        ? String(
+            Number(sourceYear) >= 50
+              ? 1900 + Number(sourceYear)
+              : 2000 + Number(sourceYear),
+          )
+        : sourceYear;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  return input || null;
+}
 function payload(body) {
   const data = {
     idNumber: String(body.idNumber || "")
@@ -9,8 +34,15 @@ function payload(body) {
     lastName: String(body.lastName || "").trim(),
     programId: Number(body.programId) || null,
     programName: String(body.programName || "").trim(),
-    yearLevel: String(body.yearLevel || "").trim(),
-    birthday: body.birthday || null,
+    yearLevel:
+      [...YEAR_LEVELS].find(
+        (level) =>
+          level.toLowerCase() ===
+          String(body.yearLevel || "")
+            .trim()
+            .toLowerCase(),
+      ) || String(body.yearLevel || "").trim(),
+    birthday: normalizeBirthday(body.birthday),
     institutionalEmail: String(body.institutionalEmail || "")
       .trim()
       .toLowerCase(),
@@ -29,9 +61,10 @@ function valid(data) {
     data.lastName &&
     data.programId &&
     data.programName &&
-    data.yearLevel &&
+    YEAR_LEVELS.has(data.yearLevel) &&
     data.birthday &&
-    data.institutionalEmail &&
+    (!data.institutionalEmail ||
+      /^\S+@\S+\.\S+$/.test(data.institutionalEmail)) &&
     ["Male", "Female", "Other", "Prefer not to say"].includes(data.gender)
   );
 }
@@ -47,15 +80,13 @@ exports.create = async (req, res) => {
       .status(409)
       .json({ message: "That ID number is already registered." });
   const result = await model.create(data);
-  res
-    .status(201)
-    .json({
-      id: result.insertId,
-      ...data,
-      name: data.fullName,
-      isActive: 1,
-      type: "Student",
-    });
+  res.status(201).json({
+    id: result.insertId,
+    ...data,
+    name: data.fullName,
+    isActive: 1,
+    type: "Student",
+  });
 };
 exports.update = async (req, res) => {
   const data = payload(req.body);
@@ -85,4 +116,25 @@ exports.setStatus = async (req, res) => {
   if (!result.affectedRows)
     return res.status(404).json({ message: "Student not found." });
   res.status(204).end();
+};
+exports.deactivateMissing = async (req, res) => {
+  const idNumbers = [
+    ...new Set(
+      (Array.isArray(req.body.idNumbers) ? req.body.idNumbers : [])
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toUpperCase(),
+        )
+        .filter(Boolean),
+    ),
+  ];
+  if (!idNumbers.length)
+    return res
+      .status(400)
+      .json({ message: "The import must contain at least one student ID." });
+  const result = await model.deactivateMissing(idNumbers);
+  req.activityAction = "STATUS_CHANGED";
+  req.activityDescription = `Deactivated ${result.affectedRows} student${result.affectedRows === 1 ? "" : "s"} missing from the bulk import.`;
+  res.json({ deactivated: result.affectedRows });
 };

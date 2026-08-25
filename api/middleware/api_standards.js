@@ -12,13 +12,11 @@ function apiErrorHandler(error, _req, res, _next) {
     "ER_BAD_DB_ERROR",
     "ER_NO_SUCH_TABLE",
   ].includes(error.code);
-  res
-    .status(databaseError ? 503 : 500)
-    .json({
-      success: 0,
-      message: databaseError
-        ? "Database unavailable or schema is outdated."
-        : "Unexpected server error.",
-    });
+  res.status(databaseError ? 503 : 500).json({
+    success: 0,
+    message: databaseError
+      ? "Database unavailable or schema is outdated."
+      : "Unexpected server error.",
+  });
 }
 module.exports = { asyncHandler, apiNotFound, apiErrorHandler };
