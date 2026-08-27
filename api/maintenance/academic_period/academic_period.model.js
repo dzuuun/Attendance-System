@@ -30,11 +30,7 @@ async function ensureSchema() {
           "UPDATE academic_periods SET is_current=FALSE WHERE is_current=TRUE AND id<>?",
           [currentRows[0].id],
         );
-      for (const table of [
-        "events",
-        "student_attendance",
-        "employee_attendance",
-      ])
+      for (const table of ["events"])
         await pool.query(
           `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS academic_period_id INT UNSIGNED NULL`,
         );
@@ -42,11 +38,7 @@ async function ensureSchema() {
         "SELECT id FROM academic_periods WHERE is_current=TRUE ORDER BY id DESC LIMIT 1",
       );
       if (current)
-        for (const table of [
-          "events",
-          "student_attendance",
-          "employee_attendance",
-        ])
+        for (const table of ["events"])
           await pool.query(
             `UPDATE ${table} SET academic_period_id=? WHERE academic_period_id IS NULL`,
             [current.id],

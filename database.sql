@@ -365,42 +365,37 @@ CREATE TABLE IF NOT EXISTS events (
   INDEX idx_events_period_schedule (academic_period_id,starts_at)
 );
 
-CREATE TABLE IF NOT EXISTS student_attendance (
+CREATE TABLE IF NOT EXISTS university_entrance_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  student_id INT UNSIGNED NOT NULL,
-  id_number VARCHAR(80) NOT NULL,
-  event_id INT UNSIGNED NULL,
+  student_id INT UNSIGNED NULL,
+  employee_id INT UNSIGNED NULL,
   attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   academic_period_id INT UNSIGNED NULL,
-  INDEX idx_student_attendance_date (checked_in_at),
-  INDEX idx_student_attendance_person (student_id),
-  INDEX idx_student_attendance_event (event_id),
-  INDEX idx_student_attendance_event_time (event_id,checked_in_at,id),
-  INDEX idx_student_attendance_person_event_time (student_id,event_id,checked_in_at,id),
-  INDEX idx_student_attendance_period_time (academic_period_id,checked_in_at,id)
+  INDEX idx_university_period_time (academic_period_id,checked_in_at,id),
+  INDEX idx_university_student_time (student_id,academic_period_id,checked_in_at,id),
+  INDEX idx_university_employee_time (employee_id,academic_period_id,checked_in_at,id)
 );
 
-CREATE TABLE IF NOT EXISTS employee_attendance (
+CREATE TABLE IF NOT EXISTS event_attendance_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  employee_id INT UNSIGNED NOT NULL,
-  id_number VARCHAR(80) NOT NULL,
-  event_id INT UNSIGNED NULL,
+  event_id INT UNSIGNED NOT NULL,
+  student_id INT UNSIGNED NULL,
+  employee_id INT UNSIGNED NULL,
   attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   academic_period_id INT UNSIGNED NULL,
-  INDEX idx_employee_attendance_date (checked_in_at),
-  INDEX idx_employee_attendance_person (employee_id),
-  INDEX idx_employee_attendance_event (event_id),
-  INDEX idx_employee_attendance_event_time (event_id,checked_in_at,id),
-  INDEX idx_employee_attendance_person_event_time (employee_id,event_id,checked_in_at,id),
-  INDEX idx_employee_attendance_period_time (academic_period_id,checked_in_at,id)
+  INDEX idx_event_attendance_event_time (event_id,checked_in_at,id),
+  INDEX idx_event_attendance_student_time (student_id,event_id,checked_in_at,id),
+  INDEX idx_event_attendance_employee_time (employee_id,event_id,checked_in_at,id),
+  INDEX idx_event_attendance_period_time (academic_period_id,checked_in_at,id)
 );
 
 CREATE TABLE IF NOT EXISTS permissions (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(80) NOT NULL UNIQUE,
   description VARCHAR(255),
+  overview_access BOOLEAN NOT NULL DEFAULT FALSE,
   attendance_access BOOLEAN NOT NULL DEFAULT FALSE,
   special_events_access BOOLEAN NOT NULL DEFAULT FALSE,
   historical_data_access BOOLEAN NOT NULL DEFAULT FALSE,
@@ -413,12 +408,12 @@ CREATE TABLE IF NOT EXISTS permissions (
 );
 
 INSERT IGNORE INTO permissions
-  (name,description,attendance_access,special_events_access,historical_data_access,library_access,maintenance_access,users_access,people_access,is_active)
+  (name,description,overview_access,attendance_access,special_events_access,historical_data_access,library_access,maintenance_access,users_access,people_access,is_active)
 VALUES
-  ('Administrator','Administrative access',TRUE,TRUE,FALSE,TRUE,TRUE,TRUE,'Both',TRUE),
-  ('Staff','Standard attendance access',TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,'Both',TRUE),
-  ('Student Organizations',NULL,TRUE,TRUE,FALSE,FALSE,FALSE,FALSE,'Students',TRUE),
-  ('Superadmin','Full system access',TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,'Both',TRUE);
+  ('Administrator','Administrative access',TRUE,TRUE,TRUE,FALSE,TRUE,TRUE,TRUE,'Both',TRUE),
+  ('Staff','Standard attendance access',TRUE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,'Both',TRUE),
+  ('Student Organizations',NULL,TRUE,TRUE,TRUE,FALSE,FALSE,FALSE,FALSE,'Students',TRUE),
+  ('Superadmin','Full system access',TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,'Both',TRUE);
 
 CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

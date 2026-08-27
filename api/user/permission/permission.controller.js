@@ -2,6 +2,7 @@ const model = require("./permission.model");
 const payload = (body) => ({
   name: String(body.name || "").trim(),
   description: String(body.description || "").trim(),
+  overviewAccess: Boolean(body.overviewAccess),
   attendanceAccess: Boolean(body.attendanceAccess),
   specialEventsAccess: Boolean(body.specialEventsAccess),
   historicalDataAccess: Boolean(body.historicalDataAccess),
@@ -40,6 +41,7 @@ exports.update = async (req, res) => {
     existing.name === "Superadmin" &&
     (data.name !== "Superadmin" ||
       !data.isActive ||
+      !data.overviewAccess ||
       !data.historicalDataAccess ||
       !data.libraryAccess ||
       data.peopleAccess !== "Both")

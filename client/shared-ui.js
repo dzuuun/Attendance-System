@@ -197,10 +197,13 @@
         user.usersAccess,
       ),
       pageAccess = {
+        dashboard: "overviewAccess",
         attendance: "attendanceAccess",
         events: "specialEventsAccess",
         history: "historicalDataAccess",
         library: "libraryAccess",
+        libraryEntrance: "libraryAccess",
+        internetEntrance: "libraryAccess",
         students: "maintenanceAccess",
         employees: "maintenanceAccess",
         school: "maintenanceAccess",
@@ -214,7 +217,11 @@
         activity: "usersAccess",
       }[page];
     if (pageAccess && !user[pageAccess] && user.role !== "Superadmin") {
-      location.href = "/app";
+      const landing = user.overviewAccess ? "/app" : user.attendanceAccess ? "/attendance" : user.specialEventsAccess ? "/events" : user.historicalDataAccess ? "/history" : user.libraryAccess ? "/library/entrance" : user.maintenanceAccess ? (user.peopleAccess === "Employees" ? "/maintenance/employee" : "/maintenance/student") : user.usersAccess ? "/user/permissions" : null;
+      if (!landing) {
+        localStorage.removeItem(TOKEN_KEY);
+        location.href = "/login?error=no_access";
+      } else location.href = landing;
       throw new Error("Administrator access is required.");
     }
     const peoplePage =
@@ -321,6 +328,26 @@
         const open = !users.classList.contains("open");
         localStorage.setItem("taptrack_users_open", String(open));
         applyUsers(open);
+      });
+    }
+    const library = $("#libraryGroup"),
+      libraryToggle = $("#libraryToggle"),
+      libraryPages = ["libraryEntrance", "internetEntrance"],
+      applyLibrary = (open) => {
+        if (!library || !libraryToggle) return;
+        library.classList.toggle("open", open);
+        libraryToggle.setAttribute("aria-expanded", String(open));
+      };
+    if (library && (user.libraryAccess || user.role === "Superadmin")) {
+      libraryToggle.classList.toggle("active", libraryPages.includes(page));
+      applyLibrary(
+        libraryPages.includes(page) ||
+          localStorage.getItem("taptrack_library_open") === "true",
+      );
+      libraryToggle.addEventListener("click", () => {
+        const open = !library.classList.contains("open");
+        localStorage.setItem("taptrack_library_open", String(open));
+        applyLibrary(open);
       });
     }
     const toggle = $("#sidebarToggle"),

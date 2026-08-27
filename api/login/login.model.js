@@ -19,7 +19,7 @@ const findByUsername = async (username) => {
   await ensureNames();
   return (
     await pool.query(
-      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,u.password_hash passwordHash,p.name role,u.is_active isActive,p.is_active permissionActive,p.attendance_access attendanceAccess,p.special_events_access specialEventsAccess,p.historical_data_access historicalDataAccess,p.library_access libraryAccess,p.maintenance_access maintenanceAccess,p.users_access usersAccess,p.people_access peopleAccess FROM users u INNER JOIN permissions p ON p.id=u.permission_id WHERE u.username=?",
+      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,u.password_hash passwordHash,p.name role,u.is_active isActive,p.is_active permissionActive,p.overview_access overviewAccess,p.attendance_access attendanceAccess,p.special_events_access specialEventsAccess,p.historical_data_access historicalDataAccess,p.library_access libraryAccess,p.maintenance_access maintenanceAccess,p.users_access usersAccess,p.people_access peopleAccess FROM users u INNER JOIN permissions p ON p.id=u.permission_id WHERE u.username=?",
       [username],
     )
   )[0][0];
@@ -29,7 +29,7 @@ const findByInstitutionalEmail = async (email) => {
   await ensureNames();
   return (
     await pool.query(
-      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,u.institutional_email institutionalEmail,p.name role,u.is_active isActive,p.is_active permissionActive,p.attendance_access attendanceAccess,p.special_events_access specialEventsAccess,p.historical_data_access historicalDataAccess,p.library_access libraryAccess,p.maintenance_access maintenanceAccess,p.users_access usersAccess,p.people_access peopleAccess FROM users u INNER JOIN permissions p ON p.id=u.permission_id WHERE LOWER(u.institutional_email)=LOWER(?) LIMIT 1",
+      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,u.institutional_email institutionalEmail,p.name role,u.is_active isActive,p.is_active permissionActive,p.overview_access overviewAccess,p.attendance_access attendanceAccess,p.special_events_access specialEventsAccess,p.historical_data_access historicalDataAccess,p.library_access libraryAccess,p.maintenance_access maintenanceAccess,p.users_access usersAccess,p.people_access peopleAccess FROM users u INNER JOIN permissions p ON p.id=u.permission_id WHERE LOWER(u.institutional_email)=LOWER(?) LIMIT 1",
       [email],
     )
   )[0][0];

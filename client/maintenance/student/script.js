@@ -16,7 +16,7 @@ function render() {
     rows
       .map(
         (s) =>
-          `<tr><td>${personCell({ name: s.name, contact: s.institutionalEmail })}</td><td><strong>${escapeHtml(s.idNumber)}</strong></td><td>${escapeHtml(s.programName || "Not assigned")}</td><td>${escapeHtml(s.yearLevel || "—")}</td><td>${escapeHtml(s.gender || "—")}</td><td><span class="status-pill ${s.isActive ? "" : "time-out"}">${s.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit" data-id="${s.id}">Edit</button> <button class="secondary-button status" data-id="${s.id}">${s.isActive ? "Deactivate" : "Activate"}</button></td></tr>`,
+          `<tr><td>${personCell({ name: s.name, contact: s.institutionalEmail })}</td><td><strong>${escapeHtml(s.idNumber)}</strong></td><td>${escapeHtml(s.programName || "Not assigned")}</td><td>${escapeHtml(s.yearLevel || "—")}</td><td>${escapeHtml(s.gender || "—")}</td><td><span class="status-pill ${s.isActive ? "" : "time-out"}">${s.isActive ? "Active" : "Inactive"}</span></td><td><div class="event-actions"><button class="secondary-button edit" data-id="${s.id}">Edit</button><button class="secondary-button person-log-export" data-person-id="${s.id}" data-person-type="student" data-person-name="${escapeHtml(s.name)}" data-id-number="${escapeHtml(s.idNumber)}">Export</button><button class="secondary-button status" data-id="${s.id}">${s.isActive ? "Deactivate" : "Activate"}</button></div></td></tr>`,
       )
       .join("") || emptyRow(7, "No student records found.");
   $("#body")

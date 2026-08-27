@@ -1,0 +1,15 @@
+const model = require("./person_logs.model");
+const sources = new Set(["university", "events", "library", "internet"]);
+exports.get = async (req, res) => {
+  const type = req.params.type === "student" ? "Student" : req.params.type === "employee" ? "Employee" : null;
+  const dateFrom = String(req.query.dateFrom || ""), dateTo = String(req.query.dateTo || "");
+  const validDate = (value) => { const parsed = new Date(`${value}T00:00:00Z`); return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value; };
+  const validRange = validDate(dateFrom) && validDate(dateTo) && dateFrom <= dateTo;
+  if (!type || !sources.has(req.query.source) || (req.query.source === "university" && !validRange)) return res.status(400).json({ message: "Choose a valid person, log type, and date range." });
+  const requiredScope = type === "Student" ? "Students" : "Employees";
+  if (req.user.role !== "Superadmin" && req.user.peopleAccess !== "Both" && req.user.peopleAccess !== requiredScope) return res.status(403).json({ message: `Your permission does not include ${requiredScope.toLowerCase()}.` });
+  const person = await model.getPerson(type, req.params.id);
+  if (!person) return res.status(404).json({ message: `${type} not found.` });
+  const dateRange = req.query.source === "university" ? { from: dateFrom, to: dateTo } : null;
+  res.json({ person, source: req.query.source, dateRange, records: await model.getLogs(type, req.params.id, req.query.source, dateRange) });
+};

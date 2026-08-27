@@ -22,33 +22,16 @@ const indexes = {
     idx_event_schedule: ["starts_at", "ends_at"],
     idx_events_period_schedule: ["academic_period_id", "starts_at"],
   },
-  student_attendance: {
-    idx_student_attendance_event_time: ["event_id", "checked_in_at", "id"],
-    idx_student_attendance_person_event_time: [
-      "student_id",
-      "event_id",
-      "checked_in_at",
-      "id",
-    ],
-    idx_student_attendance_period_time: [
-      "academic_period_id",
-      "checked_in_at",
-      "id",
-    ],
+  university_entrance_logs: {
+    idx_university_period_time: ["academic_period_id", "checked_in_at", "id"],
+    idx_university_student_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
+    idx_university_employee_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
   },
-  employee_attendance: {
-    idx_employee_attendance_event_time: ["event_id", "checked_in_at", "id"],
-    idx_employee_attendance_person_event_time: [
-      "employee_id",
-      "event_id",
-      "checked_in_at",
-      "id",
-    ],
-    idx_employee_attendance_period_time: [
-      "academic_period_id",
-      "checked_in_at",
-      "id",
-    ],
+  event_attendance_logs: {
+    idx_event_attendance_event_time: ["event_id", "checked_in_at", "id"],
+    idx_event_attendance_student_time: ["student_id", "event_id", "checked_in_at", "id"],
+    idx_event_attendance_employee_time: ["employee_id", "event_id", "checked_in_at", "id"],
+    idx_event_attendance_period_time: ["academic_period_id", "checked_in_at", "id"],
   },
   users: {
     idx_users_permission_name: ["permission_id", "last_name", "first_name"],

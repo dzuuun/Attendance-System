@@ -3,6 +3,7 @@ let permissions = [];
 function accessSummary(item) {
   return (
     [
+      [item.overviewAccess, "Overview"],
       [item.attendanceAccess, "Attendance"],
       [item.specialEventsAccess, "Events"],
       [item.historicalDataAccess, "Historical data"],
@@ -38,6 +39,7 @@ function open(item = null) {
   if (item) {
     $("#name").value = item.name;
     [
+      "overviewAccess",
       "attendanceAccess",
       "specialEventsAccess",
       "historicalDataAccess",
@@ -77,6 +79,7 @@ $("#form").onsubmit = async (event) => {
             ? permissions.find((item) => String(item.id) === id)?.description ||
               ""
             : "",
+          overviewAccess: $("#overviewAccess").checked,
           attendanceAccess: $("#attendanceAccess").checked,
           specialEventsAccess: $("#specialEventsAccess").checked,
           historicalDataAccess: $("#historicalDataAccess").checked,

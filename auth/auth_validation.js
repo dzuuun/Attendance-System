@@ -19,7 +19,7 @@ async function checkSession(req, res, next) {
     });
     await permissionModel.ensureSchema();
     const [rows] = await pool.query(
-      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,p.name role,u.is_active isActive,p.is_active permissionActive,p.attendance_access attendanceAccess,p.special_events_access specialEventsAccess,p.historical_data_access historicalDataAccess,p.library_access libraryAccess,p.maintenance_access maintenanceAccess,p.users_access usersAccess,p.people_access peopleAccess FROM users u INNER JOIN permissions p ON p.id=u.permission_id WHERE u.id=? LIMIT 1",
+      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,p.name role,u.is_active isActive,p.is_active permissionActive,p.overview_access overviewAccess,p.attendance_access attendanceAccess,p.special_events_access specialEventsAccess,p.historical_data_access historicalDataAccess,p.library_access libraryAccess,p.maintenance_access maintenanceAccess,p.users_access usersAccess,p.people_access peopleAccess FROM users u INNER JOIN permissions p ON p.id=u.permission_id WHERE u.id=? LIMIT 1",
       [decoded.sub],
     );
     const user = rows[0];
@@ -32,6 +32,7 @@ async function checkSession(req, res, next) {
       fullName: user.fullName,
       username: user.username,
       role: user.role,
+      overviewAccess: Boolean(user.overviewAccess),
       attendanceAccess: Boolean(user.attendanceAccess),
       specialEventsAccess: Boolean(user.specialEventsAccess),
       historicalDataAccess: Boolean(user.historicalDataAccess),

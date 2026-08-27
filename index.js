@@ -41,6 +41,7 @@ const activityLogRouter = require("./api/user/activity_log/activity_log.router")
 const academicPeriodRouter = require("./api/maintenance/academic_period/academic_period.router");
 const historyRouter = require("./api/history/history.router");
 const libraryRouter = require("./api/library/library.router");
+const personLogsRouter = require("./api/person_logs/person_logs.router");
 app.use("/api/auth", asyncHandler(loginRouter));
 // Public kiosk access is intentionally limited to daily entrance scans.
 app.post(
@@ -114,6 +115,11 @@ app.use(
   "/api/library",
   requireAccess("libraryAccess"),
   wrapRouter(libraryRouter),
+);
+app.use(
+  "/api/person-logs",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(personLogsRouter),
 );
 app.use(
   "/api/student",
@@ -315,7 +321,9 @@ app.get(
 app.get("/events", adminPage("events/index.html"));
 app.get("/events/:id/scan", adminPage("events/scan/index.html"));
 app.get("/history", adminPage("history/index.html"));
-app.get("/library", adminPage("library/index.html"));
+app.get("/library", (_req, res) => res.redirect("/library/entrance"));
+app.get("/library/entrance", adminPage("library/index.html"));
+app.get("/library/internet-section", adminPage("library/index.html"));
 app.get("/maintenance/settings", adminPage("maintenance/settings/index.html"));
 app.get("/maintenance/school", adminPage("maintenance/school/index.html"));
 app.get("/maintenance/college", adminPage("maintenance/college/index.html"));

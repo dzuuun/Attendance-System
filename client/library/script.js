@@ -1,14 +1,15 @@
 const { $, api, escapeHtml, formatDate, formatTime, emptyRow, loadXlsx, init } =
   TapTrack;
 let records = [];
-const label = () =>
-  $("#location").value === "library" ? "Library" : "Internet Section";
+const isInternetSection = location.pathname.includes("/internet-section");
+const locationKey = isInternetSection ? "internet" : "library";
+const pageKey = isInternetSection ? "internetEntrance" : "libraryEntrance";
+const label = () => (isInternetSection ? "Internet Section" : "Library");
 function render() {
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
   $("#tableTitle").textContent = `${label()} entrance`;
-  $("#kioskLink").href =
-    `/kiosk/${$("#location").value === "library" ? "library" : "internet-section"}`;
+  $("#kioskLink").href = `/kiosk/${isInternetSection ? "internet-section" : "library"}`;
   $("#body").innerHTML =
     records
       .map(
@@ -23,10 +24,9 @@ function render() {
   });
 }
 async function load() {
-  records = await api(`/api/library?location=${$("#location").value}`);
+  records = await api(`/api/library?location=${locationKey}`);
   render();
 }
-$("#location").addEventListener("change", load);
 $("#exportBtn").addEventListener("click", async () => {
   try {
     await loadXlsx();
@@ -68,6 +68,9 @@ $("#exportBtn").addEventListener("click", async () => {
   }
 });
 (async () => {
-  await init("library");
+  document.title = `${label()} entrance logs — TapTrack`;
+  $("#pageTitle").textContent = `${label()} entrance logs`;
+  $("#pageDescription").textContent = `Review every entrance recorded at the ${label().toLowerCase()}.`;
+  await init(pageKey);
   await load();
 })();

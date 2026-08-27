@@ -25,7 +25,7 @@ function render() {
     rows
       .map(
         (p) =>
-          `<tr><td>${personCell(p)}</td><td><strong>${escapeHtml(p.idNumber)}</strong></td><td>${escapeHtml(p.groupName)}</td><td>${escapeHtml(p.contact || "—")}</td><td><span class="status-pill">${p.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${p.id}" aria-label="Edit ${escapeHtml(p.name)}" title="Edit"></button></td></tr>`,
+          `<tr><td>${personCell(p)}</td><td><strong>${escapeHtml(p.idNumber)}</strong></td><td>${escapeHtml(p.groupName)}</td><td>${escapeHtml(p.contact || "—")}</td><td><span class="status-pill">${p.isActive ? "Active" : "Inactive"}</span></td><td><div class="event-actions"><button class="secondary-button edit edit-icon" data-id="${p.id}" aria-label="Edit ${escapeHtml(p.name)}" title="Edit"></button><button class="secondary-button person-log-export" data-person-id="${p.id}" data-person-type="employee" data-person-name="${escapeHtml(p.name)}" data-id-number="${escapeHtml(p.idNumber)}">Export</button></div></td></tr>`,
       )
       .join("") || emptyRow(6, `No ${lower}s found.`);
   TapTrack.initDataTable(table);
