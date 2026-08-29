@@ -44,9 +44,15 @@ async function ensureSchema() {
 const personSelect = `COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN a.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,COALESCE(a.student_id,a.employee_id) personId,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name`;
 const personJoins = "LEFT JOIN students s ON s.id=a.student_id LEFT JOIN employees e ON e.id=a.employee_id";
 
-exports.getAll = async () => {
+exports.getAll = async (periodId = null) => {
   await ensureSchema();
-  return (await pool.query(`SELECT a.id,${personSelect},NULL eventId,NULL eventName,a.scan_location location,a.attendance_action action,a.checked_in_at timestamp FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ap.is_current=TRUE ${personJoins} WHERE a.student_id IS NOT NULL OR a.employee_id IS NOT NULL ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 1000`))[0];
+  const periodClause = periodId ? "ap.id=?" : "ap.is_current=TRUE";
+  const params = periodId ? [periodId] : [];
+  return (await pool.query(`SELECT a.id,${personSelect},NULL eventId,NULL eventName,a.scan_location location,a.attendance_action action,a.checked_in_at timestamp FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ${periodClause} ${personJoins} WHERE a.student_id IS NOT NULL OR a.employee_id IS NOT NULL ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 1000`, params))[0];
+};
+exports.getToday = async () => {
+  await ensureSchema();
+  return (await pool.query(`SELECT a.id,${personSelect},NULL eventId,NULL eventName,a.scan_location location,a.attendance_action action,a.checked_in_at timestamp FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ap.is_current=TRUE ${personJoins} WHERE (a.student_id IS NOT NULL OR a.employee_id IS NOT NULL) AND a.checked_in_at>=CURDATE() AND a.checked_in_at<CURDATE()+INTERVAL 1 DAY ORDER BY a.checked_in_at DESC,a.id DESC`))[0];
 };
 exports.getByEvent = async (eventId) => {
   await ensureSchema();

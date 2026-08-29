@@ -1,5 +1,6 @@
 const model = require("./attendance.model");
 const eventModel = require("../events/event.model");
+const periodModel = require("../maintenance/academic_period/academic_period.model");
 
 const isToday = (timestamp, now = new Date()) => {
   const date = new Date(timestamp);
@@ -19,8 +20,17 @@ const visible = (rows, user) => {
   return rows.filter((row) => row.type === type);
 };
 
-exports.getAll = async (req, res) =>
-  res.json(visible(await model.getAll(), req.user));
+exports.getAll = async (req, res) => {
+  const periodId = req.query.periodId ? Number(req.query.periodId) : null;
+  if (req.query.periodId && (!Number.isInteger(periodId) || periodId < 1))
+    return res.status(400).json({ message: "Select a valid academic period." });
+  res.json(visible(await model.getAll(periodId), req.user));
+};
+
+exports.getPeriods = async (_req, res) => res.json(await periodModel.getAll());
+
+exports.getToday = async (req, res) =>
+  res.json(visible(await model.getToday(), req.user));
 
 exports.getEventScans = async (req, res) => {
   const event = await eventModel.getById(req.params.id);

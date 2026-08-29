@@ -3,43 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#073f2d" />
     <title>Initial setup — TapTrack</title>
-    <link rel="stylesheet" href="portal.css" />
+    <link rel="icon" type="image/png" href="/client/images/NDMU-Logo.png" />
+    <link rel="stylesheet" href="/client/landing.css" />
+    <link rel="stylesheet" href="/client/login-page.css" />
   </head>
-  <body class="auth-page">
-    <aside class="auth-side">
-      <a class="portal-brand" href="/"><i class="material-symbols-rounded">track_changes</i> TapTrack</a>
-      <div class="auth-quote">
-        <h1>Set up your workspace.</h1>
-        <p>
-          Create the first administrator account to secure the attendance
-          system.
-        </p>
-      </div>
-      <small>ONE-TIME INITIAL SETUP</small>
-    </aside>
-    <main class="auth-form-wrap">
-      <form class="auth-card" id="setupForm">
-        <small>INITIAL SETUP</small>
-        <h2>Create administrator</h2>
-        <p>This page disables automatically after setup.</p>
-        <label>Full name<input id="fullName" required autofocus /></label
-        ><label
-          >Username<input
-            id="username"
-            autocomplete="username"
-            required /></label
-        ><label
-          >Password<input
-            id="password"
-            type="password"
-            minlength="8"
-            required /></label
-        ><button class="button" type="submit">Create and continue →</button>
-        <div class="auth-error" id="authError"></div>
-      </form>
+  <body>
+    <header class="site-header">
+      <a class="university-brand" href="/"><img src="/client/images/NDMU-Logo.png" alt="NDMU seal" /><span><strong>Notre Dame of Marbel University</strong><small>Excellence through service</small></span></a>
+      <p>Smart Attendance Management System</p>
+    </header>
+    <main>
+      <section class="welcome-card login-card setup-card" aria-labelledby="setup-title">
+        <aside class="story-panel login-story">
+          <div class="story-content">
+            <img class="story-seal" src="/client/images/NDMU-Logo.png" alt="" />
+            <div class="product-name"><span>Tap</span><strong>Track</strong></div>
+            <p class="eyebrow gold">INITIAL SETUP</p>
+            <h1>Set up your<br />workspace.</h1>
+            <p class="story-description">Create the first administrator account to secure and manage the attendance system.</p>
+          </div>
+        </aside>
+        <div class="action-panel login-panel setup-panel">
+          <div class="login-content">
+            <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8c.6-4 3-6 7-6s6.4 2 7 6H5Z" /></svg></span>
+            <p class="eyebrow">ONE-TIME SETUP</p>
+            <h1 id="setup-title">Create administrator</h1>
+            <p class="login-intro">This page disables automatically after setup.</p>
+            <form class="login-form" id="setupForm">
+              <div class="setup-name-grid">
+                <div class="field"><label for="firstName">First name</label><input id="firstName" autocomplete="given-name" placeholder="Enter first name" required autofocus /></div>
+                <div class="field"><label for="middleName">Middle name <span class="optional">(optional)</span></label><input id="middleName" autocomplete="additional-name" placeholder="Enter middle name" /></div>
+                <div class="field"><label for="lastName">Last name</label><input id="lastName" autocomplete="family-name" placeholder="Enter last name" required /></div>
+              </div>
+              <div class="field"><label for="username">Username</label><input id="username" autocomplete="username" placeholder="Enter your username" required /></div>
+              <div class="field">
+                <label for="password">Password</label>
+                <div class="password-wrap"><input id="password" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required /><button class="password-toggle" id="passwordToggle" type="button" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button></div>
+              </div>
+              <button class="login-submit" type="submit"><span>Create and continue</span><span aria-hidden="true">→</span></button>
+              <div class="auth-error" id="authError" role="alert"></div>
+              <div class="login-help">The first account receives <strong>Superadmin</strong> access.</div>
+            </form>
+          </div>
+        </div>
+      </section>
     </main>
-    <script src="auth.js"></script>
-    <script src="/client/brand-ui.js?v=20260824-5" data-brand-ui></script>
+    <footer><span>© 2026 Notre Dame of Marbel University</span><i aria-hidden="true"></i><span>Developed by the MIS Department</span></footer>
+    <script src="/auth.js"></script>
   </body>
 </html>

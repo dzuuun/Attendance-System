@@ -14,6 +14,11 @@ function render() {
   TapTrack.destroyDataTable(table);
   const query = $("#search").value.toLowerCase();
   const showInactive = $("#showInactive").checked;
+  const directoryTitle = $("#employeeDirectoryTitle");
+  if (directoryTitle)
+    directoryTitle.textContent = showInactive
+      ? "All employees"
+      : "Active employees";
   const rows = people.filter(
     (person) =>
       (showInactive || Boolean(person.isActive)) &&

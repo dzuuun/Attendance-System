@@ -13,11 +13,16 @@
       <a class="nav-item" data-access="overviewAccess" data-nav="dashboard" href="/app"><span
           class="nav-icon material-symbols-rounded">dashboard</span><span class="nav-label">Overview</span></a>
       <a class="nav-item" data-access="attendanceAccess" data-nav="attendance" href="/attendance"><span
-          class="nav-icon material-symbols-rounded">fact_check</span><span class="nav-label">Attendance</span></a>
-      <a class="nav-item" data-access="specialEventsAccess" data-nav="events" href="/events"><span
-          class="nav-icon material-symbols-rounded">event</span><span class="nav-label">Events</span></a>
-      <a class="nav-item" data-access-any="historicalDataAccess specialEventsAccess" data-nav="history" href="/history"><span
-          class="nav-icon material-symbols-rounded">history</span><span class="nav-label">Historical data</span></a>
+          class="nav-icon material-symbols-rounded">fact_check</span><span class="nav-label">University entrance logs</span></a>
+      <div class="nav-group" data-access="specialEventsAccess" id="eventsGroup">
+        <button class="nav-item nav-group-toggle" id="eventsToggle" type="button" aria-expanded="false"><span
+            class="nav-icon material-symbols-rounded">event</span><span class="nav-label">Events</span><span
+            class="nav-chevron material-symbols-rounded">expand_more</span></button>
+        <div class="nav-submenu" id="eventsSubmenu">
+          <a class="nav-subitem" data-access="specialEventsAccess" data-nav="events" href="/events">Event management</a>
+          <a class="nav-subitem" data-access="specialEventsAccess" data-nav="history" href="/history">Event historical data</a>
+        </div>
+      </div>
       <a class="nav-item" data-access="maintenanceAccess" data-people="Students" data-nav="students"
         href="/maintenance/student"><span class="nav-icon material-symbols-rounded">school</span><span
           class="nav-label">Students</span></a>

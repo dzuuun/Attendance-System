@@ -21,15 +21,19 @@
             <span id="liveTime"></span><small id="liveDate"></small>
           </div>
         </header>
-        <div class="section-header">
-          <p>Manage employee information.</p>
-          <div class="event-actions">
-            <label class="directory-toggle" for="showInactive"><span>Show inactive</span><input id="showInactive" type="checkbox" /></label>
-            <button class="secondary-button" id="bulkPhotoBtn" type="button">Upload photos</button>
-            <button class="primary-button" id="addBtn">+ Add employee</button>
-          </div>
-        </div>
         <article class="table-card">
+          <div class="directory-card-header">
+            <div>
+              <span class="section-kicker">EMPLOYEE DIRECTORY</span>
+              <h2 id="employeeDirectoryTitle">Active employees</h2>
+              <p>Search and maintain employee access and department details.</p>
+            </div>
+            <div class="directory-actions">
+              <label class="directory-toggle" for="showInactive"><span>Show inactive</span><input id="showInactive" type="checkbox" /></label>
+              <button class="secondary-button" id="bulkPhotoBtn" type="button"><span class="material-symbols-rounded" aria-hidden="true">add_photo_alternate</span> Upload photos</button>
+              <button class="primary-button" id="addBtn"><span class="material-symbols-rounded" aria-hidden="true">add</span> Add employee</button>
+            </div>
+          </div>
           <div class="filter-row">
             <div class="search-box">
               <span class="material-symbols-rounded" aria-hidden="true">search</span><input id="search" placeholder="Search employees" />
@@ -63,7 +67,10 @@
     <dialog id="dialog">
       <form id="form">
         <div class="modal-head">
-          <h2>Add employee</h2>
+          <div>
+            <span class="section-kicker">EMPLOYEE RECORD</span>
+            <h2>Add employee</h2>
+          </div>
           <button class="close-button">×</button>
         </div>
         <div class="form-grid">
@@ -72,7 +79,7 @@
           ><label>Last name<input id="lastName" required /></label
           ><label>ID number<input id="idNumber" required /></label
           ><label>Department<select id="department" required><option value="">Select department</option></select></label
-          ><label class="full">Contact<input id="contact" /></label>
+          ><label>Contact<input id="contact" /></label>
           <div class="full record-photo-field">
             <span><strong>Employee photo (optional)</strong><small id="photoHelp">Choose a profile photo to upload when this employee is saved.</small></span>
             <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" />

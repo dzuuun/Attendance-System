@@ -262,6 +262,19 @@
     const pageArea =
       main.querySelector(".topbar .eyebrow")?.textContent?.trim() ||
       "Workspace";
+    const breadcrumbLabel = (value) => {
+      const acronyms = new Set(["ID", "MIS", "NDMU", "NFC", "RFID"]);
+      return String(value)
+        .split(/\s+/)
+        .map((word) => {
+          const upper = word.toUpperCase();
+          if (acronyms.has(upper)) return upper;
+          return /^[A-Z]+$/.test(word)
+            ? word.charAt(0) + word.slice(1).toLowerCase()
+            : word;
+        })
+        .join(" ");
+    };
     const header = document.createElement("header");
     header.className = "satp-site-header";
     header.innerHTML = `<div class="satp-header-brand"><button type="button" class="satp-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="satp-header-identity" href="/app"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="satp-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
@@ -288,7 +301,7 @@
       const breadcrumb = document.createElement("nav");
       breadcrumb.className = "satp-breadcrumb";
       breadcrumb.setAttribute("aria-label", "Breadcrumb");
-      breadcrumb.innerHTML = `<span>TapTrack</span><b>›</b><span>${pageArea}</span><b>›</b><strong>${pageTitle}</strong>`;
+      breadcrumb.innerHTML = `<span>TapTrack</span><b>›</b><span>${breadcrumbLabel(pageArea)}</span><b>›</b><strong>${breadcrumbLabel(pageTitle)}</strong>`;
       topbar.appendChild(breadcrumb);
     }
     const recordsHeading = workspace.querySelector(".section-header");

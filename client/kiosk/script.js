@@ -38,6 +38,11 @@ const terminalLocationBadge = document.querySelector("#terminalLocationBadge");
 
 // State
 let bridgeConnected = false;
+let lastBridgeStatus = {
+  available: false,
+  connected: false,
+  platform: "web",
+};
 let resetTimer = null;
 let sessionStats = { total: 0, in: 0, out: 0 };
 let recentScans = [];
@@ -589,7 +594,9 @@ if (kioskCameraScanBtn) {
 function renderScannerStatus(status) {
   if (!status) return;
 
-  bridgeConnected = !!status.connected;
+  lastBridgeStatus = { ...lastBridgeStatus, ...status };
+  const bridgeAvailable = !!lastBridgeStatus.available;
+  bridgeConnected = !!lastBridgeStatus.connected;
   if (input) {
     input.placeholder = bridgeConnected
       ? "Physical scanner connected — ready to tap..."
@@ -602,9 +609,12 @@ function renderScannerStatus(status) {
     if (bridgeConnected) {
       statusBadge.classList.remove("disconnected");
       statusText.textContent = "ENTRANCE TERMINAL ONLINE";
+    } else if (!bridgeAvailable) {
+      statusBadge.classList.remove("disconnected");
+      statusText.textContent = "TERMINAL ONLINE · MANUAL INPUT";
     } else {
       statusBadge.classList.add("disconnected");
-      statusText.textContent = "TERMINAL STANDALONE MODE";
+      statusText.textContent = "SCANNER BRIDGE OFFLINE";
     }
   }
 
@@ -649,13 +659,24 @@ function renderScannerStatus(status) {
   const bridgePlatformInfo = document.querySelector("#bridgePlatformInfo");
 
   if (bridgeStatusPill) {
-    bridgeStatusPill.textContent = bridgeConnected ? "BRIDGE CONNECTED" : "STANDALONE";
+    bridgeStatusPill.textContent = bridgeConnected
+      ? "BRIDGE CONNECTED"
+      : bridgeAvailable
+        ? "BRIDGE OFFLINE"
+        : "MANUAL MODE";
     bridgeStatusPill.style.background = bridgeConnected ? "#dcfce7" : "#fef3c7";
     bridgeStatusPill.style.color = bridgeConnected ? "#15803d" : "#b45309";
   }
 
   if (bridgePlatformInfo) {
-    bridgePlatformInfo.textContent = `Platform: ${status.platform || "Web"}`;
+    const platformNames = {
+      darwin: "macOS (development)",
+      win32: "Windows",
+      linux: "Raspberry Pi / Linux",
+      web: "Web browser",
+    };
+    const platform = lastBridgeStatus.platform || "web";
+    bridgePlatformInfo.textContent = `Platform: ${platformNames[platform] || platform}`;
   }
 
   if (bridgeStatusDesc) {
@@ -663,16 +684,39 @@ function renderScannerStatus(status) {
       ? `Use the scanner being assigned as ${pendingScannerAction}.`
       : bridgeConnected
         ? "Hardware scanners are active. Assignments are stored only on this terminal."
-        : "Scanner helper service not connected. Manual keyboard-wedge RFID or camera scanner available.";
+        : bridgeAvailable
+          ? "The hardware scanner helper stopped or could not start. Check its terminal output and restart the server."
+          : "Physical scanner identification is available on Windows and Raspberry Pi. On macOS, use manual keyboard-wedge or camera scanning for development.";
   }
+
+  document.querySelectorAll("[data-pair]").forEach((button) => {
+    button.disabled = !bridgeConnected;
+    button.title = bridgeConnected
+      ? "Assign this physical scanner"
+      : bridgeAvailable
+        ? "Start the scanner helper before assigning devices"
+        : "Physical device assignment requires Windows or Raspberry Pi";
+  });
 }
 
 // Scanner Pairing Buttons
 document.querySelectorAll("[data-pair]").forEach((button) => {
   button.addEventListener("click", () => {
     SoundFX.init();
+    if (!bridgeConnected) {
+      showResult(
+        "error",
+        lastBridgeStatus.available
+          ? "Scanner Bridge Offline"
+          : "Hardware Pairing Unavailable",
+        lastBridgeStatus.available
+          ? "Restart the server and check the scanner helper output."
+          : "Configure physical scanners on the Windows or Raspberry Pi kiosk.",
+      );
+      return;
+    }
     pendingScannerAction = button.dataset.pair;
-    renderScannerStatus({ connected: bridgeConnected });
+    renderScannerStatus(lastBridgeStatus);
     showResult(
       "",
       `Pair ${pendingScannerAction} Scanner`,

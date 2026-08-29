@@ -13,8 +13,8 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">RECORDS</p>
-            <h1>Attendance log</h1>
+            <p class="eyebrow">UNIVERSITY ENTRANCE</p>
+            <h1>University entrance log</h1>
           </div>
           <div class="live-time">
             <span id="liveTime"></span><small id="liveDate"></small>
@@ -22,11 +22,8 @@
         </header>
         <section>
           <div class="section-header">
-            <p>
-              Daily entrance and special-event scans from both attendance
-              tables.
-            </p>
-            <button class="secondary-button" id="clearBtn">Clear log</button>
+            <p>Time In and Time Out scans recorded at university entrances.</p>
+            <label>Academic period<select id="period"></select></label>
           </div>
           <article class="table-card">
             <div class="filter-row">
@@ -46,7 +43,6 @@
                     <th>PERSON</th>
                     <th>ID NUMBER</th>
                     <th>TYPE</th>
-                    <th>CONTEXT</th>
                     <th>LOCATION</th>
                     <th>DATE</th>
                     <th>TIME</th>

@@ -537,6 +537,14 @@
   color: #7a8982;
   font-size: 11px;
   white-space: nowrap;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.satp-breadcrumb span,
+.satp-breadcrumb strong {
+  text-transform: none !important;
+  letter-spacing: normal !important;
 }
 .satp-breadcrumb span:first-child {
   color: #087247;
@@ -615,7 +623,8 @@ dialog::backdrop {
     display 220ms allow-discrete;
 }
 
-body[data-type="Student"] dialog#dialog {
+body[data-type="Student"] dialog#dialog,
+body[data-type="Employee"] dialog#dialog {
   width: min(760px, calc(100vw - 32px));
 }
 

@@ -5,7 +5,6 @@ const {
   checkSession,
   requireAdmin,
   requireAccess,
-  requireAnyAccess,
   requirePeopleAccess,
 } = require("./auth/auth_validation");
 const {
@@ -108,7 +107,7 @@ app.use(
 );
 app.use(
   "/api/history",
-  requireAnyAccess("historicalDataAccess", "specialEventsAccess"),
+  requireAccess("specialEventsAccess"),
   wrapRouter(historyRouter),
 );
 app.use(

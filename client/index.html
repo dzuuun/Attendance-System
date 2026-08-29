@@ -3,70 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>TapTrack — Smart Attendance</title>
-    <link rel="stylesheet" href="portal.css" />
+    <meta name="theme-color" content="#073f2d" />
+    <title>TapTrack — NDMU Attendance System</title>
+    <link rel="icon" type="image/png" href="/client/images/NDMU-Logo.png" />
+    <link rel="stylesheet" href="/client/landing.css" />
   </head>
   <body>
-    <nav class="portal-nav">
-      <a class="portal-brand" href="/"><i class="material-symbols-rounded">track_changes</i> TapTrack</a>
-      <div class="nav-links">
-        <a href="#features">Features</a><a href="/kiosk/entrance">Entrance kiosk</a
-        ><a href="/login" class="button">Staff login →</a>
-      </div>
-    </nav>
-    <main class="landing-hero">
-      <div class="hero-copy">
-        <small>SMART ATTENDANCE PLATFORM</small>
-        <h1>Attendance, made <span>effortless.</span></h1>
-        <p>
-          A secure attendance system for schools and organizations. Tap an NFC
-          card or scan a barcode to record attendance instantly.
-        </p>
-        <div class="hero-actions">
-          <a class="button" href="/login">Open attendance system →</a
-          ><a class="button light" href="#features">Explore features</a>
-        </div>
-      </div>
-      <div class="hero-art">
-        <div class="art-circle"></div>
-        <div class="terminal">
-          <div class="terminal-head">
-            <span>TapTrack Terminal</span
-            ><span style="color: #2d8a65">● Online</span>
+    <header class="site-header">
+      <a class="university-brand" href="/" aria-label="Notre Dame of Marbel University home">
+        <img src="/client/images/NDMU-Logo.png" alt="NDMU seal" />
+        <span><strong>Notre Dame of Marbel University</strong><small>Excellence through service</small></span>
+      </a>
+      <p>Smart Attendance Management System</p>
+    </header>
+
+    <main>
+      <section class="welcome-card" aria-labelledby="welcome-title">
+        <div class="story-panel">
+          <div class="story-content">
+            <img class="story-seal" src="/client/images/NDMU-Logo.png" alt="" />
+            <div class="product-name"><span>Tap</span><strong>Track</strong></div>
+            <p class="eyebrow gold">SMART ATTENDANCE PLATFORM</p>
+            <h1>Every tap.<br />Every moment.<br />Accounted for.</h1>
+            <p class="story-description">A secure and efficient way for the NDMU community to record attendance at every university entrance and event.</p>
+            <ul class="benefits" aria-label="Platform benefits"><li>Fast</li><li>Secure</li><li>Reliable</li></ul>
           </div>
-          <div class="terminal-screen">
-            <div>
-              <div class="tap-icon material-symbols-rounded">contactless</div>
-              <strong>Tap or scan your ID</strong
-              ><small>Waiting for card...</small>
+        </div>
+
+        <div class="action-panel">
+          <div class="action-content">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7.5A3.5 3.5 0 0 1 7.5 4H10v2H7.5A1.5 1.5 0 0 0 6 7.5V10H4V7.5Zm10-3.5h2.5A3.5 3.5 0 0 1 20 7.5V10h-2V7.5A1.5 1.5 0 0 0 16.5 6H14V4ZM4 14h2v2.5A1.5 1.5 0 0 0 7.5 18H10v2H7.5A3.5 3.5 0 0 1 4 16.5V14Zm14 0h2v2.5a3.5 3.5 0 0 1-3.5 3.5H14v-2h2.5a1.5 1.5 0 0 0 1.5-1.5V14Zm-8.7-3.1a2.7 2.7 0 1 1 5.4 0 2.7 2.7 0 0 1-5.4 0Zm-1.5 5.4c.5-1.8 2.1-2.8 4.2-2.8s3.7 1 4.2 2.8H7.8Z" /></svg>
+            </span>
+            <p class="eyebrow">ATTENDANCE PORTAL</p>
+            <h2 id="welcome-title">Ready to begin?</h2>
+            <p class="intro-copy">Open the entrance terminal to record attendance, or sign in to manage university attendance records.</p>
+            <div class="portal-actions">
+              <a class="primary-action" href="/kiosk/entrance"><span>Open entrance kiosk</span><b aria-hidden="true">→</b></a>
+              <div class="kiosk-action-grid">
+                <a class="secondary-action kiosk-action" href="/kiosk/library"><span>Library entrance</span><b aria-hidden="true">→</b></a>
+                <a class="secondary-action kiosk-action" href="/kiosk/internet-section"><span>Internet section</span><b aria-hidden="true">→</b></a>
+              </div>
+              <a class="staff-action" id="staffPortalLink" href="/login"><span class="staff-action-label">Staff sign in</span> <span aria-hidden="true">→</span></a>
             </div>
+            <div class="help-copy">Need help? Visit the <strong>MIS Department</strong> for technical assistance.</div>
           </div>
-          <div class="terminal-input"><span class="material-symbols-rounded" aria-hidden="true">search</span>&nbsp; ID number</div>
         </div>
-      </div>
+      </section>
     </main>
-    <section class="feature-strip" id="features">
-      <div class="feature">
-        <b class="material-symbols-rounded">track_changes</b>
-        <div>
-          <strong>Fast check-in</strong><small>NFC and barcode ready</small>
-        </div>
-      </div>
-      <div class="feature">
-        <b class="material-symbols-rounded">event_available</b>
-        <div>
-          <strong>Separate directories</strong
-          ><small>Students and employees</small>
-        </div>
-      </div>
-      <div class="feature">
-        <b class="material-symbols-rounded">admin_panel_settings</b>
-        <div>
-          <strong>Secure administration</strong
-          ><small>Role-based access control</small>
-        </div>
-      </div>
-    </section>
-    <script src="/client/brand-ui.js?v=20260824-5" data-brand-ui></script>
+
+    <footer><span>© 2026 Notre Dame of Marbel University</span><i aria-hidden="true"></i><span>Developed by the MIS Department</span></footer>
+    <script src="/client/landing.js"></script>
   </body>
 </html>

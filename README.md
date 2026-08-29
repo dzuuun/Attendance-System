@@ -2,6 +2,12 @@
 
 Express + Node.js + MySQL attendance for keyboard/HID NFC and barcode readers.
 
+## Production database
+
+TapTrack uses **MySQL 8.0 or newer** in production through the `mysql2` Node.js driver. The installation script creates the `attendance_system` database with the `utf8` character set and `utf8_general_ci` collation. MariaDB is not the production target.
+
+Configure the production connection through `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `.env`. Use a dedicated MySQL account with access only to the TapTrack database.
+
 ```bash
 mysql -u root -p < database.sql
 cp .env.example .env
@@ -9,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. Configure each reader to send Enter after the scanned value. Student and employee directories and attendance logs are stored separately in `students`, `employees`, `student_attendance`, and `employee_attendance`.
+For phpMyAdmin or a hosting control panel, select an empty database and import `database.sql`. Open `http://localhost:4000/setup` after import to create the first administrator. Configure each reader to send Enter after the scanned value. Student and employee directories, university entrance logs, event attendance, library entrance logs, and Internet Section logs are stored separately.
 
 ## Two-scanner kiosk
 

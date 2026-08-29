@@ -1,9 +1,20 @@
-CREATE DATABASE IF NOT EXISTS attendance_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- TapTrack Attendance System — upload-ready fresh installation schema.
+-- Production database target: MySQL 8.0+ using the InnoDB storage engine.
+--
+-- Import this file after selecting an empty database in phpMyAdmin or your
+-- hosting control panel. For the MySQL CLI, use:
+--   mysql -u USER -p DATABASE_NAME < database.sql
+--
+-- No user account or default password is included. After importing, open
+-- /setup in TapTrack to create the first administrator securely.
+
+CREATE DATABASE IF NOT EXISTS attendance_system CHARACTER SET utf8 COLLATE utf8_general_ci;
 
 USE attendance_system;
 
--- Fresh installation schema for TapTrack Attendance System.
--- Import this file into a new MySQL or MariaDB database.
+SET NAMES utf8 COLLATE utf8_general_ci;
+SET default_storage_engine = InnoDB;
+SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE IF NOT EXISTS students (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,
@@ -4650,7 +4661,6 @@ CREATE TABLE IF NOT EXISTS permissions (
   overview_access BOOLEAN NOT NULL DEFAULT FALSE,
   attendance_access BOOLEAN NOT NULL DEFAULT FALSE,
   special_events_access BOOLEAN NOT NULL DEFAULT FALSE,
-  historical_data_access BOOLEAN NOT NULL DEFAULT FALSE,
   library_access BOOLEAN NOT NULL DEFAULT FALSE,
   maintenance_access BOOLEAN NOT NULL DEFAULT FALSE,
   users_access BOOLEAN NOT NULL DEFAULT FALSE,
@@ -4666,7 +4676,6 @@ INSERT
     overview_access,
     attendance_access,
     special_events_access,
-    historical_data_access,
     library_access,
     maintenance_access,
     users_access,
@@ -4680,7 +4689,6 @@ VALUES
     TRUE,
     TRUE,
     TRUE,
-    FALSE,
     TRUE,
     TRUE,
     TRUE,
@@ -4692,7 +4700,6 @@ VALUES
     'Standard attendance access',
     TRUE,
     TRUE,
-    FALSE,
     FALSE,
     FALSE,
     FALSE,
@@ -4709,14 +4716,12 @@ VALUES
     FALSE,
     FALSE,
     FALSE,
-    FALSE,
     'Students',
     TRUE
   ),
   (
     'Superadmin',
     'Full system access',
-    TRUE,
     TRUE,
     TRUE,
     TRUE,
@@ -4769,46 +4774,8 @@ CREATE TABLE IF NOT EXISTS system_settings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Initial credentials: superadmin / SuperAdmin@123 (change after first login).
-INSERT INTO
-  users (
-    first_name,
-    middle_name,
-    last_name,
-    username,
-    password_hash,
-    permission_id,
-    is_active
-  )
-VALUES
-  (
-    'System',
-    NULL,
-    'Superadmin',
-    'superadmin',
-    '$2b$12$aJB3GOnmp..x4iiZKAQRFuHFarey8n5qscJswALKSVIBr8nvK7CWa',
-(
-      SELECT
-        id
-      FROM
-        permissions
-      WHERE
-        name = 'Superadmin'
-      LIMIT
-        1
-    ), TRUE
-  ) ON DUPLICATE KEY
-UPDATE
-  permission_id =(
-    SELECT
-      id
-    FROM
-      permissions
-    WHERE
-      name = 'Superadmin'
-    LIMIT
-      1
-  ), is_active = TRUE;
+-- The users table intentionally starts empty. Create the first administrator
+-- through the one-time /setup page after deployment.
 
 INSERT
   IGNORE INTO system_settings (setting_key, setting_value)
@@ -4841,3 +4808,7 @@ CREATE TABLE IF NOT EXISTS internet_section_entrance_logs (
   INDEX idx_student_period_time (student_id, academic_period_id, checked_in_at, id),
   INDEX idx_employee_period_time (employee_id, academic_period_id, checked_in_at, id)
 );
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- End of TapTrack installation schema.

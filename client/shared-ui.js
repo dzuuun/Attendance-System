@@ -329,7 +329,6 @@
     const user = await api("/api/auth/me"),
       admin = Boolean(
         user.specialEventsAccess ||
-        user.historicalDataAccess ||
         user.libraryAccess ||
         user.maintenanceAccess ||
         user.usersAccess,
@@ -338,7 +337,7 @@
         dashboard: "overviewAccess",
         attendance: "attendanceAccess",
         events: "specialEventsAccess",
-        history: "historicalDataAccess",
+        history: "specialEventsAccess",
         library: "libraryAccess",
         libraryEntrance: "libraryAccess",
         internetEntrance: "libraryAccess",
@@ -355,12 +354,9 @@
         permissions: "usersAccess",
         activity: "usersAccess",
       }[page];
-    const hasPageAccess =
-      page === "history"
-        ? user.historicalDataAccess || user.specialEventsAccess
-        : !pageAccess || user[pageAccess];
+    const hasPageAccess = !pageAccess || user[pageAccess];
     if (!hasPageAccess && user.role !== "Superadmin") {
-      const landing = user.overviewAccess ? "/app" : user.attendanceAccess ? "/attendance" : user.specialEventsAccess ? "/events" : user.historicalDataAccess ? "/history" : user.libraryAccess ? "/library/entrance" : user.maintenanceAccess ? (user.peopleAccess === "Employees" ? "/maintenance/employee" : "/maintenance/student") : user.usersAccess ? "/user/permissions" : null;
+      const landing = user.overviewAccess ? "/app" : user.attendanceAccess ? "/attendance" : user.specialEventsAccess ? "/events" : user.libraryAccess ? "/library/entrance" : user.maintenanceAccess ? (user.peopleAccess === "Employees" ? "/maintenance/employee" : "/maintenance/student") : user.usersAccess ? "/user/permissions" : null;
       if (!landing) {
         localStorage.removeItem(TOKEN_KEY);
         location.href = "/login?error=no_access";
@@ -433,6 +429,11 @@
     });
     $(`[data-nav="${page}"]`)?.classList.add("active");
     const sidebarGroups = [
+      {
+        group: $("#eventsGroup"),
+        toggle: $("#eventsToggle"),
+        pages: ["events", "history"],
+      },
       {
         group: $("#libraryGroup"),
         toggle: $("#libraryToggle"),

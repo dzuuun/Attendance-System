@@ -5,7 +5,6 @@ const payload = (body) => ({
   overviewAccess: Boolean(body.overviewAccess),
   attendanceAccess: Boolean(body.attendanceAccess),
   specialEventsAccess: Boolean(body.specialEventsAccess),
-  historicalDataAccess: Boolean(body.historicalDataAccess),
   libraryAccess: Boolean(body.libraryAccess),
   maintenanceAccess: Boolean(body.maintenanceAccess),
   usersAccess: Boolean(body.usersAccess),
@@ -42,7 +41,7 @@ exports.update = async (req, res) => {
     (data.name !== "Superadmin" ||
       !data.isActive ||
       !data.overviewAccess ||
-      !data.historicalDataAccess ||
+      !data.specialEventsAccess ||
       !data.libraryAccess ||
       data.peopleAccess !== "Both")
   )

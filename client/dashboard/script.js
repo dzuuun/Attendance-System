@@ -1,9 +1,6 @@
 const { $, api, escapeHtml, formatTime, personCell, emptyRow, init } = TapTrack;
 let people = [],
   attendance = [];
-const today = (date) =>
-  new Date(date).toLocaleDateString("en-CA") ===
-  new Date().toLocaleDateString("en-CA");
 function row(record) {
   const person = people.find(
     (item) => item.id === record.personId && item.type === record.type,
@@ -13,9 +10,7 @@ function row(record) {
 function render() {
   const recentTable = $("#recentBody").closest("table");
   TapTrack.destroyDataTable(recentTable);
-  const records = attendance.filter(
-      (record) => !record.eventId && today(record.timestamp),
-    ),
+  const records = attendance,
     latest = new Map();
   records.forEach((record) => {
     const key = `${record.type}-${record.personId}`;
@@ -54,7 +49,7 @@ function render() {
   await init("dashboard");
   [people, attendance] = await Promise.all([
     api("/api/people"),
-    api("/api/attendance"),
+    api("/api/attendance/today"),
   ]);
   render();
 })();

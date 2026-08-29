@@ -1376,7 +1376,7 @@ body.kiosk-body {
 }
 
 .footer-dot {
-  opacity: 0.5;
+  display: none;
 }
 
 .footer-right .keyboard-tip {
@@ -1596,6 +1596,13 @@ body.kiosk-body {
 
 .pair-btn:hover {
   background: var(--kiosk-green-dark);
+}
+
+.pair-btn:disabled,
+.pair-btn:disabled:hover {
+  background: var(--kiosk-muted);
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .modal-foot {

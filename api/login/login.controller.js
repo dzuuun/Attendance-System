@@ -33,7 +33,6 @@ const sessionFor = (user) => ({
   overviewAccess: Boolean(user.overviewAccess),
   attendanceAccess: Boolean(user.attendanceAccess),
   specialEventsAccess: Boolean(user.specialEventsAccess),
-  historicalDataAccess: Boolean(user.historicalDataAccess),
   libraryAccess: Boolean(user.libraryAccess),
   maintenanceAccess: Boolean(user.maintenanceAccess),
   usersAccess: Boolean(user.usersAccess),
@@ -79,7 +78,6 @@ exports.login = async (req, res) => {
     overviewAccess: Boolean(user.overviewAccess),
     attendanceAccess: Boolean(user.attendanceAccess),
     specialEventsAccess: Boolean(user.specialEventsAccess),
-    historicalDataAccess: Boolean(user.historicalDataAccess),
     libraryAccess: Boolean(user.libraryAccess),
     maintenanceAccess: Boolean(user.maintenanceAccess),
     usersAccess: Boolean(user.usersAccess),
@@ -227,19 +225,31 @@ exports.setupStatus = async (_req, res) =>
 exports.setup = async (req, res) => {
   if (await model.countUsers())
     return res.status(403).json({ message: "Initial setup is complete." });
-  const { fullName, username, password } = req.body;
-  if (!fullName?.trim() || !username?.trim() || String(password).length < 8)
+  const { firstName, middleName, lastName, username, password } = req.body;
+  if (
+    !firstName?.trim() ||
+    !lastName?.trim() ||
+    !username?.trim() ||
+    String(password).length < 8
+  )
     return res.status(400).json({
-      message: "Complete all fields; use at least 8 password characters.",
+      message:
+        "Complete the required fields; use at least 8 password characters.",
     });
   const result = await model.createSuperadmin({
-    fullName: fullName.trim(),
+    firstName: firstName.trim(),
+    middleName: String(middleName || "").trim() || null,
+    lastName: lastName.trim(),
     username: username.trim(),
     passwordHash: await bcrypt.hash(password, 12),
   });
+  const fullName = [firstName, middleName, lastName]
+    .map((name) => String(name || "").trim())
+    .filter(Boolean)
+    .join(" ");
   const session = {
     id: result.insertId,
-    fullName: fullName.trim(),
+    fullName,
     username: username.trim(),
     role: "Superadmin",
   };
