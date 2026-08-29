@@ -2123,6 +2123,15 @@ body:not(.sidebar-ready) .main {
   width: min(800px, calc(100vw - 32px)) !important;
   max-width: 800px !important;
 }
+.permission-dialog .form-grid {
+  padding-top: 0;
+}
+.permission-dialog #peopleAccess:invalid {
+  color: #94a19b;
+}
+.permission-dialog #peopleAccess option {
+  color: #183128;
+}
 .permission-module-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

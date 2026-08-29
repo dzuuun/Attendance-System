@@ -117,18 +117,25 @@ app.use(
 );
 app.use(
   "/api/person-logs",
-  requireAccess("maintenanceAccess"),
+  (req, res, next) => {
+    if (req.user?.role === "Superadmin" || req.user?.maintenanceAccess)
+      return next();
+    const type = req.path.split("/").filter(Boolean)[0];
+    return requirePeopleAccess(type === "employee" ? "Employees" : "Students")(
+      req,
+      res,
+      next,
+    );
+  },
   wrapRouter(personLogsRouter),
 );
 app.use(
   "/api/student",
-  requireAccess("maintenanceAccess"),
   requirePeopleAccess("Students"),
   wrapRouter(studentRouter),
 );
 app.use(
   "/api/employee",
-  requireAccess("maintenanceAccess"),
   requirePeopleAccess("Employees"),
   wrapRouter(employeeRouter),
 );
@@ -152,6 +159,17 @@ app.use(
   requireAccess("maintenanceAccess"),
   wrapRouter(departmentRouter),
 );
+app.get(
+  "/api/employee_department",
+  requirePeopleAccess("Employees"),
+  asyncHandler(async (_req, res) =>
+    res.json(
+      await require("./api/maintenance/academic/academic.model").getAll(
+        "employee_department",
+      ),
+    ),
+  ),
+);
 app.use(
   "/api/employee_department",
   requireAccess("maintenanceAccess"),
@@ -170,7 +188,7 @@ app.use(
 );
 app.get(
   "/api/program-options",
-  requireAccess("maintenanceAccess"),
+  requirePeopleAccess("Students"),
   asyncHandler(async (_req, res) =>
     res.json(
       await require("./api/maintenance/academic/academic.model").getAll(

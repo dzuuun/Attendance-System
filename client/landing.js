@@ -10,7 +10,7 @@
     if (user.attendanceAccess) return "/attendance";
     if (user.specialEventsAccess) return "/events";
     if (user.libraryAccess) return "/library/entrance";
-    if (user.maintenanceAccess)
+    if (user.maintenanceAccess || user.peopleAccess)
       return user.peopleAccess === "Employees"
         ? "/maintenance/employee"
         : "/maintenance/student";

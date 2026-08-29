@@ -341,8 +341,8 @@
         library: "libraryAccess",
         libraryEntrance: "libraryAccess",
         internetEntrance: "libraryAccess",
-        students: "maintenanceAccess",
-        employees: "maintenanceAccess",
+        students: null,
+        employees: null,
         school: "maintenanceAccess",
         college: "maintenanceAccess",
         department: "maintenanceAccess",
@@ -356,7 +356,7 @@
       }[page];
     const hasPageAccess = !pageAccess || user[pageAccess];
     if (!hasPageAccess && user.role !== "Superadmin") {
-      const landing = user.overviewAccess ? "/app" : user.attendanceAccess ? "/attendance" : user.specialEventsAccess ? "/events" : user.libraryAccess ? "/library/entrance" : user.maintenanceAccess ? (user.peopleAccess === "Employees" ? "/maintenance/employee" : "/maintenance/student") : user.usersAccess ? "/user/permissions" : null;
+      const landing = user.overviewAccess ? "/app" : user.attendanceAccess ? "/attendance" : user.specialEventsAccess ? "/events" : user.libraryAccess ? "/library/entrance" : user.maintenanceAccess || user.peopleAccess ? (user.peopleAccess === "Employees" ? "/maintenance/employee" : "/maintenance/student") : user.usersAccess ? "/user/permissions" : null;
       if (!landing) {
         localStorage.removeItem(TOKEN_KEY);
         location.href = "/login?error=no_access";
@@ -443,6 +443,8 @@
         group: $("#maintenanceGroup"),
         toggle: $("#maintenanceToggle"),
         pages: [
+          "students",
+          "employees",
           "school",
           "college",
           "department",
