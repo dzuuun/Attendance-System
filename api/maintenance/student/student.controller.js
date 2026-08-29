@@ -1,4 +1,5 @@
 const model = require("./student.model");
+const nfcWriter = require("../../../scanner/nfc-writer");
 const YEAR_LEVELS = new Set([
   ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`),
   "1st Year",
@@ -68,6 +69,36 @@ function valid(data) {
   );
 }
 exports.getAll = async (_req, res) => res.json(await model.getAll());
+exports.cardWriterStatus = (_req, res) => res.json(nfcWriter.status());
+exports.readCard = async (req, res) => {
+  const result = await nfcWriter.readCard();
+  req.activityAction = "CARD_READ";
+  req.activityDescription = "Read an NFC card before student card enrollment.";
+  res.json(result);
+};
+exports.enrollCard = async (req, res) => {
+  const student = await model.getById(req.params.id);
+  if (!student)
+    return res.status(404).json({ message: "Student not found." });
+  if (!student.isActive)
+    return res
+      .status(400)
+      .json({ message: "Activate the student before enrolling a card." });
+  if (!/^(?:\d{7,8}|\d{12})$/.test(student.idNumber))
+    return res.status(400).json({
+      message:
+        "The student identifier must use YYYYXXX, YYYYXXXX, or the 12-digit LRN format before it can be written to a card.",
+    });
+  await nfcWriter.writeAndVerify(student.idNumber);
+  req.activityAction = "CARD_ENROLLED";
+  req.activityDescription = `Wrote and verified student ID ${student.idNumber} on an NFC card for ${student.name}.`;
+  res.json({
+    success: true,
+    studentId: student.id,
+    idNumber: student.idNumber,
+    verified: true,
+  });
+};
 exports.create = async (req, res) => {
   const data = payload(req.body);
   if (!valid(data))

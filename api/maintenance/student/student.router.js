@@ -3,6 +3,9 @@ const router = require("express").Router(),
   model = require("./student.model"),
   photos = require("../profile-photo").handlers("student", model);
 router.get("/", controller.getAll);
+router.get("/card-writer/status", controller.cardWriterStatus);
+router.post("/card-writer/read", controller.readCard);
+router.post("/:id/card-enrollment", controller.enrollCard);
 router.post("/", controller.create);
 router.post("/import-summary", controller.importSummary);
 router.post("/photos/bulk", photos.bulkUpload, photos.bulk);

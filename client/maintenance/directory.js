@@ -45,7 +45,7 @@ function render() {
         orderable: false,
         searchable: false,
         render: (_value, mode, person) => mode === "display"
-          ? `<div class="event-actions"><button class="secondary-button edit edit-icon" data-id="${person.id}" aria-label="Edit ${escapeHtml(person.name)}" title="Edit"></button><button class="secondary-button person-log-export" data-person-id="${person.id}" data-person-type="employee" data-person-name="${escapeHtml(person.name)}" data-id-number="${escapeHtml(person.idNumber)}">Export</button></div>`
+          ? `<div class="event-actions"><button class="secondary-button edit edit-icon" data-id="${person.id}" aria-label="Edit ${escapeHtml(person.name)}" title="Edit"></button><button class="secondary-button card-enroll" data-id="${person.id}" ${person.isActive ? "" : "disabled"}>Enroll card</button><button class="secondary-button person-log-export" data-person-id="${person.id}" data-person-type="employee" data-person-name="${escapeHtml(person.name)}" data-id-number="${escapeHtml(person.idNumber)}">Export</button></div>`
           : "",
       },
     ],
@@ -74,6 +74,80 @@ function open(person = null) {
   $("#dialog").showModal();
 }
 
+let cardEnrollmentPerson = null;
+let enrollmentCardRead = false;
+async function openCardEnrollment(person) {
+  cardEnrollmentPerson = person;
+  enrollmentCardRead = false;
+  $("#cardEnrollmentName").textContent = personName(person);
+  $("#cardEnrollmentId").textContent = `ID number: ${person.idNumber}`;
+  $("#cardEnrollmentError").textContent = "";
+  $("#cardEnrollmentStatus").textContent = "Checking the local NFC writer…";
+  $("#cardCurrentValue").textContent = "Current card text: Not read";
+  $("#readCardBtn").disabled = true;
+  $("#writeCardBtn").disabled = true;
+  $("#cardEnrollmentDialog").showModal();
+  try {
+    const status = await api("/api/employee/card-writer/status");
+    $("#cardEnrollmentStatus").textContent = status.message;
+    $("#readCardBtn").disabled = !status.available || status.busy;
+  } catch (error) {
+    $("#cardEnrollmentStatus").textContent = "NFC writer unavailable.";
+    $("#cardEnrollmentError").textContent = error.message;
+  }
+}
+
+$("#readCardBtn").addEventListener("click", async () => {
+  const button = $("#readCardBtn");
+  button.disabled = true;
+  button.textContent = "Reading…";
+  $("#writeCardBtn").disabled = true;
+  $("#cardEnrollmentError").textContent = "";
+  try {
+    const result = await api("/api/employee/card-writer/read", {
+      method: "POST",
+    });
+    enrollmentCardRead = true;
+    $("#cardCurrentValue").textContent = `Current card text: ${result.value || "Blank card"}`;
+    $("#cardEnrollmentStatus").textContent =
+      "Card read successfully. Keep the same card in place to write.";
+    $("#writeCardBtn").disabled = false;
+  } catch (error) {
+    enrollmentCardRead = false;
+    $("#cardEnrollmentError").textContent = error.message;
+  } finally {
+    button.textContent = "Read card";
+    button.disabled = false;
+  }
+});
+
+$("#cardEnrollmentForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!cardEnrollmentPerson) return;
+  const button = $("#writeCardBtn");
+  button.disabled = true;
+  button.textContent = "Writing… keep card in place";
+  $("#cardEnrollmentError").textContent = "";
+  try {
+    await api(`/api/employee/${cardEnrollmentPerson.id}/card-enrollment`, {
+      method: "POST",
+    });
+    $("#cardEnrollmentDialog").close();
+    TapTrack.toast(
+      `Card enrolled and verified for ${cardEnrollmentPerson.idNumber}.`,
+      "success",
+    );
+  } catch (error) {
+    enrollmentCardRead = false;
+    $("#cardEnrollmentError").textContent = error.message;
+    $("#cardEnrollmentStatus").textContent =
+      "Read the card again before another write attempt.";
+  } finally {
+    button.textContent = "Write and verify card";
+    button.disabled = !enrollmentCardRead;
+  }
+});
+
 $("#search").addEventListener("input", render);
 $("#showInactive").addEventListener("change", render);
 $("#addBtn").addEventListener("click", () => open());
@@ -91,9 +165,11 @@ document.addEventListener("click", (event) => {
     event.target.closest("dialog").close();
     return;
   }
-  if (!event.target.classList.contains("edit")) return;
   const person = people.find((item) => String(item.id) === event.target.dataset.id);
-  if (person) open(person);
+  if (!person) return;
+  if (event.target.classList.contains("edit")) open(person);
+  if (event.target.classList.contains("card-enroll"))
+    openCardEnrollment(person);
 });
 
 $("#form").addEventListener("submit", async (event) => {

@@ -92,6 +92,27 @@
         </div>
       </form>
     </dialog>
+    <dialog id="cardEnrollmentDialog" class="satp-modal card-enrollment-modal" aria-labelledby="cardEnrollmentTitle">
+      <form id="cardEnrollmentForm">
+        <div class="modal-head">
+          <div><span class="section-kicker">NFC CARD</span><h2 id="cardEnrollmentTitle">Enroll employee card</h2></div>
+          <button class="close-button" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="satp-modal-body card-enrollment-body">
+          <span class="card-enrollment-icon material-symbols-rounded" aria-hidden="true">contactless</span>
+          <div><strong id="cardEnrollmentName"></strong><p id="cardEnrollmentId"></p></div>
+          <p id="cardEnrollmentStatus" class="card-enrollment-status" role="status">Checking the local NFC writer…</p>
+          <p id="cardCurrentValue" class="card-current-value">Current card text: Not read</p>
+          <p class="card-enrollment-note">Place one authorized writable card on the writer. TapTrack writes only the employee ID in PYYYYXXX or PYYYYXXXX format, then reads it back for verification.</p>
+        </div>
+        <p id="cardEnrollmentError" class="form-error"></p>
+        <div class="modal-actions">
+          <button type="button" value="cancel" class="secondary-button">Cancel</button>
+          <button type="button" id="readCardBtn" class="secondary-button" disabled>Read card</button>
+          <button type="submit" id="writeCardBtn" class="primary-button" disabled>Write and verify card</button>
+        </div>
+      </form>
+    </dialog>
     <script src="/client/shared-ui.js"></script>
     <script src="/client/maintenance/directory.js"></script>
     <script src="/client/maintenance/import.js"></script>

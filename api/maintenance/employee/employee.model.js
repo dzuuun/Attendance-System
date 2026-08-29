@@ -49,7 +49,7 @@ exports.getById = async (id) => {
   await ensureSchema();
   return (
     await pool.query(
-      "SELECT id,id_number idNumber,TRIM(CONCAT_WS(' ',first_name,NULLIF(middle_name,''),last_name)) name,photo_url photoUrl FROM employees WHERE id=? LIMIT 1",
+      "SELECT id,id_number idNumber,TRIM(CONCAT_WS(' ',first_name,NULLIF(middle_name,''),last_name)) name,photo_url photoUrl,is_active isActive FROM employees WHERE id=? LIMIT 1",
       [id],
     )
   )[0][0];

@@ -17,6 +17,27 @@ npm run dev
 
 For phpMyAdmin or a hosting control panel, select an empty database and import `database.sql`. Open `http://localhost:4000/setup` after import to create the first administrator. Configure each reader to send Enter after the scanned value. Student and employee directories, university entrance logs, event attendance, library entrance logs, and Internet Section logs are stored separately.
 
+## NFC card enrollment
+
+The Students and Employees pages can send only a person's identifier to a locally installed NFC writer and require the writer to read the value back before enrollment succeeds. College IDs use a four-digit year followed by three or four digits, such as `2026123` or `20261234`. Elementary, junior high, and senior high students use their 12-digit LRN. Employee IDs use a `P` prefix followed by the same year-and-sequence format, such as `P2026123` or `P20261234`. No name or other personal information is written. This is designed for PC/SC devices such as the ACR122U on Windows or Raspberry Pi, but the writer command must match the exact card technology used by the school.
+
+Configure the adapter in `.env`:
+
+```bash
+NFC_WRITER_COMMAND=/path/to/the/writer-program
+NFC_WRITER_ARGS=[]
+```
+
+TapTrack starts the configured command without a shell. Before writing, it calls the command with `--read`; the helper must read the card and return a final JSON line such as `{"read":true,"value":""}` for a blank card or `{"read":true,"value":"20261234"}` for an existing value. The interface enables writing only after this read succeeds.
+
+For writing, TapTrack calls the command with `--write` and sends only the exact identifier as a plain-text line to its standard input:
+
+```text
+20261234
+```
+
+The writer must store only that text value on the card—without a name, JSON wrapper, prefix added by TapTrack, or other metadata—then read it back and return a final JSON line such as `{"verified":true,"value":"20261234"}`. TapTrack accepts success only when the read-back value exactly matches the database identifier. The writer must exit with a nonzero status when writing or verification fails. Do not configure a card block, sector, or authentication key until the card model and its existing memory layout have been confirmed.
+
 ## Two-scanner kiosk
 
 The public kiosk supports two ordinary keyboard-wedge scanners without requiring prefixes. A local reader identifies which physical scanner supplied each ID:

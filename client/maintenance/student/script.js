@@ -160,7 +160,7 @@ function render() {
         searchable: false,
         render: (_value, type, student) =>
           type === "display"
-            ? `<div class="event-actions"><button class="secondary-button edit" data-id="${student.id}" title="Edit" aria-label="Edit student"></button><button class="secondary-button person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button></div>`
+            ? `<div class="event-actions"><button class="secondary-button edit" data-id="${student.id}" title="Edit" aria-label="Edit student"></button><button class="secondary-button card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button><button class="secondary-button person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button></div>`
             : "",
       },
     ],
@@ -224,6 +224,77 @@ function open(student = null) {
   $("#error").textContent = "";
   $("#dialog").showModal();
 }
+let cardEnrollmentStudent = null;
+let enrollmentCardRead = false;
+async function openCardEnrollment(student) {
+  cardEnrollmentStudent = student;
+  enrollmentCardRead = false;
+  $("#cardEnrollmentName").textContent = TapTrack.personName(student);
+  $("#cardEnrollmentId").textContent = `ID number: ${student.idNumber}`;
+  $("#cardEnrollmentError").textContent = "";
+  $("#cardEnrollmentStatus").textContent = "Checking the local NFC writer…";
+  $("#cardCurrentValue").textContent = "Current card text: Not read";
+  $("#readCardBtn").disabled = true;
+  $("#writeCardBtn").disabled = true;
+  $("#cardEnrollmentDialog").showModal();
+  try {
+    const status = await api("/api/student/card-writer/status");
+    $("#cardEnrollmentStatus").textContent = status.message;
+    $("#readCardBtn").disabled = !status.available || status.busy;
+  } catch (error) {
+    $("#cardEnrollmentStatus").textContent = "NFC writer unavailable.";
+    $("#cardEnrollmentError").textContent = error.message;
+  }
+}
+$("#readCardBtn").addEventListener("click", async () => {
+  const button = $("#readCardBtn");
+  button.disabled = true;
+  button.textContent = "Reading…";
+  $("#writeCardBtn").disabled = true;
+  $("#cardEnrollmentError").textContent = "";
+  try {
+    const result = await api("/api/student/card-writer/read", {
+      method: "POST",
+    });
+    enrollmentCardRead = true;
+    $("#cardCurrentValue").textContent = `Current card text: ${result.value || "Blank card"}`;
+    $("#cardEnrollmentStatus").textContent =
+      "Card read successfully. Keep the same card in place to write.";
+    $("#writeCardBtn").disabled = false;
+  } catch (error) {
+    enrollmentCardRead = false;
+    $("#cardEnrollmentError").textContent = error.message;
+  } finally {
+    button.textContent = "Read card";
+    button.disabled = false;
+  }
+});
+$("#cardEnrollmentForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!cardEnrollmentStudent) return;
+  const button = $("#writeCardBtn");
+  button.disabled = true;
+  button.textContent = "Writing… keep card in place";
+  $("#cardEnrollmentError").textContent = "";
+  try {
+    await api(`/api/student/${cardEnrollmentStudent.id}/card-enrollment`, {
+      method: "POST",
+    });
+    $("#cardEnrollmentDialog").close();
+    TapTrack.toast(
+      `Card enrolled and verified for ${cardEnrollmentStudent.idNumber}.`,
+      "success",
+    );
+  } catch (error) {
+    enrollmentCardRead = false;
+    $("#cardEnrollmentError").textContent = error.message;
+    $("#cardEnrollmentStatus").textContent =
+      "Read the card again before another write attempt.";
+  } finally {
+    button.textContent = "Write and verify card";
+    button.disabled = !enrollmentCardRead;
+  }
+});
 $("#search").addEventListener("input", render);
 $("#showInactive").addEventListener("change", render);
 $("#exportStudentsBtn").addEventListener("click", async () => {
@@ -277,6 +348,8 @@ document.addEventListener("click", async (event) => {
   );
   if (!student) return;
   if (event.target.classList.contains("edit")) open(student);
+  if (event.target.classList.contains("card-enroll"))
+    openCardEnrollment(student);
   if (event.target.classList.contains("status")) {
     await api(`/api/student/${student.id}/status`, {
       method: "PATCH",

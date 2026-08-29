@@ -1606,6 +1606,36 @@ div.dt-container .dt-paging .ellipsis {
   border-radius: 0 0 12px 12px;
 }
 
+body[data-type="Student"] .table-wrap table th:last-child,
+body[data-type="Student"] .table-wrap table td:last-child,
+body[data-type="Employee"] .table-wrap table th:last-child,
+body[data-type="Employee"] .table-wrap table td:last-child {
+  position: sticky;
+  right: 0;
+  width: 1%;
+  min-width: max-content;
+  white-space: nowrap;
+  background: #fff;
+}
+
+body[data-type="Student"] .table-wrap table th:last-child,
+body[data-type="Employee"] .table-wrap table th:last-child {
+  z-index: 3;
+  text-align: right;
+  box-shadow: -10px 0 16px -16px rgba(24, 49, 40, 0.45);
+}
+
+body[data-type="Student"] .table-wrap table td:last-child,
+body[data-type="Employee"] .table-wrap table td:last-child {
+  z-index: 2;
+  box-shadow: -10px 0 16px -16px rgba(24, 49, 40, 0.35);
+}
+
+body[data-type="Student"] .table-wrap table td:last-child .event-actions,
+body[data-type="Employee"] .table-wrap table td:last-child .event-actions {
+  justify-content: flex-end;
+}
+
 .account-password-layout {
   display: grid;
   grid-template-columns: minmax(0, 2.1fr) minmax(300px, 1fr);
@@ -2131,6 +2161,57 @@ body:not(.sidebar-ready) .main {
 }
 .permission-dialog #peopleAccess option {
   color: #183128;
+}
+.card-enrollment-modal {
+  width: min(560px, calc(100vw - 32px)) !important;
+}
+.card-enrollment-body {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 30px 28px 18px;
+  text-align: center;
+}
+.card-enrollment-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 18px;
+  background: #e8f4ee;
+  color: #087247;
+  font-size: 34px !important;
+}
+.card-enrollment-body strong {
+  color: #183128;
+  font-size: 16px;
+}
+.card-enrollment-body p {
+  margin: 4px 0 0;
+  color: #65736c;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.card-enrollment-status {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 9px;
+  background: #f1f6f3;
+  color: #315b49 !important;
+  font-weight: 750;
+}
+.card-enrollment-note {
+  max-width: 430px;
+}
+.card-current-value {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #d8e3dd;
+  border-radius: 9px;
+  background: #fff;
+  color: #183128 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
 }
 .permission-module-grid {
   display: grid;
