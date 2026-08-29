@@ -14,7 +14,7 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">MAINTENANCE</p>
+            <p class="eyebrow">Maintenance</p>
             <h1>Employees</h1>
           </div>
           <div class="live-time">
@@ -22,23 +22,26 @@
           </div>
         </header>
         <div class="section-header">
-          <p>Manage employee NFC and barcode IDs.</p>
-          <button class="primary-button" id="addBtn">+ Add employee</button>
+          <p>Manage employee information.</p>
+          <div class="event-actions">
+            <label class="directory-toggle" for="showInactive"><span>Show inactive</span><input id="showInactive" type="checkbox" /></label>
+            <button class="secondary-button" id="bulkPhotoBtn" type="button">Upload photos</button>
+            <button class="primary-button" id="addBtn">+ Add employee</button>
+          </div>
         </div>
         <article class="table-card">
           <div class="filter-row">
             <div class="search-box">
-              ⌕ <input id="search" placeholder="Search employees" />
+              <span class="material-symbols-rounded" aria-hidden="true">search</span><input id="search" placeholder="Search employees" />
             </div>
-            <span id="count"></span>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>EMPLOYEE</th>
                   <th>ID NUMBER</th>
-                  <th>DEPARTMENT / ROLE</th>
+                  <th>EMPLOYEE</th>
+                  <th>DEPARTMENT</th>
                   <th>CONTACT</th>
                   <th>STATUS</th>
                   <th>ACTIONS</th>
@@ -50,6 +53,13 @@
         </article>
       </main>
     </div>
+    <dialog id="employeeLoadingDialog" class="satp-modal student-loading-modal" aria-labelledby="employeeLoadingTitle" aria-describedby="employeeLoadingMessage">
+      <div class="student-loading-body">
+        <span class="student-loading-spinner" aria-hidden="true"></span>
+        <strong id="employeeLoadingTitle">Preparing employees</strong>
+        <p id="employeeLoadingMessage">Starting the employee directory.</p>
+      </div>
+    </dialog>
     <dialog id="dialog">
       <form id="form">
         <div class="modal-head">
@@ -61,8 +71,12 @@
           ><label>Middle name<input id="middleName" /></label
           ><label>Last name<input id="lastName" required /></label
           ><label>ID number<input id="idNumber" required /></label
-          ><label>Department / Role<input id="group" required /></label
+          ><label>Department<select id="department" required><option value="">Select department</option></select></label
           ><label class="full">Contact<input id="contact" /></label>
+          <div class="full record-photo-field">
+            <span><strong>Employee photo (optional)</strong><small id="photoHelp">Choose a profile photo to upload when this employee is saved.</small></span>
+            <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" />
+          </div>
         </div>
         <p id="error" class="form-error"></p>
         <div class="modal-actions">
@@ -75,5 +89,6 @@
     <script src="/client/maintenance/directory.js"></script>
     <script src="/client/maintenance/import.js"></script>
     <script src="/client/person-log-export.js"></script>
+    <script src="/client/profile-photo-upload.js"></script>
   </body>
 </html>

@@ -5,6 +5,7 @@ const {
   checkSession,
   requireAdmin,
   requireAccess,
+  requireAnyAccess,
   requirePeopleAccess,
 } = require("./auth/auth_validation");
 const {
@@ -17,6 +18,7 @@ const app = express(),
   port = Number(process.env.PORT) || 3000,
   client = path.join(__dirname, "client");
 const scannerBridge = require("./scanner/scanner-bridge");
+app.use(morgan("combined"));
 app.use(express.json({ limit: "1mb" }));
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -36,6 +38,7 @@ const eventRouter = require("./api/events/event.router");
 const schoolRouter = require("./api/maintenance/school/school.router");
 const collegeRouter = require("./api/maintenance/college/college.router");
 const departmentRouter = require("./api/maintenance/department/department.router");
+const employeeDepartmentRouter = require("./api/maintenance/employee_department/employee_department.router");
 const programRouter = require("./api/maintenance/program/program.router");
 const activityLogRouter = require("./api/user/activity_log/activity_log.router");
 const academicPeriodRouter = require("./api/maintenance/academic_period/academic_period.router");
@@ -57,12 +60,9 @@ app.post(
   asyncHandler(require("./api/library/library.controller").scan),
 );
 app.post("/api/kiosk/scanners/pair", (req, res) => {
-  try {
-    scannerBridge.pair(req.body.action);
-    res.json(scannerBridge.status());
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
+  res.status(410).json({
+    message: "Scanner assignments are configured locally on each kiosk terminal.",
+  });
 });
 app.get("/api/kiosk/scanners/events", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
@@ -108,7 +108,7 @@ app.use(
 );
 app.use(
   "/api/history",
-  requireAccess("historicalDataAccess"),
+  requireAnyAccess("historicalDataAccess", "specialEventsAccess"),
   wrapRouter(historyRouter),
 );
 app.use(
@@ -152,6 +152,12 @@ app.use(
   "/api/department",
   requireAccess("maintenanceAccess"),
   wrapRouter(departmentRouter),
+);
+app.use(
+  "/api/employee_department",
+  requireAccess("maintenanceAccess"),
+  requirePeopleAccess("Employees"),
+  wrapRouter(employeeDepartmentRouter),
 );
 app.use(
   "/api/program",
@@ -272,6 +278,13 @@ app.use(
   express.static(client),
 );
 app.use(
+  "/uploads/profile-photos",
+  express.static(path.join(__dirname, "uploads", "profile-photos"), {
+    fallthrough: false,
+    maxAge: "1h",
+  }),
+);
+app.use(
   "/vendor/datatables",
   express.static(path.join(__dirname, "node_modules", "datatables.net")),
   express.static(path.join(__dirname, "node_modules", "datatables.net-dt")),
@@ -286,6 +299,10 @@ app.use(
     path.join(__dirname, "node_modules", "@zxing", "browser", "umd"),
   ),
 );
+app.use(
+  "/vendor/material-symbols",
+  express.static(path.join(__dirname, "node_modules", "material-symbols")),
+);
 app.get("/", (_req, res) => res.sendFile(path.join(client, "index.html")));
 app.get("/login", (_req, res) =>
   res.sendFile(path.join(client, "login", "index.html")),
@@ -293,7 +310,8 @@ app.get("/login", (_req, res) =>
 app.get("/setup", (_req, res) =>
   res.sendFile(path.join(client, "login", "setup.html")),
 );
-app.get("/kiosk", (_req, res) =>
+app.get("/kiosk", (_req, res) => res.redirect(302, "/kiosk/entrance"));
+app.get("/kiosk/entrance", (_req, res) =>
   res.sendFile(path.join(client, "kiosk", "index.html")),
 );
 app.get("/kiosk/library", (_req, res) =>
@@ -309,6 +327,10 @@ const protectedPage = (file) => (_req, res) =>
   res.sendFile(path.join(client, file));
 const adminPage = protectedPage;
 app.get("/app", protectedPage("dashboard/index.html"));
+app.get(
+  "/account/change-password",
+  protectedPage("account/change-password/index.html"),
+);
 app.get("/attendance", protectedPage("attendance/index.html"));
 app.get(
   "/maintenance/student",
@@ -331,6 +353,10 @@ app.get(
   "/maintenance/department",
   adminPage("maintenance/department/index.html"),
 );
+app.get(
+  "/maintenance/employee-department",
+  adminPage("maintenance/employee_department/index.html"),
+);
 app.get("/maintenance/program", adminPage("maintenance/program/index.html"));
 app.get(
   "/maintenance/academic-periods",
@@ -346,8 +372,9 @@ app.get("/auth.js", (_req, res) =>
   res.sendFile(path.join(client, "login", "script.js")),
 );
 app.use(apiErrorHandler);
-require("./db/indexes")
-  .ensureIndexes()
+require("./api/maintenance/employee/employee.model")
+  .ensureSchema()
+  .then(() => require("./db/indexes").ensureIndexes())
   .catch((error) =>
     console.error("Database index setup failed:", error.message),
   )
@@ -356,8 +383,6 @@ require("./db/indexes")
       console.log(`TapTrack running at http://localhost:${port}`),
     ),
   );
-app.use(morgan("combined"));
-
 function wrapRouter(router) {
   router.stack.forEach((layer) => {
     if (layer.route)

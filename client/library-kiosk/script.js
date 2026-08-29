@@ -1,94 +1,200 @@
-const input = document.querySelector("#kioskInput"),
-  form = document.querySelector("#kioskForm"),
-  result = document.querySelector("#kioskResult");
-const locationKey = location.pathname.includes("internet-section")
-    ? "internet"
-    : "library",
-  locationName = locationKey === "library" ? "Library" : "Internet Section";
-document.title = `${locationName} Kiosk — TapTrack`;
-document.querySelector("#terminalName").textContent =
-  locationName.toUpperCase();
-document.querySelector("#locationKicker").textContent =
-  `${locationName.toUpperCase()} ENTRANCE`;
+const $ = (selector) => document.querySelector(selector);
+const input = $("#kioskInput");
+const form = $("#kioskForm");
+const resultCard = $("#kioskResult");
+const fallbackPhotoUrl = "/client/images/NDMU-Logo.png";
+const locationKey = location.pathname.includes("internet-section") ? "internet" : "library";
+const locationName = locationKey === "library" ? "Library" : "Internet Section";
+let resetTimer = null;
+let scanQueue = Promise.resolve();
+let pendingScans = 0;
+let sessionTotal = 0;
+let studentTotal = 0;
+let employeeTotal = 0;
+let recentScans = [];
+let soundEnabled = localStorage.getItem("taptrack_library_kiosk_sound") !== "false";
+let audioContext = null;
+
+document.title = `${locationName} Entrance Terminal — TapTrack`;
+$("#brandContext").textContent = `TapTrack Attendance System · ${locationName} Entrance`;
+$("#terminalStatusText").textContent = `${locationName.toUpperCase()} TERMINAL ONLINE`;
+$("#locationBadge").textContent = `${locationName.toUpperCase()} ACCESS`;
+$("#locationLane").textContent = `${locationName.toUpperCase()} ENTRANCE`;
+$("#recentTitle").textContent = `Recent ${locationName} Scans`;
+
 const escapeHtml = (value) => {
   const node = document.createElement("div");
   node.textContent = value || "";
   return node.innerHTML;
 };
-const time = (value) =>
+const formatTime = (value) =>
   new Date(value).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
   });
-function clock() {
+
+function tone(success) {
+  if (!soundEnabled || !(window.AudioContext || window.webkitAudioContext)) return;
+  try {
+    audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+    void audioContext.resume();
+    (success ? [620, 840] : [240, 170]).forEach((frequency, index) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const start = audioContext.currentTime + index * 0.11;
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.16, start);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.19);
+    });
+  } catch (_error) {}
+}
+
+function updateClock() {
   const now = new Date();
-  document.querySelector("#clock").textContent = now.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  document.querySelector("#date").textContent = now.toLocaleDateString([], {
+  const hours = now.getHours();
+  $("#clock").textContent = `${String(hours % 12 || 12).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+  $("#clockPeriod").textContent = hours >= 12 ? "PM" : "AM";
+  $("#date").textContent = now.toLocaleDateString([], {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
   });
+  $("#currentYear").textContent = now.getFullYear();
 }
-function details(data) {
+
+function idle() {
+  resultCard.className = "result-hero-card idle";
+  resultCard.classList.remove("has-person-photo");
+  $("#resultPersonPhotoWrap").hidden = true;
+  $("#resultKicker").textContent = "SYSTEM READY";
+  $("#resultTitle").textContent = "Ready to Scan";
+  $("#resultDetail").textContent = "The terminal is ready to record Time In.";
+  $("#attendeeDetails").innerHTML = "";
+  $("#previousLogNotice").style.display = "none";
+  $("#resetProgressTrack").hidden = true;
+}
+
+function personDetails(data) {
   return data.type === "Student"
-    ? `<div class="identity-grid"><div><span>ATTENDEE</span><b>Student</b></div><div><span>PROGRAM</span><b>${escapeHtml(data.program || "Not specified")}</b></div><div><span>YEAR LEVEL</span><b>${escapeHtml(data.yearLevel || "Not specified")}</b></div></div>`
-    : `<div class="identity-grid employee-details"><div><span>ATTENDEE</span><b>Employee</b></div><div><span>DEPARTMENT</span><b>${escapeHtml(data.department || "Not specified")}</b></div></div>`;
+    ? `<div class="identity-grid"><div><span>ATTENDEE TYPE</span><b>Student</b></div><div><span>PROGRAM / STRAND</span><b>${escapeHtml(data.program || "Not specified")}</b></div><div><span>YEAR LEVEL</span><b>${escapeHtml(data.yearLevel || "Not specified")}</b></div></div>`
+    : `<div class="identity-grid employee-details"><div><span>ATTENDEE TYPE</span><b>Employee</b></div><div><span>DEPARTMENT / OFFICE</span><b>${escapeHtml(data.department || "Not specified")}</b></div></div>`;
 }
-function show(type, title, detail, data = null) {
-  result.className = `result ${type}`;
-  result.innerHTML = `<span class="result-icon">${type === "error" ? "!" : "✓"}</span><div class="result-content"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small>${data ? details(data) : ""}</div>`;
+
+function showResult(success, title, detail, data = null) {
+  clearTimeout(resetTimer);
+  resultCard.className = `result-hero-card ${success ? "success-in" : "error"}`;
+  $("#resultKicker").textContent = success ? "TIME IN RECORDED" : "ATTENTION REQUIRED";
+  $("#resultTitle").textContent = title;
+  $("#resultDetail").textContent = detail;
+  $("#attendeeDetails").innerHTML = data ? personDetails(data) : "";
+  const previousLogNotice = $("#previousLogNotice");
+  if (data?.previousTimestamp) {
+    previousLogNotice.style.display = "flex";
+    previousLogNotice.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">history</span><span>Last ${escapeHtml(locationName)} entrance: ${escapeHtml(formatTime(data.previousTimestamp))}</span>`;
+  } else {
+    previousLogNotice.style.display = "none";
+  }
+  if (data) {
+    const photo = $("#resultPersonPhoto");
+    photo.onerror = () => {
+      photo.onerror = null;
+      photo.src = fallbackPhotoUrl;
+    };
+    photo.src = data.photoUrl || fallbackPhotoUrl;
+    photo.alt = `${data.name} photo`;
+    $("#resultPersonPhotoWrap").hidden = false;
+    resultCard.classList.add("has-person-photo");
+  } else {
+    $("#resultPersonPhotoWrap").hidden = true;
+    resultCard.classList.remove("has-person-photo");
+  }
+  const duration = success ? 30000 : 5000;
+  const track = $("#resetProgressTrack");
+  const bar = $("#resetProgressBar");
+  track.hidden = false;
+  bar.style.animation = "none";
+  void bar.offsetWidth;
+  bar.style.animation = `countdown-bar ${duration / 1000}s linear forwards`;
+  resetTimer = setTimeout(idle, duration);
 }
-async function scan(raw) {
-  const idNumber = String(raw || "")
-    .trim()
-    .toUpperCase();
-  if (!idNumber) return;
-  show("", "Processing scan...", "Recording Time In.");
-  try {
-    const response = await fetch(`/api/library-kiosk/${locationKey}/scan`, {
+
+function addRecent(data) {
+  sessionTotal += 1;
+  if (data.type === "Student") studentTotal += 1;
+  else employeeTotal += 1;
+  $("#statTotal").textContent = sessionTotal;
+  $("#statStudents").textContent = studentTotal;
+  $("#statEmployees").textContent = employeeTotal;
+  recentScans.unshift(data);
+  recentScans = recentScans.slice(0, 10);
+  $("#feedCountBadge").textContent = `${recentScans.length} RECENT`;
+  $("#recentScansList").innerHTML = recentScans
+    .map((item) => {
+      const initials = item.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+      return `<div class="feed-item"><div class="feed-item-person"><div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name)} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div><div class="feed-item-info"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type)}</small></div></div><div class="feed-item-meta"><span class="feed-badge in">TIME IN</span><span class="feed-time">${formatTime(item.timestamp)}</span></div></div>`;
+    })
+    .join("");
+}
+
+function scan(raw) {
+  const idNumber = String(raw || "").trim().toUpperCase();
+  if (!idNumber)
+    return Promise.resolve({ success: false, title: "Scan not recorded", detail: "Enter an ID number." });
+  pendingScans += 1;
+  $("#submitScanBtn").disabled = true;
+  const request = scanQueue.then(async () => {
+    try {
+      const response = await fetch(`/api/library-kiosk/${locationKey}/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idNumber }),
-      }),
-      data = await response.json();
-    if (!response.ok)
-      throw new Error(data.message || "Unable to record entrance.");
-    show(
-      "success",
-      `${data.name} · Time In`,
-      `Recorded at ${time(data.timestamp)}.`,
-      data,
-    );
-    return {
-      success: true,
-      title: `${data.name} · Time In`,
-      detail: `Recorded at ${time(data.timestamp)}.`,
-    };
-  } catch (error) {
-    show("error", "Scan not recorded", error.message);
-    return {
-      success: false,
-      title: "Scan not recorded",
-      detail: error.message,
-    };
-  } finally {
-    input.value = "";
-    input.focus();
-  }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || "Unable to record entrance.");
+      tone(true);
+      showResult(true, data.name, `Time In recorded at ${formatTime(data.timestamp)}.`, data);
+      addRecent(data);
+      return { success: true, title: `${data.name} · Time In`, detail: `Recorded at ${formatTime(data.timestamp)}.` };
+    } catch (error) {
+      tone(false);
+      showResult(false, "Scan Not Recorded", error.message);
+      return { success: false, title: "Scan Not Recorded", detail: error.message };
+    } finally {
+      input.value = "";
+      input.focus();
+    }
+  });
+  scanQueue = request.catch(() => {});
+  return request.finally(() => {
+    pendingScans -= 1;
+    $("#submitScanBtn").disabled = pendingScans > 0;
+  });
 }
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   scan(input.value);
 });
-document
-  .querySelector("#kioskCameraScan")
-  .addEventListener("click", () => TapTrackCameraScanner.open(scan));
-let buffer = "",
-  timer;
+$("#kioskCameraScan").addEventListener("click", () => window.TapTrackCameraScanner?.open(scan));
+$("#soundToggleBtn").addEventListener("click", () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem("taptrack_library_kiosk_sound", String(soundEnabled));
+  $("#soundIcon").textContent = soundEnabled ? "volume_up" : "volume_off";
+  if (soundEnabled) tone(true);
+});
+$("#fullscreenBtn").addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else document.documentElement.requestFullscreen?.();
+});
+document.addEventListener("fullscreenchange", () => document.body.classList.toggle("is-fullscreen", Boolean(document.fullscreenElement)));
+
+let buffer = "";
+let bufferTimer = null;
 document.addEventListener("keydown", (event) => {
   if (document.activeElement === input) return;
   if (event.key === "Enter" && buffer) {
@@ -98,10 +204,12 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key.length === 1) {
     buffer += event.key;
-    clearTimeout(timer);
-    timer = setTimeout(() => (buffer = ""), 120);
+    clearTimeout(bufferTimer);
+    bufferTimer = setTimeout(() => (buffer = ""), 120);
   }
 });
-clock();
-setInterval(clock, 30000);
+
+idle();
+updateClock();
+setInterval(updateClock, 1000);
 input.focus();

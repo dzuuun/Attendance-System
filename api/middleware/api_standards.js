@@ -7,6 +7,15 @@ function apiNotFound(_req, res) {
 }
 function apiErrorHandler(error, _req, res, _next) {
   console.error(error);
+  const uploadError = error?.name === "MulterError" || /Profile photos must be/.test(error?.message || "");
+  if (uploadError)
+    return res.status(400).json({
+      success: 0,
+      message:
+        error.code === "LIMIT_FILE_SIZE"
+          ? "Each profile photo must be 5 MB or smaller."
+          : error.message,
+    });
   const databaseError = [
     "ECONNREFUSED",
     "ER_BAD_DB_ERROR",

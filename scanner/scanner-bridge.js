@@ -1,33 +1,14 @@
 const { EventEmitter } = require("events");
 const { spawn } = require("child_process");
-const fs = require("fs");
 const path = require("path");
 
 class ScannerBridge extends EventEmitter {
   constructor() {
     super();
-    this.configFile = path.join(__dirname, "scanner-devices.json");
-    this.assignments = this.load();
-    this.pendingAction = null;
     this.available =
       process.platform === "win32" || process.platform === "linux";
     this.connected = false;
     this.start();
-  }
-
-  load() {
-    try {
-      return JSON.parse(fs.readFileSync(this.configFile, "utf8"));
-    } catch (_error) {
-      return {};
-    }
-  }
-
-  save() {
-    fs.writeFileSync(
-      this.configFile,
-      JSON.stringify(this.assignments, null, 2),
-    );
   }
 
   start() {
@@ -83,25 +64,11 @@ class ScannerBridge extends EventEmitter {
       return;
     }
     if (!scan.deviceId || !scan.value) return;
-    if (this.pendingAction) {
-      for (const [action, device] of Object.entries(this.assignments)) {
-        if (device.deviceId === scan.deviceId) delete this.assignments[action];
-      }
-      this.assignments[this.pendingAction] = {
-        deviceId: scan.deviceId,
-        name: scan.name || "USB scanner",
-      };
-      const action = this.pendingAction;
-      this.pendingAction = null;
-      this.save();
-      this.emit("assigned", { action, device: this.assignments[action] });
-      return;
-    }
-    const match = Object.entries(this.assignments).find(
-      ([, device]) => device.deviceId === scan.deviceId,
-    );
-    if (match) this.emit("scan", { idNumber: scan.value, action: match[0] });
-    else this.emit("unassigned", { name: scan.name || "USB scanner" });
+    this.emit("scan", {
+      idNumber: scan.value,
+      deviceId: scan.deviceId,
+      name: scan.name || "USB scanner",
+    });
   }
 
   status() {
@@ -109,16 +76,8 @@ class ScannerBridge extends EventEmitter {
       available: this.available,
       connected: this.connected,
       platform: process.platform,
-      pendingAction: this.pendingAction,
-      assignments: this.assignments,
+      assignmentStorage: "terminal-local",
     };
-  }
-
-  pair(action) {
-    if (!["Time In", "Time Out"].includes(action))
-      throw new Error("Invalid scanner action.");
-    this.pendingAction = action;
-    this.emit("status");
   }
 }
 

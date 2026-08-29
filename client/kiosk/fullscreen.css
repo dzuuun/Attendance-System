@@ -1,120 +1,72 @@
-.kiosk {
-  width: calc(100% - 64px);
-  max-width: none;
+/* Fullscreen Kiosk Mode Enhancements */
+:fullscreen .kiosk,
+:-webkit-full-screen .kiosk,
+body.is-fullscreen .kiosk {
+  max-width: 100vw;
+  min-height: 100vh;
+  padding: clamp(16px, 2.5vh, 32px) clamp(20px, 3vw, 48px);
+  justify-content: space-between;
 }
-.terminal-card {
-  width: 100%;
-  min-height: min(720px, calc(100vh - 150px));
-  display: grid;
-  grid-template-columns: minmax(360px, 1.05fr) minmax(420px, 0.95fr);
-  grid-template-rows: auto auto 1fr;
-  grid-template-areas: "intro intro" "scanner form" "scanner result";
-  column-gap: clamp(34px, 5vw, 80px);
-  align-items: center;
-  padding: clamp(34px, 4vw, 64px);
+
+:fullscreen .kiosk-grid,
+:-webkit-full-screen .kiosk-grid,
+body.is-fullscreen .kiosk-grid {
+  gap: clamp(18px, 2.5vw, 36px);
+  align-items: stretch;
 }
-.terminal-card .intro {
-  grid-area: intro;
-  margin-bottom: 18px;
+
+:fullscreen .live-clock-card,
+:-webkit-full-screen .live-clock-card,
+body.is-fullscreen .live-clock-card {
+  padding: clamp(16px, 2.2vh, 26px) clamp(20px, 2.5vw, 32px);
 }
-.terminal-card .scanner-config {
-  width: min(580px, 100%);
-  margin: 18px auto 0;
+
+:fullscreen .digital-time,
+:-webkit-full-screen .digital-time,
+body.is-fullscreen .digital-time {
+  font-size: clamp(34px, 3.8vw, 48px);
 }
-.terminal-card .scanner {
-  grid-area: scanner;
-  width: 100%;
-  height: 100%;
-  min-height: 430px;
-  margin: 0;
+
+:fullscreen .scanner-hero,
+:-webkit-full-screen .scanner-hero,
+body.is-fullscreen .scanner-hero {
+  min-height: clamp(280px, 32vh, 360px);
 }
-.terminal-card form {
-  grid-area: form;
-  width: 100%;
-  align-self: end;
+
+:fullscreen .radar-emitter,
+:-webkit-full-screen .radar-emitter,
+body.is-fullscreen .radar-emitter {
+  width: clamp(160px, 18vh, 210px);
+  height: clamp(160px, 18vh, 210px);
 }
-.terminal-card .result {
-  grid-area: result;
-  width: 100%;
-  align-self: start;
-  min-height: 190px;
-  padding: 22px;
+
+:fullscreen .rfid-card-visual,
+:-webkit-full-screen .rfid-card-visual,
+body.is-fullscreen .rfid-card-visual {
+  width: clamp(108px, 12vh, 140px);
+  height: clamp(68px, 7.5vh, 88px);
 }
-.terminal-card .result-icon {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 52px;
-  font-size: 22px;
+
+:fullscreen .result-hero-card,
+:-webkit-full-screen .result-hero-card,
+body.is-fullscreen .result-hero-card {
+  padding: clamp(20px, 2.5vh, 32px);
 }
-.result-content {
-  width: 100%;
-  min-width: 0;
+
+:fullscreen .result-status-text h2,
+:-webkit-full-screen .result-status-text h2,
+body.is-fullscreen .result-status-text h2 {
+  font-size: clamp(22px, 2.2vw, 30px);
 }
-.terminal-card .result strong {
-  font: 800 clamp(18px, 2vw, 27px) Manrope;
+
+:fullscreen .recent-feed-card,
+:-webkit-full-screen .recent-feed-card,
+body.is-fullscreen .recent-feed-card {
+  flex: 1;
 }
-.terminal-card .result > .result-content > small {
-  font-size: 12px;
-}
-.identity-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
-}
-.identity-grid.employee-details {
-  grid-template-columns: 0.7fr 1.3fr;
-}
-.identity-grid div {
-  padding: 12px;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.56);
-}
-.identity-grid span,
-.identity-grid b {
-  display: block;
-}
-.identity-grid span {
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-}
-.identity-grid b {
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 12px;
-  text-overflow: ellipsis;
-}
-@media (max-width: 900px) {
-  .kiosk {
-    width: calc(100% - 30px);
-  }
-  .terminal-card {
-    display: block;
-    min-height: 0;
-    padding: 28px;
-  }
-  .terminal-card .scanner {
-    height: 260px;
-    min-height: 0;
-    margin: 24px 0;
-  }
-  .terminal-card .result {
-    min-height: 0;
-    margin-top: 18px;
-  }
-}
-@media (max-width: 560px) {
-  .kiosk {
-    width: calc(100% - 20px);
-  }
-  .terminal-card {
-    padding: 22px 16px;
-  }
-  .identity-grid,
-  .identity-grid.employee-details {
-    grid-template-columns: 1fr;
-  }
+
+:fullscreen .recent-scans-list,
+:-webkit-full-screen .recent-scans-list,
+body.is-fullscreen .recent-scans-list {
+  max-height: clamp(240px, 30vh, 420px);
 }

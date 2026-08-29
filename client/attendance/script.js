@@ -29,9 +29,9 @@ function render() {
     rows
       .map(
         (a) =>
-          `<tr><td>${personCell(people.find((p) => p.id === a.personId && p.type === a.type) || { name: a.name })}</td><td>${escapeHtml(a.idNumber)}</td><td><span class="type-pill ${a.type}">${a.type}</span></td><td>${escapeHtml(a.eventName || "University entrance")}</td><td>${formatDate(a.timestamp)}</td><td>${formatTime(a.timestamp)}</td><td><span class="status-pill ${a.action === "Time Out" ? "time-out" : ""}">${a.action}</span></td></tr>`,
+          `<tr><td>${personCell(people.find((p) => p.id === a.personId && p.type === a.type) || { name: a.name })}</td><td>${escapeHtml(a.idNumber)}</td><td><span class="type-pill ${a.type}">${a.type}</span></td><td>${escapeHtml(a.eventName || "University entrance")}</td><td>${escapeHtml(a.location || "—")}</td><td>${formatDate(a.timestamp)}</td><td>${formatTime(a.timestamp)}</td><td><span class="status-pill ${a.action === "Time Out" ? "time-out" : ""}">${a.action}</span></td></tr>`,
       )
-      .join("") || emptyRow(7, "No matching attendance records.");
+      .join("") || emptyRow(8, "No matching attendance records.");
   TapTrack.initDataTable(table, { pageLength: 25 });
 }
 $("#search").addEventListener("input", render);
@@ -50,18 +50,20 @@ $("#exportBtn").addEventListener("click", async () => {
     "ID Number": a.idNumber,
     Type: a.type,
     Context: a.eventName || "University entrance",
+    Location: a.location || "",
     Date: formatDate(a.timestamp),
     Time: formatTime(a.timestamp),
     Action: a.action,
   }));
   const sheet = XLSX.utils.json_to_sheet(rows, {
-    header: ["Name", "ID Number", "Type", "Context", "Date", "Time", "Action"],
+    header: ["Name", "ID Number", "Type", "Context", "Location", "Date", "Time", "Action"],
   });
   sheet["!cols"] = [
     { wch: 28 },
     { wch: 18 },
     { wch: 12 },
     { wch: 28 },
+    { wch: 22 },
     { wch: 14 },
     { wch: 14 },
     { wch: 12 },

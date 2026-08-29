@@ -51,7 +51,6 @@ function payload(body) {
   data.fullName = [data.firstName, data.middleName, data.lastName]
     .filter(Boolean)
     .join(" ");
-  data.programSection = `${data.programName} · ${data.yearLevel}`;
   return data;
 }
 function valid(data) {
@@ -80,6 +79,7 @@ exports.create = async (req, res) => {
       .status(409)
       .json({ message: "That ID number is already registered." });
   const result = await model.create(data);
+  req.activityDescription = `Added student ${data.fullName}.`;
   res.status(201).json({
     id: result.insertId,
     ...data,
@@ -87,6 +87,15 @@ exports.create = async (req, res) => {
     isActive: 1,
     type: "Student",
   });
+};
+exports.importSummary = async (req, res) => {
+  const added = Math.max(0, Number(req.body.added) || 0);
+  const updated = Math.max(0, Number(req.body.updated) || 0);
+  req.activityAction = "CREATED";
+  req.activityDescription =
+    `Bulk imported students: ${added} new row${added === 1 ? "" : "s"} added` +
+    ` and ${updated} row${updated === 1 ? "" : "s"} updated.`;
+  res.json({ added, updated });
 };
 exports.update = async (req, res) => {
   const data = payload(req.body);

@@ -23,7 +23,9 @@ function activityLog(req, res, next) {
     path === "/api/attendance/scan" ||
     path.startsWith("/api/kiosk/") ||
     path.startsWith("/api/activity-log") ||
-    path.startsWith("/api/users");
+    path.startsWith("/api/users") ||
+    (req.get("X-Bulk-Import") === "student" &&
+      path.startsWith("/api/student"));
   if (
     !req.user ||
     !["POST", "PUT", "PATCH", "DELETE"].includes(method) ||

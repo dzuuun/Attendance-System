@@ -139,7 +139,7 @@ function render() {
           Number(event.maxTimeOuts) === 0
             ? `${event.maxTimeIns} Time In · No Time Out`
             : `${event.maxTimeIns} in · ${event.maxTimeOuts} out`;
-        return `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td><td><span class="type-pill Employee">${escapeHtml(event.targetAudience || "Both")}</span></td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${limits}</td><td><span class="status-pill ${["Ended", "Disabled"].includes(status) ? "time-out" : ""}">${status}</span></td><td><button class="event-action-trigger" data-id="${event.id}" data-active="${event.isActive ? "1" : "0"}" aria-expanded="false">Actions <span aria-hidden="true">⌄</span></button></td></tr>`;
+        return `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td><td><span class="type-pill Employee">${escapeHtml(event.targetAudience || "Both")}</span></td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${limits}</td><td><span class="status-pill ${["Ended", "Disabled"].includes(status) ? "time-out" : ""}">${status}</span></td><td><button class="event-action-trigger" data-id="${event.id}" data-active="${event.isActive ? "1" : "0"}" aria-expanded="false">Actions <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></td></tr>`;
       })
       .join("") || emptyRow(6, "No Events.");
   TapTrack.initDataTable(table);

@@ -3,67 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#123d2e" />
-    <title>Library Kiosk — TapTrack</title>
+    <meta name="theme-color" content="#043b2a" />
+    <title>Library Entrance Terminal — TapTrack</title>
+    <link rel="icon" type="image/png" href="/client/images/NDMU-Logo.png" />
     <link rel="stylesheet" href="/client/kiosk/style.css" />
     <link rel="stylesheet" href="/client/kiosk/last-log.css" />
     <link rel="stylesheet" href="/client/kiosk/fullscreen.css" />
     <link rel="stylesheet" href="/client/camera-scanner.css" />
   </head>
-  <body>
+  <body class="kiosk-body">
+    <div class="kiosk-bg-decoration"><div class="glow-orb glow-1"></div><div class="glow-orb glow-2"></div></div>
     <main class="kiosk">
-      <header>
-        <a class="brand" href="/"><i>⌁</i><span>TapTrack</span></a>
-        <div class="terminal-status">
-          <span></span> <b id="terminalName">LIBRARY</b> TERMINAL ONLINE
+      <header class="kiosk-header">
+        <div class="kiosk-brand-wrap"><a class="brand" href="/" title="TapTrack Home"><img src="/client/images/NDMU-Logo.png" alt="NDMU Logo" class="brand-seal-img ndmu-brand-seal" /><div class="brand-text"><strong>NOTRE DAME OF MARBEL UNIVERSITY</strong><small id="brandContext">TapTrack Attendance System · Library Entrance</small></div></a></div>
+        <div class="header-actions">
+          <div class="terminal-status" id="terminalStatusBadge"><span class="status-dot"></span><b id="terminalStatusText">LIBRARY TERMINAL ONLINE</b></div>
+          <button type="button" class="header-tool-btn" id="soundToggleBtn" aria-label="Toggle sound"><span class="btn-icon material-symbols-rounded" id="soundIcon">volume_up</span><span class="btn-label">Sound</span></button>
+          <button type="button" class="header-tool-btn" id="fullscreenBtn" aria-label="Toggle fullscreen"><span class="btn-icon material-symbols-rounded">fullscreen</span><span class="btn-label">Fullscreen</span></button>
         </div>
       </header>
-      <section class="terminal-card">
-        <div class="intro">
-          <p id="locationKicker">LIBRARY ENTRANCE</p>
-          <h1>Scan your ID</h1>
-          <span>This terminal records Time In only.</span>
-        </div>
-        <div class="scanner" id="scannerVisual">
-          <div class="rings"><div class="card-icon">⌁</div></div>
-          <div class="scan-beam"></div>
-        </div>
-        <form id="kioskForm">
-          <label for="kioskInput">ID NUMBER</label>
-          <div class="input-row">
-            <span>⌁</span
-            ><input
-              id="kioskInput"
-              autocomplete="off"
-              placeholder="Tap card or enter ID..."
-              autofocus
-            /><button>Record Time In →</button>
+      <div class="kiosk-grid">
+        <section class="kiosk-main-panel">
+          <div class="live-clock-card"><div class="clock-display"><span id="clock" class="digital-time">--:--:--</span><span id="clockPeriod" class="time-period">--</span></div><div class="date-display"><span id="date" class="calendar-date">Loading date...</span><span class="academic-year-badge" id="locationBadge">LIBRARY ACCESS</span></div></div>
+          <div class="scanner-lane-banner"><div class="lane-tag in"><span class="lane-dot"></span><div class="lane-info"><b>TIME IN ONLY</b><small>Every accepted scan creates a new entrance record</small></div></div><div class="lane-divider"></div><div class="lane-tag"><div class="lane-info"><b id="locationLane">LIBRARY ENTRANCE</b><small>Student and employee access terminal</small></div></div></div>
+          <form id="kioskForm" class="scan-input-form"><label for="kioskInput" class="input-label">MANUAL ID ENTRY / SCANNER BUFFER</label><div class="input-container"><span class="input-icon material-symbols-rounded">badge</span><input id="kioskInput" type="text" autocomplete="off" placeholder="Scan or enter ID number..." autofocus /><button type="submit" class="submit-btn" id="submitScanBtn"><span>Record</span><span class="material-symbols-rounded">arrow_forward</span></button></div></form>
+          <div class="quick-tools-row"><button type="button" class="camera-scan-button kiosk-camera-button" id="kioskCameraScan"><span class="material-symbols-rounded">photo_camera</span><span>Scan Barcode with Camera</span></button></div>
+        </section>
+        <section class="kiosk-feed-panel">
+          <div class="result-hero-card idle" id="kioskResult" role="status" aria-live="polite">
+            <div class="result-header"><div class="result-person-photo" id="resultPersonPhotoWrap" hidden><img id="resultPersonPhoto" src="/client/images/NDMU-Logo.png" alt="Scanned attendee" /></div><div class="result-icon-badge material-symbols-rounded" id="resultIcon">center_focus_strong</div><div class="result-status-text"><span class="result-badge-kicker" id="resultKicker">SYSTEM READY</span><h2 id="resultTitle">Ready to Scan</h2><p id="resultDetail">The terminal is ready to record Time In.</p></div></div>
+            <div class="attendee-details-container" id="attendeeDetails"></div><div class="previous-log-notice" id="previousLogNotice" style="display: none;"></div><div class="reset-progress-track" id="resetProgressTrack" hidden><div class="reset-progress-bar" id="resetProgressBar"></div></div>
           </div>
-        </form>
-        <button
-          type="button"
-          class="camera-scan-button kiosk-camera-button"
-          id="kioskCameraScan"
-        >
-          Scan barcode with camera
-        </button>
-        <div class="result" id="kioskResult" role="status" aria-live="polite">
-          <span class="result-icon">⌁</span>
-          <div class="result-content">
-            <strong>Ready to scan</strong><small>Waiting for an ID.</small>
-          </div>
-        </div>
-      </section>
-      <footer>
-        <div>
-          <strong id="clock">--:--</strong
-          ><span id="date">Loading date...</span>
-        </div>
-        <a href="/login">Staff login</a>
-      </footer>
+          <div class="session-stats-bar"><div class="stat-item total"><span class="stat-label">SESSION TOTAL</span><strong class="stat-value" id="statTotal">0</strong></div><div class="stat-item in"><span class="stat-label">STUDENTS</span><strong class="stat-value" id="statStudents">0</strong></div><div class="stat-item"><span class="stat-label">EMPLOYEES</span><strong class="stat-value" id="statEmployees">0</strong></div></div>
+          <div class="recent-feed-card"><div class="feed-header"><div class="feed-title"><span class="feed-pulse-dot"></span><h3 id="recentTitle">Recent Library Scans</h3></div><span class="feed-count-badge" id="feedCountBadge">LIVE FEED</span></div><div class="recent-scans-list" id="recentScansList"><div class="feed-empty-state"><span class="material-symbols-rounded" aria-hidden="true">schedule</span><span>No scans recorded yet this session</span><small>New Time In records will appear here.</small></div></div></div>
+        </section>
+      </div>
+      <footer class="kiosk-footer satp-site-footer"><div class="footer-left"><span>&copy; <span id="currentYear">2026</span> Notre Dame of Marbel University</span><span class="footer-dot">&middot;</span><span>Management Information Systems Department</span></div></footer>
     </main>
-    <script src="/client/camera-scanner.js"></script>
-    <script src="/client/library-kiosk/script.js"></script>
-    <script src="/client/brand-ui.js?v=20260824-5" data-brand-ui></script>
+    <script src="/client/camera-scanner.js"></script><script src="/client/library-kiosk/script.js"></script><script src="/client/brand-ui.js?v=20260824-5" data-brand-ui></script>
   </body>
 </html>

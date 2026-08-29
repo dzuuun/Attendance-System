@@ -8,5 +8,6 @@ router.get("/google/status", controller.googleStatus);
 router.get("/google", controller.googleStart);
 router.get("/google/callback", controller.googleCallback);
 router.get("/me", checkSession, controller.me);
+router.post("/change-password", checkSession, controller.changePassword);
 router.post("/logout", checkSession, controller.logout);
 module.exports = router;

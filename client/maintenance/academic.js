@@ -19,16 +19,18 @@ function render() {
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
   const q = $("#search").value.toLowerCase(),
+    showInactive = $("#showInactive").checked,
     rows = records.filter(
       (row) =>
-        row.name.toLowerCase().includes(q) ||
-        row.code.toLowerCase().includes(q),
+        (showInactive || Boolean(row.isActive)) &&
+        (row.name.toLowerCase().includes(q) ||
+          row.code.toLowerCase().includes(q)),
     );
   $("#body").innerHTML =
     rows
       .map(
         (row) =>
-          `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.code)}</td>${parentEntity ? `<td>${escapeHtml(parentName(row))}</td>` : ""}<td><span class="status-pill">${row.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${row.id}" aria-label="Edit ${escapeHtml(row.name)}" title="Edit"></button></td></tr>`,
+          `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.code)}</td>${parentEntity ? `<td>${escapeHtml(parentName(row))}</td>` : ""}<td><span class="status-pill ${!row.isActive ? "time-out" : ""}">${row.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${row.id}" aria-label="Edit ${escapeHtml(row.name)}" title="Edit"></button></td></tr>`,
       )
       .join("") ||
     emptyRow(parentEntity ? 5 : 4, `No ${label.toLowerCase()} records.`);
@@ -61,6 +63,7 @@ function open(record = null) {
   $("#dialog").showModal();
 }
 $("#search").addEventListener("input", render);
+$("#showInactive").addEventListener("change", render);
 $("#addBtn").addEventListener("click", () => open());
 document.addEventListener("click", (event) => {
   if (event.target.matches('.close-button,button[value="cancel"]')) {

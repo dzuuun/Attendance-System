@@ -50,10 +50,6 @@ function render() {
     lengthChange: false,
   });
 }
-$("#exportBtn").addEventListener(
-  "click",
-  () => (location.href = "/attendance"),
-);
 (async () => {
   await init("dashboard");
   [people, attendance] = await Promise.all([

@@ -8,7 +8,7 @@ async function tableExists(table) {
 }
 async function ensurePersonNames() {
   for (const table of ["students", "employees"]) {
-    await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name`);
+    await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name,ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500) NULL`);
     const [legacy] = await pool.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME='full_name'", [table]);
     if (legacy.length) {
       await pool.query(`UPDATE ${table} SET first_name=COALESCE(first_name,SUBSTRING_INDEX(full_name,' ',1)),last_name=COALESCE(last_name,CASE WHEN full_name LIKE '% %' THEN SUBSTRING_INDEX(full_name,' ',-1) ELSE full_name END)`);
@@ -27,8 +27,9 @@ async function ensureSchema() {
   if (!schemaReady) schemaReady = (async () => {
     await periods.ensureSchema();
     await ensurePersonNames();
-    await pool.query(`CREATE TABLE IF NOT EXISTS university_entrance_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,student_id INT UNSIGNED NULL,employee_id INT UNSIGNED NULL,attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,academic_period_id INT UNSIGNED NULL,INDEX idx_university_period_time (academic_period_id,checked_in_at,id),INDEX idx_university_student_time (student_id,academic_period_id,checked_in_at,id),INDEX idx_university_employee_time (employee_id,academic_period_id,checked_in_at,id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS event_attendance_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id INT UNSIGNED NOT NULL,student_id INT UNSIGNED NULL,employee_id INT UNSIGNED NULL,attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,academic_period_id INT UNSIGNED NULL,INDEX idx_event_attendance_event_time (event_id,checked_in_at,id),INDEX idx_event_attendance_student_time (student_id,event_id,checked_in_at,id),INDEX idx_event_attendance_employee_time (employee_id,event_id,checked_in_at,id),INDEX idx_event_attendance_period_time (academic_period_id,checked_in_at,id))`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS university_entrance_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,student_id INT UNSIGNED NULL,employee_id INT UNSIGNED NULL,attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',scan_location VARCHAR(120) NULL,checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,academic_period_id INT UNSIGNED NULL,INDEX idx_university_period_time (academic_period_id,checked_in_at,id),INDEX idx_university_student_time (student_id,academic_period_id,checked_in_at,id),INDEX idx_university_employee_time (employee_id,academic_period_id,checked_in_at,id))`);
+    await pool.query("ALTER TABLE university_entrance_logs ADD COLUMN IF NOT EXISTS scan_location VARCHAR(120) NULL AFTER attendance_action");
+    await pool.query(`CREATE TABLE IF NOT EXISTS event_attendance_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id INT UNSIGNED NOT NULL,student_id INT UNSIGNED NULL,employee_id INT UNSIGNED NULL,attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,academic_period_id INT UNSIGNED NULL,INDEX idx_event_attendance_event_time (event_id,checked_in_at,id),INDEX idx_event_attendance_student_time (student_id,event_id,checked_in_at,id),INDEX idx_event_attendance_employee_time (employee_id,event_id,checked_in_at,id),INDEX idx_event_attendance_period_time (academic_period_id,checked_in_at,id),INDEX idx_event_student_period_time (student_id,academic_period_id,checked_in_at,id),INDEX idx_event_employee_period_time (employee_id,academic_period_id,checked_in_at,id))`);
     await migrateLegacyTable("student_attendance", "student_id");
     await migrateLegacyTable("employee_attendance", "employee_id");
     const current = await periods.getCurrent();
@@ -40,25 +41,32 @@ async function ensureSchema() {
   return schemaReady;
 }
 
-const personSelect = `COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN a.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,COALESCE(a.student_id,a.employee_id) personId,TRIM(CONCAT_WS(' ',COALESCE(s.first_name,e.first_name),NULLIF(COALESCE(s.middle_name,e.middle_name),''),COALESCE(s.last_name,e.last_name))) name`;
+const personSelect = `COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN a.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,COALESCE(a.student_id,a.employee_id) personId,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name`;
 const personJoins = "LEFT JOIN students s ON s.id=a.student_id LEFT JOIN employees e ON e.id=a.employee_id";
 
 exports.getAll = async () => {
   await ensureSchema();
-  return (await pool.query(`SELECT a.id,${personSelect},NULL eventId,NULL eventName,a.attendance_action action,a.checked_in_at timestamp FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ap.is_current=TRUE ${personJoins} WHERE a.student_id IS NOT NULL OR a.employee_id IS NOT NULL ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 1000`))[0];
+  return (await pool.query(`SELECT a.id,${personSelect},NULL eventId,NULL eventName,a.scan_location location,a.attendance_action action,a.checked_in_at timestamp FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ap.is_current=TRUE ${personJoins} WHERE a.student_id IS NOT NULL OR a.employee_id IS NOT NULL ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 1000`))[0];
 };
 exports.getByEvent = async (eventId) => {
   await ensureSchema();
-  return (await pool.query(`SELECT a.id,${personSelect},COALESCE(pr.name,TRIM(SUBSTRING_INDEX(s.program_section,'·',1))) course,CASE WHEN a.employee_id IS NOT NULL THEN TRIM(SUBSTRING_INDEX(e.department_role,'·',1)) ELSE NULL END department,a.event_id eventId,ev.name eventName,a.attendance_action action,a.checked_in_at timestamp FROM event_attendance_logs a ${personJoins} LEFT JOIN programs pr ON pr.id=s.program_id INNER JOIN events ev ON ev.id=a.event_id WHERE a.event_id=? ORDER BY a.checked_in_at DESC,a.id DESC`, [eventId]))[0];
+  return (await pool.query(`SELECT a.id,${personSelect},pr.name course,CASE WHEN a.employee_id IS NOT NULL THEN ed.name ELSE NULL END department,a.event_id eventId,ev.name eventName,a.attendance_action action,a.checked_in_at timestamp FROM event_attendance_logs a ${personJoins} LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id LEFT JOIN programs pr ON pr.id=s.program_id INNER JOIN events ev ON ev.id=a.event_id WHERE a.event_id=? ORDER BY a.checked_in_at DESC,a.id DESC`, [eventId]))[0];
 };
 exports.findPerson = async (idNumber, audience = "Both") => {
   await ensureSchema();
-  const findStudent = () => pool.query("SELECT id,id_number idNumber,TRIM(CONCAT_WS(' ',first_name,NULLIF(middle_name,''),last_name)) name,TRIM(SUBSTRING_INDEX(program_section,'·',1)) program,CASE WHEN program_section LIKE '%·%' THEN TRIM(SUBSTRING_INDEX(program_section,'·',-1)) ELSE '' END yearLevel,'Student' type FROM students WHERE id_number=? AND is_active=TRUE", [idNumber]);
-  const findEmployee = () => pool.query("SELECT id,id_number idNumber,TRIM(CONCAT_WS(' ',first_name,NULLIF(middle_name,''),last_name)) name,TRIM(SUBSTRING_INDEX(department_role,'·',1)) department,'Employee' type FROM employees WHERE id_number=? AND is_active=TRUE", [idNumber]);
+  const findStudent = () => pool.query("SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name program,s.year_level yearLevel,s.photo_url photoUrl,'Student' type FROM students s LEFT JOIN programs p ON p.id=s.program_id WHERE s.id_number=? AND s.is_active=TRUE", [idNumber]);
+  const findEmployee = () => pool.query("SELECT e.id,e.id_number idNumber,TRIM(CONCAT_WS(' ',e.first_name,NULLIF(e.middle_name,''),e.last_name)) name,d.name department,e.photo_url photoUrl,'Employee' type FROM employees e LEFT JOIN employee_departments d ON d.id=e.emp_dept_id WHERE e.id_number=? AND e.is_active=TRUE", [idNumber]);
   if (audience === "Students") return (await findStudent())[0][0];
   if (audience === "Employees") return (await findEmployee())[0][0];
   const [[students], [employees]] = await Promise.all([findStudent(), findEmployee()]);
   return students[0] || employees[0];
+};
+exports.findInactiveStudent = async (idNumber) => {
+  await ensureSchema();
+  return (await pool.query(
+    "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,'Student' type FROM students s WHERE s.id_number=? AND s.is_active=FALSE LIMIT 1",
+    [idNumber],
+  ))[0][0];
 };
 const personColumn = (person) => person.type === "Student" ? "student_id" : "employee_id";
 exports.findLatest = async (person, eventId) => {
@@ -76,14 +84,14 @@ exports.getActionCounts = async (person, eventId) => {
   const [rows] = await pool.query(`SELECT SUM(attendance_action='Time In') timeIns,SUM(attendance_action='Time Out') timeOuts FROM event_attendance_logs WHERE ${column}=? AND event_id=?`, [person.id,eventId]);
   return { timeIns: Number(rows[0].timeIns || 0), timeOuts: Number(rows[0].timeOuts || 0) };
 };
-exports.record = async (person, action, eventId = null) => {
+exports.record = async (person, action, eventId = null, location = null) => {
   await ensureSchema();
   const current = await periods.getCurrent();
   if (!current) throw new Error("No current academic period is configured.");
   const column = personColumn(person);
   const table = eventId ? "event_attendance_logs" : "university_entrance_logs";
-  const columns = eventId ? `(event_id,${column},attendance_action,academic_period_id)` : `(${column},attendance_action,academic_period_id)`;
-  const values = eventId ? [eventId,person.id,action,current.id] : [person.id,action,current.id];
+  const columns = eventId ? `(event_id,${column},attendance_action,academic_period_id)` : `(${column},attendance_action,scan_location,academic_period_id)`;
+  const values = eventId ? [eventId,person.id,action,current.id] : [person.id,action,location,current.id];
   return (await pool.query(`INSERT INTO ${table} ${columns} VALUES (${values.map(() => "?").join(",")})`, values))[0];
 };
 exports.clear = async () => {

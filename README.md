@@ -18,7 +18,7 @@ The public kiosk supports two ordinary keyboard-wedge scanners without requiring
 - **Windows:** uses the Windows Raw Input API through the included PowerShell helper.
 - **Raspberry Pi OS/Linux:** reads each scanner separately through `/dev/input/event*`.
 
-On `/kiosk`, select **Assign** beside Time In and scan a card with the Time In device. Repeat for Time Out. The hardware mapping is saved in `scanner/scanner-devices.json` and loads at startup without a user session.
+On `/kiosk/entrance`, select **Assign** beside Time In and scan a card with the Time In device. Repeat for Time Out. Hardware mappings are stored locally in that kiosk terminal's browser and load without a user session.
 
 On Raspberry Pi OS, give the account running Node access to input devices, then restart the session:
 

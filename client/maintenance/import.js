@@ -23,7 +23,7 @@
   const required = academic
     ? ["Name", "Code", ...(parent ? [`${title(parent)}Code`] : [])]
     : type === "employee"
-      ? ["IDNumber", "FirstName", "LastName", "DepartmentRole"]
+      ? ["IDNumber", "FirstName", "LastName", "DepartmentCode"]
       : [
           "IDNumber",
           "FirstName",
@@ -63,20 +63,20 @@
   if (!addDialog || !actions) return;
   const choice = document.createElement("div");
   choice.className = "satp-import-action";
-  choice.innerHTML = `<button type="button" class="satp-import-link" id="openImport"><span aria-hidden="true">⇧</span> Import multiple</button>`;
+  choice.innerHTML = `<button type="button" class="satp-import-link" id="openImport"><span class="material-symbols-rounded" aria-hidden="true">upload_file</span> Import multiple</button>`;
   actions.prepend(choice);
 
   document.body.insertAdjacentHTML(
     "beforeend",
     `
     <dialog id="importDialog" class="w-[min(760px,calc(100vw-2rem))] max-w-3xl rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-emerald-950/50"><form id="importForm" class="p-6">
-      <div class="mb-5 flex items-start justify-between gap-4"><div><span class="text-xs font-bold tracking-[.16em] text-emerald-700">BULK OPERATION</span><h2 class="mt-1 text-2xl font-bold text-slate-900">Import ${plural}</h2></div><button type="button" class="grid h-9 w-9 place-items-center rounded-full text-2xl text-slate-500 hover:bg-slate-100 hover:text-slate-900" data-close aria-label="Close">×</button></div>
+      <div class="mb-5 flex items-start justify-between gap-4"><div><span class="text-xs font-bold tracking-[.16em] text-emerald-700">BULK OPERATION</span><h2 class="mt-1 text-2xl font-bold text-slate-900">Import ${plural}</h2></div><button type="button" class="material-symbols-rounded grid h-9 w-9 place-items-center rounded-full text-2xl text-slate-500 hover:bg-slate-100 hover:text-slate-900" data-close aria-label="Close">close</button></div>
       <label class="block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 px-5 py-9 text-center transition hover:border-emerald-600 hover:bg-emerald-50" id="importDrop"><strong id="importFileText" class="block text-sm font-semibold text-slate-800">Click to upload or drag an Excel file here</strong><small class="mt-1.5 block text-xs text-slate-500">.xlsx or .xls, up to 5 MB</small><input class="hidden" id="importFile" type="file" accept=".xlsx,.xls" /></label>
       <div class="mt-4 flex flex-col-reverse justify-between gap-3 sm:flex-row"><button type="button" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" id="templateBtn">Download template</button><button type="submit" class="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900">Validate file</button></div>
       <p class="mt-3 min-h-5 text-sm font-medium text-red-700" id="importError"></p>
     </form></dialog>
     <dialog id="previewDialog" class="w-[min(760px,calc(100vw-2rem))] max-w-3xl rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-emerald-950/50"><div class="p-6">
-      <div class="mb-4 flex items-start justify-between gap-4"><div><span class="text-xs font-bold tracking-[.16em] text-emerald-700">VALIDATION COMPLETE</span><h2 class="mt-1 text-2xl font-bold text-slate-900">Review ${type} import</h2></div><button type="button" class="grid h-9 w-9 place-items-center rounded-full text-2xl text-slate-500 hover:bg-slate-100 hover:text-slate-900" data-close aria-label="Close">×</button></div>
+      <div class="mb-4 flex items-start justify-between gap-4"><div><span class="text-xs font-bold tracking-[.16em] text-emerald-700">VALIDATION COMPLETE</span><h2 class="mt-1 text-2xl font-bold text-slate-900">Review ${type} import</h2></div><button type="button" class="material-symbols-rounded grid h-9 w-9 place-items-center rounded-full text-2xl text-slate-500 hover:bg-slate-100 hover:text-slate-900" data-close aria-label="Close">close</button></div>
       <div class="my-4 grid grid-cols-1 gap-3 sm:grid-cols-3"><div class="rounded-xl bg-emerald-50 p-3 text-center text-sm text-emerald-900"><strong id="createCount" class="block text-2xl">0</strong>New</div><div class="rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-900"><strong id="updateCount" class="block text-2xl">0</strong>Updates</div><div class="rounded-xl bg-red-50 p-3 text-center text-sm text-red-800"><strong id="errorCount" class="block text-2xl">0</strong>Errors</div></div>
       <div class="max-h-[330px] overflow-auto rounded-xl border border-slate-200"><table class="w-full text-left text-xs"><thead class="sticky top-0 bg-slate-50 text-slate-600"><tr><th class="px-3 py-2.5">ROW</th><th class="px-3 py-2.5">RECORD</th><th class="px-3 py-2.5">RESULT</th></tr></thead><tbody id="previewBody" class="divide-y divide-slate-100"></tbody></table></div>
       <p id="importProgress" class="mt-3 min-h-5 text-sm font-medium text-emerald-800"></p><div class="mt-5 flex justify-end gap-3"><button type="button" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-close>Cancel</button><button type="button" class="rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50" id="runImport">Run import</button></div>
@@ -89,7 +89,7 @@
   importDialog.className = "satp-modal satp-import-modal";
   $("#importForm").innerHTML = `
     <div class="modal-head"><div><span class="modal-kicker">BULK ACTION</span><h2>Import ${plural}</h2></div><button type="button" class="close-button" data-close aria-label="Close">×</button></div>
-    <div class="satp-modal-body"><label class="satp-file-drop" id="importDrop"><span class="satp-upload-icon" aria-hidden="true">⇧</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${type === "student" ? ". Optional values: MiddleName, InstitutionalEmail" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="satp-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
+    <div class="satp-modal-body"><label class="satp-file-drop" id="importDrop"><span class="satp-upload-icon material-symbols-rounded" aria-hidden="true">upload_file</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${type === "student" ? ". Optional values: MiddleName, InstitutionalEmail" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="satp-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
     <div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button type="submit" class="primary-button">Validate file</button></div>`;
   const previewDialog = $("#previewDialog");
   previewDialog.className = "satp-modal satp-review-modal";
@@ -103,14 +103,21 @@
       <div>
         <div class="modal-head"><div><span class="modal-kicker">IMPORT IN PROGRESS</span><h2>Importing ${plural}</h2></div></div>
         <div class="satp-progress-body">
-          <span class="satp-progress-icon" aria-hidden="true">⇧</span>
+          <span class="satp-progress-icon material-symbols-rounded" aria-hidden="true">upload_file</span>
           <strong id="progressHeading">Preparing import...</strong>
           <p id="progressDetail">Please keep this page open until all records are processed.</p>
           <div class="satp-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack"><span id="progressFill"></span></div>
           <div class="satp-progress-count"><span id="progressProcessed">0 processed</span><b id="progressPercent">0%</b></div>
         </div>
       </div>
-    </dialog>`,
+    </dialog>
+    ${type === "student" ? `<dialog id="deactivateMissingDialog" class="satp-modal">
+      <div>
+        <div class="modal-head"><div><span class="modal-kicker">STUDENT STATUS</span><h2>Deactivate missing students?</h2></div><button type="button" class="close-button" id="deactivateMissingClose" aria-label="Close">Ã—</button></div>
+        <div class="satp-modal-body"><p>Would you like to deactivate active students who are not included in this import file?</p><p class="satp-review-intro">Students in the file will still be imported whichever option you choose.</p></div>
+        <div class="modal-actions"><button type="button" class="secondary-button" id="importWithoutDeactivation">Import only</button><button type="button" class="primary-button" id="importWithDeactivation">Import and deactivate missing</button></div>
+      </div>
+    </dialog>` : ""}`,
   );
 
   const fileInput = $("#importFile"),
@@ -147,6 +154,28 @@
 
   function title(value) {
     return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  function chooseStudentDeactivation() {
+    if (type !== "student") return Promise.resolve(false);
+    const dialog = $("#deactivateMissingDialog");
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (choice) => {
+        if (settled) return;
+        settled = true;
+        dialog.close();
+        resolve(choice);
+      };
+      $("#importWithoutDeactivation").onclick = () => finish(false);
+      $("#importWithDeactivation").onclick = () => finish(true);
+      $("#deactivateMissingClose").onclick = () => finish(false);
+      dialog.oncancel = (event) => {
+        event.preventDefault();
+        finish(false);
+      };
+      dialog.showModal();
+    });
   }
   function norm(value) {
     return String(value ?? "").trim();
@@ -217,7 +246,7 @@
           FirstName: "Juan",
           MiddleName: "Santos",
           LastName: "Dela Cruz",
-          DepartmentRole: "Faculty",
+          DepartmentCode: "MIS",
           ProgramCode: "BSIT",
           YearLevel: "1st Year",
           Birthday: "2000-01-01",
@@ -269,7 +298,9 @@
           ? api(`/api/${parent}`)
           : type === "student"
             ? api("/api/program-options")
-            : Promise.resolve([]),
+            : type === "employee"
+              ? api("/api/employee_department")
+              : Promise.resolve([]),
       ]);
       pending = classify(rows, existing, parents);
       renderPreview();
@@ -310,8 +341,10 @@
       else if (type === "employee")
         Object.assign(item, {
           idNumber: cell(row, "IDNumber").toUpperCase(),
-          name: cell(row, "Name"),
-          groupName: cell(row, "DepartmentRole"),
+          firstName: cell(row, "FirstName"),
+          middleName: cell(row, "MiddleName"),
+          lastName: cell(row, "LastName"),
+          departmentCode: cell(row, "DepartmentCode").toUpperCase(),
           contact: cell(row, "Contact"),
         });
       else
@@ -377,6 +410,11 @@
         )
           errors.push("Gender is invalid");
       }
+      if (type === "employee") {
+        const department = parentByCode.get(item.departmentCode);
+        if (!department) errors.push("Active DepartmentCode was not found");
+        else item.departmentId = department.id;
+      }
       item.existing = existingByKey.get(key);
       item.errors = errors;
       result[
@@ -411,14 +449,14 @@
     const deactivateMissing =
       type === "student" &&
       !pending.errors.length &&
-      confirm(
-        "Do you want to deactivate active students who are not included in this file?\n\nChoose OK to deactivate missing students, or Cancel to import without changing them.",
-      );
+      (await chooseStudentDeactivation());
     const items = [
         ...pending.created.map((x) => ({ ...x, method: "POST" })),
         ...pending.updated.map((x) => ({ ...x, method: "PUT" })),
       ],
       failures = [];
+    let addedCount = 0,
+      updatedCount = 0;
     $("#runImport").disabled = true;
     const progressDialog = $("#progressDialog"),
       progressTrack = $("#progressTrack");
@@ -443,15 +481,29 @@
               firstName: item.firstName,
               middleName: item.middleName,
               lastName: item.lastName,
-              groupName: item.groupName,
+              departmentId: item.departmentId,
               contact: item.contact,
             }
           : item;
       try {
         await api(
           `/api/${type}${item.method === "PUT" ? `/${item.existing.id}` : ""}`,
-          { method: item.method, body: JSON.stringify(body) },
+          {
+            method: item.method,
+            headers: type === "student" ? { "X-Bulk-Import": "student" } : {},
+            body: JSON.stringify(body),
+          },
         );
+        if (type === "student" && item.method === "PUT")
+          await api(`/api/student/${item.existing.id}/status`, {
+            method: "PATCH",
+            headers: { "X-Bulk-Import": "student" },
+            body: JSON.stringify({ isActive: true }),
+          });
+        if (type === "student") {
+          if (item.method === "POST") addedCount++;
+          else updatedCount++;
+        }
       } catch (e) {
         failures.push({
           Row: item.row,
@@ -472,6 +524,7 @@
     if (!failures.length && deactivateMissing) {
       const result = await api("/api/student/deactivate-missing", {
         method: "POST",
+        headers: { "X-Bulk-Import": "student" },
         body: JSON.stringify({
           idNumbers: [...new Set(pending.fileIdNumbers)],
         }),
@@ -486,6 +539,11 @@
       resultMessage = `${items.length - failures.length} imported; ${failures.length} failed. An error workbook was downloaded.`;
       resultType = "error";
     } else resultMessage = `${items.length} ${plural} imported successfully.`;
+    if (type === "student")
+      await api("/api/student/import-summary", {
+        method: "POST",
+        body: JSON.stringify({ added: addedCount, updated: updatedCount }),
+      });
     progressDialog.close();
     TapTrack.toastAfterReload(resultMessage, resultType);
     location.reload();

@@ -1,34 +1,171 @@
-const { $, api, escapeHtml, personCell, emptyRow, init } = TapTrack;
+const { $, api, escapeHtml, personCell, emptyRow, init, loadXlsx } = TapTrack;
 let students = [],
   programs = [];
+
+function enhanceSearchableSelect(select) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "searchable-select";
+  select.before(wrapper);
+  wrapper.appendChild(select);
+  select.classList.add("searchable-select-native");
+  wrapper.insertAdjacentHTML(
+    "beforeend",
+    `<button type="button" class="searchable-select-trigger" aria-haspopup="listbox" aria-expanded="false"><span></span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button><div class="searchable-select-menu" hidden><input type="search" class="searchable-select-search" placeholder="Search..." autocomplete="off" /><div class="searchable-select-options" role="listbox"></div></div>`,
+  );
+  const trigger = wrapper.querySelector(".searchable-select-trigger");
+  const triggerLabel = trigger.querySelector("span:first-child");
+  const menu = wrapper.querySelector(".searchable-select-menu");
+  const search = wrapper.querySelector(".searchable-select-search");
+  const options = wrapper.querySelector(".searchable-select-options");
+
+  const sync = () => {
+    const selected = select.selectedOptions[0];
+    triggerLabel.textContent = selected?.textContent || "Select an option";
+    trigger.classList.toggle("placeholder", !select.value);
+  };
+  const close = () => {
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    wrapper.classList.remove("open");
+  };
+  const renderOptions = () => {
+    const query = search.value.trim().toLowerCase();
+    const available = [...select.options].filter(
+      (option) =>
+        !option.disabled &&
+        option.value &&
+        option.textContent.toLowerCase().includes(query),
+    );
+    options.innerHTML = available.length
+      ? available
+          .map(
+            (option) =>
+              `<button type="button" role="option" data-value="${escapeHtml(option.value)}" aria-selected="${String(option.value === select.value)}" class="${option.value === select.value ? "selected" : ""}">${escapeHtml(option.textContent)}</button>`,
+          )
+          .join("")
+      : '<p class="searchable-select-empty">No matching options</p>';
+  };
+
+  trigger.addEventListener("click", () => {
+    const opening = menu.hidden;
+    document.querySelectorAll(".searchable-select.open").forEach((item) => {
+      if (item !== wrapper) item.querySelector(".searchable-select-menu").hidden = true;
+      if (item !== wrapper) item.classList.remove("open");
+    });
+    if (!opening) return close();
+    search.value = "";
+    renderOptions();
+    menu.hidden = false;
+    wrapper.classList.add("open");
+    trigger.setAttribute("aria-expanded", "true");
+    requestAnimationFrame(() => search.focus());
+  });
+  search.addEventListener("input", renderOptions);
+  options.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-value]");
+    if (!option) return;
+    select.value = option.dataset.value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    sync();
+    close();
+    trigger.focus();
+  });
+  wrapper.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      close();
+      trigger.focus();
+    }
+  });
+  select.addEventListener("change", sync);
+  select.addEventListener("invalid", (event) => {
+    event.preventDefault();
+    trigger.focus();
+    if (menu.hidden) trigger.click();
+  });
+  select.searchableSelectSync = sync;
+  sync();
+}
+
+["program", "yearLevel", "gender"].forEach((id) =>
+  TapTrack.enhanceSearchableSelect($(`#${id}`)),
+);
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".searchable-select")) return;
+  document.querySelectorAll(".searchable-select.open").forEach((wrapper) => {
+    wrapper.classList.remove("open");
+    wrapper.querySelector(".searchable-select-menu").hidden = true;
+    wrapper
+      .querySelector(".searchable-select-trigger")
+      .setAttribute("aria-expanded", "false");
+  });
+});
 function render() {
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
   const q = $("#search").value.toLowerCase(),
-    status = $("#statusFilter").value,
+    showInactive = $("#showInactive").checked,
     rows = students.filter(
       (s) =>
-        (status === "all" || (status === "active") === Boolean(s.isActive)) &&
-        `${s.name} ${s.idNumber} ${s.programName}`.toLowerCase().includes(q),
+        (showInactive || Boolean(s.isActive)) &&
+        `${s.name} ${s.idNumber} ${s.programCode || ""}`.toLowerCase().includes(q),
     );
-  $("#count").textContent = `${rows.length} records`;
-  $("#body").innerHTML =
-    rows
-      .map(
-        (s) =>
-          `<tr><td>${personCell({ name: s.name, contact: s.institutionalEmail })}</td><td><strong>${escapeHtml(s.idNumber)}</strong></td><td>${escapeHtml(s.programName || "Not assigned")}</td><td>${escapeHtml(s.yearLevel || "—")}</td><td>${escapeHtml(s.gender || "—")}</td><td><span class="status-pill ${s.isActive ? "" : "time-out"}">${s.isActive ? "Active" : "Inactive"}</span></td><td><div class="event-actions"><button class="secondary-button edit" data-id="${s.id}">Edit</button><button class="secondary-button person-log-export" data-person-id="${s.id}" data-person-type="student" data-person-name="${escapeHtml(s.name)}" data-id-number="${escapeHtml(s.idNumber)}">Export</button><button class="secondary-button status" data-id="${s.id}">${s.isActive ? "Deactivate" : "Activate"}</button></div></td></tr>`,
-      )
-      .join("") || emptyRow(7, "No student records found.");
-  $("#body")
-    .querySelectorAll(".status")
-    .forEach((button) => button.remove());
-  $("#body")
-    .querySelectorAll(".edit")
-    .forEach((button) => {
-      button.title = "Edit";
-      button.setAttribute("aria-label", "Edit student");
-    });
-  TapTrack.initDataTable(table);
+  $("#studentDirectoryTitle").textContent = showInactive
+    ? "All students"
+    : "Active students";
+  $("#body").innerHTML = "";
+  if (!rows.length) {
+    $("#body").innerHTML = emptyRow(6, "No student records found.");
+    return Promise.resolve(null);
+  }
+  const display = (value) => escapeHtml(value || "—");
+  return TapTrack.initDataTable(table, {
+    data: rows,
+    deferRender: true,
+    layout: {
+      topStart: null,
+      topEnd: null,
+      bottomStart: "info",
+      bottomEnd: "paging",
+    },
+    columns: [
+      {
+        data: "idNumber",
+        render: (value, type) =>
+          type === "display" ? `<strong>${escapeHtml(value)}</strong>` : value,
+      },
+      {
+        data: null,
+        render: (_value, type, student) =>
+          type === "display"
+            ? personCell({
+                name: TapTrack.personName(student),
+                contact: student.institutionalEmail,
+                photoUrl: student.photoUrl,
+              })
+            : TapTrack.personName(student),
+      },
+      { data: "programCode", render: (value, type) => type === "display" ? display(value || "Not assigned") : value || "" },
+      { data: "yearLevel", render: (value, type) => type === "display" ? display(value) : value || "" },
+      {
+        data: "isActive",
+        render: (value, type) =>
+          type === "display"
+            ? `<span class="status-pill ${value ? "" : "time-out"}">${value ? "Active" : "Inactive"}</span>`
+            : value ? "Active" : "Inactive",
+      },
+      {
+        data: null,
+        orderable: false,
+        searchable: false,
+        render: (_value, type, student) =>
+          type === "display"
+            ? `<div class="event-actions"><button class="secondary-button edit" data-id="${student.id}" title="Edit" aria-label="Edit student"></button><button class="secondary-button person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button></div>`
+            : "",
+      },
+    ],
+    order: [[1, "asc"]],
+  });
 }
 function programOptions(selected = "") {
   $("#program").innerHTML =
@@ -40,12 +177,23 @@ function programOptions(selected = "") {
           `<option value="${p.id}" ${String(p.id) === String(selected) ? "selected" : ""}>${escapeHtml(p.code)} · ${escapeHtml(p.name)}</option>`,
       )
       .join("");
+  $("#program").searchableSelectSync?.();
 }
 function open(student = null) {
+  document.querySelectorAll(".searchable-select").forEach((wrapper) => {
+    wrapper.classList.remove("open");
+    wrapper.querySelector(".searchable-select-menu").hidden = true;
+    wrapper
+      .querySelector(".searchable-select-trigger")
+      .setAttribute("aria-expanded", "false");
+  });
   $("#form").reset();
   $("#recordId").value = student?.id || "";
   $("#dialogTitle").textContent = student ? "Edit student" : "Add student";
   $("#isActive").checked = student ? Boolean(student.isActive) : true;
+  $("#photoHelp").textContent = student?.photoUrl
+    ? "Choose a new image to replace the current photo when you save."
+    : "Choose a profile photo to upload when this student is saved.";
   programOptions(student?.programId);
   if (
     student?.yearLevel &&
@@ -70,11 +218,53 @@ function open(student = null) {
         : "";
     });
   }
+  ["program", "yearLevel", "gender"].forEach((id) =>
+    $(`#${id}`).searchableSelectSync?.(),
+  );
   $("#error").textContent = "";
   $("#dialog").showModal();
 }
 $("#search").addEventListener("input", render);
-$("#statusFilter").addEventListener("change", render);
+$("#showInactive").addEventListener("change", render);
+$("#exportStudentsBtn").addEventListener("click", async () => {
+  const includeInactive = $("#showInactive").checked;
+  const rows = students
+    .filter((student) => includeInactive || student.isActive)
+    .map((student) => ({
+      "ID Number": student.idNumber,
+      "First Name": student.firstName,
+      "Middle Name": student.middleName || "",
+      "Last Name": student.lastName,
+      "Program Code": student.programCode || "",
+      "Year Level": student.yearLevel || "",
+      Birthday: student.birthday ? String(student.birthday).slice(0, 10) : "",
+      "Institutional Email": student.institutionalEmail || "",
+      Gender: student.gender || "",
+      Status: student.isActive ? "Active" : "Inactive",
+    }));
+  try {
+    await loadXlsx();
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet["!cols"] = Object.keys(rows[0] || { Student: "" }).map((key) => ({
+      wch: Math.max(14, key.length + 2),
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Students");
+    XLSX.writeFile(workbook, includeInactive ? "all_students.xlsx" : "active_students.xlsx");
+    TapTrack.toast("Student export created.", "success");
+  } catch (error) {
+    TapTrack.toast(error.message || "Student export could not be created.", "error");
+  }
+});
+document.addEventListener("taptrack:photo-updated", (event) => {
+  const student = students.find(
+    (item) => String(item.id) === String(event.detail.id),
+  );
+  if (student) {
+    student.photoUrl = `${event.detail.photoUrl}?v=${Date.now()}`;
+    render();
+  }
+});
 $("#addBtn").addEventListener("click", () => open());
 document.addEventListener("click", async (event) => {
   if (event.target.matches('.close-button,button[value="cancel"]')) {
@@ -93,7 +283,7 @@ document.addEventListener("click", async (event) => {
       body: JSON.stringify({ isActive: !student.isActive }),
     });
     student.isActive = !student.isActive;
-    render();
+    await render();
   }
 });
 $("#form").addEventListener("submit", async (event) => {
@@ -106,6 +296,7 @@ $("#form").addEventListener("submit", async (event) => {
       lastName: $("#lastName").value,
       idNumber: $("#idNumber").value,
       programId: $("#program").value,
+      programCode: selected?.code || "",
       programName: selected?.name || "",
       yearLevel: $("#yearLevel").value,
       birthday: $("#birthday").value,
@@ -122,34 +313,67 @@ $("#form").addEventListener("submit", async (event) => {
         method: "PATCH",
         body: JSON.stringify({ isActive: $("#isActive").checked }),
       });
+    let photoError = null;
+    const photoFile = $("#photoInput").files[0];
+    if (photoFile) {
+      try {
+        const photo = await TapTrack.uploadProfilePhoto(
+          "student",
+          id || saved.id,
+          photoFile,
+        );
+        saved.photoUrl = photo.photoUrl + "?v=" + Date.now();
+      } catch (error) {
+        photoError = error;
+      }
+    }
     if (id) {
       const existing = students.find((s) => String(s.id) === id);
       Object.assign(existing, saved, {
         programName: selected.name,
+        programCode: selected.code,
         isActive: $("#isActive").checked,
       });
     } else
       students.push({
         ...saved,
         programName: selected.name,
+        programCode: selected.code,
         isActive: $("#isActive").checked,
       });
     render();
     $("#dialog").close();
+    if (photoError)
+      TapTrack.toast(
+        "The student was saved, but the photo could not be uploaded: " +
+          photoError.message,
+        "error",
+      );
   } catch (error) {
     $("#error").textContent = error.message;
   }
 });
 (async () => {
   const loadingDialog = $("#studentLoadingDialog");
+  const loadingTitle = $("#studentLoadingTitle");
+  const loadingMessage = $("#studentLoadingMessage");
+  loadingDialog.addEventListener("cancel", (event) => event.preventDefault());
   loadingDialog.showModal();
   try {
+    await new Promise(requestAnimationFrame);
+    loadingTitle.textContent = "Loading student directory";
+    loadingMessage.textContent = "Checking your access and preparing the page.";
     await init("students");
+    loadingTitle.textContent = "Loading student records";
+    loadingMessage.textContent = "Retrieving students and academic programs.";
     [students, programs] = await Promise.all([
       api("/api/student"),
       api("/api/program-options"),
     ]);
-    render();
+    loadingTitle.textContent = "Preparing the table";
+    loadingMessage.textContent = `Displaying ${students.length.toLocaleString()} student records.`;
+    await render();
+    await new Promise(requestAnimationFrame);
   } catch (error) {
     TapTrack.toast(
       error.message || "Student records could not be loaded.",

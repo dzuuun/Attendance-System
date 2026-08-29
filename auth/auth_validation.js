@@ -78,6 +78,13 @@ const requireAccess = (key) => (req, res, next) =>
           success: 0,
           message: "You do not have access to this module.",
         });
+const requireAnyAccess = (...keys) => (req, res, next) =>
+  req.user?.role === "Superadmin" || keys.some((key) => req.user?.[key])
+    ? next()
+    : res.status(403).json({
+        success: 0,
+        message: "You do not have access to this module.",
+      });
 const requirePeopleAccess = (type) => (req, res, next) =>
   req.user?.role === "Superadmin" ||
   req.user?.peopleAccess === "Both" ||
@@ -101,6 +108,7 @@ module.exports = {
   requireAdmin,
   requireSuperadmin,
   requireAccess,
+  requireAnyAccess,
   requirePeopleAccess,
   createToken,
 };

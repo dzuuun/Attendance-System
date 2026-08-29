@@ -1,5 +1,6 @@
 const pool = require("../../../db/db");
 const config = {
+  employee_department: { table: "employee_departments", parent: null },
   school: { table: "schools", parent: null },
   college: {
     table: "colleges",
@@ -18,7 +19,12 @@ const config = {
     },
   },
 };
+async function ensureEntity(entity) {
+  if (entity === "employee_department")
+    await pool.query(`CREATE TABLE IF NOT EXISTS employee_departments (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(180) NOT NULL UNIQUE,code VARCHAR(40) NOT NULL UNIQUE,is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,INDEX idx_employee_departments_active_name (is_active,name))`);
+}
 exports.getAll = async (entity) => {
+  await ensureEntity(entity);
   const item = config[entity];
   if (!item.parent)
     return (
@@ -32,6 +38,7 @@ exports.getAll = async (entity) => {
   return rows;
 };
 exports.create = async (entity, data) => {
+  await ensureEntity(entity);
   const item = config[entity];
   if (!item.parent)
     return (
@@ -48,6 +55,7 @@ exports.create = async (entity, data) => {
   )[0];
 };
 exports.update = async (entity, id, data) => {
+  await ensureEntity(entity);
   const item = config[entity];
   if (!item.parent)
     return (
@@ -63,6 +71,8 @@ exports.update = async (entity, id, data) => {
     )
   )[0];
 };
-exports.remove = async (entity, id) =>
-  (await pool.query(`DELETE FROM ${config[entity].table} WHERE id=?`, [id]))[0];
+exports.remove = async (entity, id) => {
+  await ensureEntity(entity);
+  return (await pool.query(`DELETE FROM ${config[entity].table} WHERE id=?`, [id]))[0];
+};
 exports.config = config;

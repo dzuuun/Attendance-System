@@ -46,16 +46,21 @@ exports.scan = async (req, res) => {
     .trim()
     .toUpperCase();
   const eventId = req.body.eventId ? Number(req.body.eventId) : null;
-  const action = String(req.body.action || "").trim();
+  let action = String(req.body.action || "").trim();
+  const location = String(req.body.location || "Main Entrance").trim().slice(0, 120) || "Main Entrance";
   if (!idNumber)
     return res.status(400).json({ message: "Enter an ID number." });
-  if (!["Time In", "Time Out"].includes(action))
+  if (!["Time In", "Time Out", "Auto"].includes(action))
     return res.status(400).json({
       message: "Choose whether this device records Time In or Time Out.",
     });
 
   let event = null;
   if (eventId) {
+    if (action === "Auto")
+      return res.status(400).json({
+        message: "Choose Time In or Time Out for event attendance.",
+      });
     event = await eventModel.getById(eventId);
     if (!event)
       return res.status(404).json({ message: "This event was not found." });
@@ -89,13 +94,19 @@ exports.scan = async (req, res) => {
     lookupAudience = req.user.peopleAccess;
   }
   const person = await model.findPerson(idNumber, lookupAudience);
-  if (!person)
+  if (!person) {
+    const inactiveStudent = await model.findInactiveStudent(idNumber);
+    if (inactiveStudent)
+      return res.status(403).json({
+        message: `${inactiveStudent.name}'s student account is inactive. Please visit the MIS Office for reactivation.`,
+      });
     return res.status(404).json({
       message:
         event && event.targetAudience !== "Both"
           ? `ID “${idNumber}” is not registered as an active ${event.targetAudience === "Students" ? "student" : "employee"}.`
           : `ID “${idNumber}” is not registered.`,
     });
+  }
 
   if (event) {
     const now = new Date();
@@ -124,6 +135,12 @@ exports.scan = async (req, res) => {
   const previous =
     !eventId && latest && !isToday(latest.timestamp) ? null : latest;
 
+  // The university entrance kiosk has one manual/camera input. Alternate the
+  // action from today's latest record while dedicated scanner lanes continue
+  // to submit their explicitly assigned action.
+  if (action === "Auto")
+    action = previous?.action === "Time In" ? "Time Out" : "Time In";
+
   if (!previous && action === "Time Out")
     return res.status(409).json({
       message: `${person.name} must record Time In before Time Out.`,
@@ -146,7 +163,7 @@ exports.scan = async (req, res) => {
       });
   }
 
-  const result = await model.record(person, action, eventId);
+  const result = await model.record(person, action, eventId, location);
   res.status(201).json({
     id: result.insertId,
     personId: person.id,
@@ -156,10 +173,12 @@ exports.scan = async (req, res) => {
     program: person.type === "Student" ? person.program : null,
     yearLevel: person.type === "Student" ? person.yearLevel : null,
     department: person.type === "Employee" ? person.department : null,
+    photoUrl: person.photoUrl || null,
     eventId,
     eventName: event?.name || null,
     action,
     timestamp: new Date().toISOString(),
+    location: eventId ? null : location,
     previousAction: previous?.action || null,
     previousTimestamp: previous?.timestamp || null,
   });

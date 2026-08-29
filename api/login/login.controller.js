@@ -193,6 +193,35 @@ exports.logout = async (req, res) => {
   await logAuth(req, req.user, "LOGGED_OUT", "Signed out of the system.");
   res.status(204).end();
 };
+exports.changePassword = async (req, res) => {
+  const currentPassword = String(req.body.currentPassword || "");
+  const newPassword = String(req.body.newPassword || "");
+  const confirmPassword = String(req.body.confirmPassword || "");
+  if (!currentPassword || newPassword.length < 8)
+    return res.status(400).json({
+      message: "Enter your current password and use at least 8 characters for the new password.",
+    });
+  if (newPassword !== confirmPassword)
+    return res.status(400).json({ message: "The new passwords do not match." });
+  if (currentPassword === newPassword)
+    return res.status(400).json({
+      message: "Your new password must be different from your current password.",
+    });
+  const account = await model.findPasswordById(req.user.id);
+  if (
+    !account?.passwordHash ||
+    !(await bcrypt.compare(currentPassword, account.passwordHash))
+  )
+    return res.status(400).json({ message: "The current password is incorrect." });
+  await model.updatePassword(req.user.id, await bcrypt.hash(newPassword, 12));
+  await logAuth(
+    req,
+    req.user,
+    "PASSWORD_CHANGED",
+    "Changed the account password.",
+  );
+  res.status(204).end();
+};
 exports.setupStatus = async (_req, res) =>
   res.json({ required: (await model.countUsers()) === 0 });
 exports.setup = async (req, res) => {

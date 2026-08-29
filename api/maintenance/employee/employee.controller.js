@@ -9,6 +9,7 @@ exports.create = async (req, res) => {
     idNumber: String(req.body.idNumber || "")
       .trim()
       .toUpperCase(),
+    departmentId: Number(req.body.departmentId) || null,
   };
   data.name = [data.firstName, data.middleName, data.lastName]
     .filter(Boolean)
@@ -17,7 +18,7 @@ exports.create = async (req, res) => {
     !data.firstName ||
     !data.lastName ||
     !data.idNumber ||
-    !data.groupName?.trim()
+    !data.departmentId
   )
     return res
       .status(400)
@@ -26,6 +27,11 @@ exports.create = async (req, res) => {
     return res
       .status(409)
       .json({ message: "That ID number is already registered." });
+  const department = await model.getDepartment(data.departmentId);
+  if (!department?.isActive)
+    return res.status(400).json({ message: "Choose an active employee department." });
+  data.departmentName = department.name;
+  data.groupName = department.name;
   const result = await model.create(data);
   res.status(201).json({ id: result.insertId, ...data, type: "Employee" });
 };
@@ -38,13 +44,14 @@ exports.update = async (req, res) => {
       .trim()
       .toUpperCase(),
     groupName: String(req.body.groupName || "").trim(),
+    departmentId: Number(req.body.departmentId) || null,
     contact: String(req.body.contact || "").trim(),
     isActive: req.body.isActive !== false,
   };
   data.name = [data.firstName, data.middleName, data.lastName]
     .filter(Boolean)
     .join(" ");
-  if (!data.firstName || !data.lastName || !data.idNumber || !data.groupName)
+  if (!data.firstName || !data.lastName || !data.idNumber || !data.departmentId)
     return res
       .status(400)
       .json({ message: "Name, ID number, and department are required." });
@@ -52,6 +59,11 @@ exports.update = async (req, res) => {
     return res
       .status(409)
       .json({ message: "That ID number is already registered." });
+  const department = await model.getDepartment(data.departmentId);
+  if (!department)
+    return res.status(400).json({ message: "Choose an employee department." });
+  data.departmentName = department.name;
+  data.groupName = department.name;
   const result = await model.update(req.params.id, data);
   if (!result.affectedRows)
     return res.status(404).json({ message: "Employee not found." });

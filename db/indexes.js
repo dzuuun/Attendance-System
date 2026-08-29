@@ -10,6 +10,9 @@ const indexes = {
     idx_employees_name: ["last_name", "first_name"],
     idx_employees_active_name: ["is_active", "last_name", "first_name"],
   },
+  employee_departments: {
+    idx_employee_departments_active_name: ["is_active", "name"],
+  },
   schools: { idx_schools_active_name: ["is_active", "name"] },
   colleges: { idx_colleges_school_name: ["school_id", "name"] },
   departments: { idx_departments_college_name: ["college_id", "name"] },
@@ -32,11 +35,24 @@ const indexes = {
     idx_event_attendance_student_time: ["student_id", "event_id", "checked_in_at", "id"],
     idx_event_attendance_employee_time: ["employee_id", "event_id", "checked_in_at", "id"],
     idx_event_attendance_period_time: ["academic_period_id", "checked_in_at", "id"],
+    idx_event_student_period_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
+    idx_event_employee_period_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
   },
   users: {
     idx_users_permission_name: ["permission_id", "last_name", "first_name"],
+    idx_users_name: ["last_name", "first_name"],
   },
   activity_logs: { idx_activity_created_id: ["created_at", "id"] },
+  library_entrance_logs: {
+    idx_period_time: ["academic_period_id", "checked_in_at", "id"],
+    idx_student_period_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
+    idx_employee_period_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
+  },
+  internet_section_entrance_logs: {
+    idx_period_time: ["academic_period_id", "checked_in_at", "id"],
+    idx_student_period_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
+    idx_employee_period_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
+  },
 };
 
 exports.ensureIndexes = async () => {

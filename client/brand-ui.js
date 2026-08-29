@@ -12,6 +12,14 @@
   favicon.type = "image/png";
   favicon.href = "/client/images/NDMU-Logo.png";
 
+  if (!document.querySelector("link[data-material-symbols]")) {
+    const materialSymbols = document.createElement("link");
+    materialSymbols.rel = "stylesheet";
+    materialSymbols.href = "/vendor/material-symbols/rounded.css";
+    materialSymbols.dataset.materialSymbols = "true";
+    document.head.appendChild(materialSymbols);
+  }
+
   const collapseFix = document.createElement("style");
   collapseFix.id = "taptrack-collapse-fix";
   collapseFix.textContent = `
@@ -22,6 +30,19 @@
     body.sidebar-collapsed .sidebar{width:0!important;min-width:0!important;padding:0!important;border:0!important;overflow:hidden!important}
     body.sidebar-collapsed .sidebar-inner{visibility:hidden!important}
     body.sidebar-collapsed .main{width:100%!important;min-width:0!important;max-width:100vw!important;margin:0!important}
+    .material-symbols-rounded,.material-icon{font-family:"Material Symbols Rounded"!important;font-weight:normal!important;font-style:normal!important;line-height:1!important;letter-spacing:normal!important;text-transform:none!important;white-space:nowrap!important;word-wrap:normal!important;direction:ltr!important;-webkit-font-smoothing:antialiased!important;text-rendering:optimizeLegibility!important;font-feature-settings:"liga"!important;font-variation-settings:"FILL" 0,"wght" 500,"GRAD" 0,"opsz" 24!important}
+    .nav-icon.material-symbols-rounded{font-size:20px!important}
+    .nav-chevron.material-symbols-rounded{font-size:18px!important}
+    .btn-icon.material-symbols-rounded,.input-icon.material-symbols-rounded,.submit-btn .material-symbols-rounded,.kiosk-camera-button .material-symbols-rounded{font-size:19px!important}
+    .result-icon-badge.material-symbols-rounded{display:grid!important;place-items:center!important;font-size:30px!important;font-variation-settings:"FILL" 0,"wght" 500,"GRAD" 0,"opsz" 32!important}
+    .feed-empty-state>.material-symbols-rounded{font-size:38px!important}
+    .satp-menu-button>.material-symbols-rounded{font-size:24px!important}
+    .search-box>.material-symbols-rounded{font-size:19px!important;color:#71847a!important}
+    .logout-button>.material-symbols-rounded{font-size:17px!important;vertical-align:middle!important}
+    .close-button,.modal-close-btn{font-size:0!important}
+    .close-button::before,.modal-close-btn::before{content:"close";font-family:"Material Symbols Rounded";font-size:22px;font-weight:normal;line-height:1;font-feature-settings:"liga"}
+    .edit-icon{font-size:0!important}
+    .edit-icon::before,.secondary-button.edit:not(:has(.material-symbols-rounded))::before{content:"edit"!important;font-family:"Material Symbols Rounded"!important;font-size:19px!important;font-weight:normal!important;line-height:1!important;font-feature-settings:"liga"!important;transform:none!important}
   `;
   document.head.appendChild(collapseFix);
 
@@ -73,6 +94,7 @@
     ".search-box input": "!border-0 !bg-transparent !shadow-none focus:!ring-0",
     ".status-pill,.connection-pill":
       "!inline-flex !items-center !rounded-full !bg-[#e8f5ed] !px-2.5 !py-1 !text-[10px] !font-extrabold !tracking-wide !text-[#087247]",
+    ".status-pill.time-out": "!bg-[#fde8e7] !text-[#b42318]",
     ".person-cell": "flex items-center gap-3",
     ".avatar":
       "!grid !h-9 !w-9 !place-items-center !rounded-full !bg-[#075c3b] !text-xs !font-extrabold !text-[#f3c94d]",
@@ -103,11 +125,13 @@
     ".nav-item":
       "!min-h-11 !rounded-[11px] !border !border-transparent !text-[13px] !font-semibold !text-white/75 transition hover:!border-white/5 hover:!bg-white/[.07] hover:!text-white",
     ".nav-item.active":
-      "!border-white/10 !bg-[#075c3b] !text-white !shadow-[inset_3px_0_0_#f3c94d]",
-    ".nav-item.active .nav-icon": "!text-[#f3c94d]",
+      "!border-[#f3c94d] !bg-[#f3c94d] !font-extrabold !text-[#043b2a] !shadow-[0_7px_18px_rgba(243,201,77,.22)] hover:!bg-[#f7d66c] hover:!text-[#043b2a]",
+    ".nav-item.active .nav-icon,.nav-item.active .nav-chevron":
+      "!text-[#043b2a]",
     ".nav-subitem":
       "!rounded-lg !text-white/55 hover:!bg-white/[.06] hover:!text-white",
-    ".nav-subitem.active": "!bg-white/[.06] !font-extrabold !text-[#f3c94d]",
+    ".nav-subitem.active":
+      "!bg-[#f3c94d] !font-extrabold !text-[#043b2a] !shadow-[0_5px_14px_rgba(243,201,77,.18)] hover:!bg-[#f7d66c] hover:!text-[#043b2a]",
     ".sidebar-foot": "!border-t !border-white/10 !bg-black/10",
     ".logout-button":
       "!rounded-lg !border !border-white/10 !bg-white/[.06] !px-3 !py-2 !text-xs !font-bold !text-white/75 hover:!text-[#f3c94d]",
@@ -240,7 +264,7 @@
       "Workspace";
     const header = document.createElement("header");
     header.className = "satp-site-header";
-    header.innerHTML = `<div class="satp-header-brand"><button type="button" class="satp-menu-button" aria-label="Toggle navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><a class="satp-header-identity" href="/app"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="satp-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
+    header.innerHTML = `<div class="satp-header-brand"><button type="button" class="satp-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="satp-header-identity" href="/app"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="satp-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
     header
       .querySelector(".satp-menu-button")
       .addEventListener("click", () =>

@@ -22,7 +22,7 @@
       "beforeend",
       `<dialog id="cameraScannerDialog" class="camera-scanner-dialog">
         <div class="camera-scanner-panel">
-          <header><div><small>CAMERA SCANNER</small><h2>Scan barcode</h2></div><button type="button" id="cameraScannerClose" aria-label="Close camera">×</button></header>
+          <header><div><small>CAMERA SCANNER</small><h2>Scan barcode</h2></div><button type="button" id="cameraScannerClose" class="close-button" aria-label="Close camera"></button></header>
           <div class="camera-preview"><video id="cameraScannerVideo" playsinline muted></video><span class="camera-target" aria-hidden="true"></span></div>
           <p id="cameraScannerStatus" role="status">Starting camera...</p>
           <div class="camera-scan-confirmation" id="cameraScanConfirmation" hidden role="status" aria-live="assertive"><span aria-hidden="true"></span><div><strong></strong><p></p></div></div>
@@ -104,7 +104,8 @@
       success = outcome?.success !== false;
     confirmation.hidden = false;
     confirmation.className = `camera-scan-confirmation ${success ? "success" : "error"}`;
-    confirmation.querySelector("span").textContent = success ? "✓" : "!";
+    confirmation.querySelector("span").classList.add("material-symbols-rounded");
+    confirmation.querySelector("span").textContent = success ? "check_circle" : "error";
     confirmation.querySelector("strong").textContent =
       outcome?.title || (success ? "Attendance recorded" : "Scan not recorded");
     confirmation.querySelector("p").textContent = outcome?.detail || "";

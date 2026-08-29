@@ -4,7 +4,7 @@ async function ensureSchema() {
   if (!schemaReady)
     schemaReady = (async () => {
       await pool.query(
-        "ALTER TABLE students ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name,ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500) NULL AFTER institutional_email",
       );
       const [legacy] = await pool.query(
         "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='students' AND COLUMN_NAME='full_name'",
@@ -15,6 +15,11 @@ async function ensureSchema() {
         );
         await pool.query("ALTER TABLE students DROP COLUMN full_name");
       }
+      const [legacyProgramSection] = await pool.query(
+        "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='students' AND COLUMN_NAME='program_section'",
+      );
+      if (legacyProgramSection.length)
+        await pool.query("ALTER TABLE students DROP COLUMN program_section");
       const [indexes] = await pool.query(
         "SELECT DISTINCT INDEX_NAME indexName FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='students'",
       );
@@ -38,10 +43,18 @@ async function ensureSchema() {
     })();
   return schemaReady;
 }
-const select = `SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,s.first_name firstName,s.middle_name middleName,s.last_name lastName,s.program_id programId,COALESCE(p.name,TRIM(SUBSTRING_INDEX(s.program_section,'·',1))) programName,s.year_level yearLevel,s.birthday,s.institutional_email institutionalEmail,s.gender,s.is_active isActive,s.contact,'Student' type FROM students s LEFT JOIN programs p ON p.id=s.program_id`;
+const select = `SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,s.first_name firstName,s.middle_name middleName,s.last_name lastName,s.program_id programId,p.code programCode,p.name programName,s.year_level yearLevel,s.birthday,s.institutional_email institutionalEmail,s.photo_url photoUrl,s.gender,s.is_active isActive,s.contact,'Student' type FROM students s LEFT JOIN programs p ON p.id=s.program_id`;
 exports.getAll = async () => {
   await ensureSchema();
   return (await pool.query(`${select} ORDER BY s.last_name,s.first_name`))[0];
+};
+exports.getById = async (id) => {
+  await ensureSchema();
+  return (await pool.query(`${select} WHERE s.id=? LIMIT 1`, [id]))[0][0];
+};
+exports.updatePhoto = async (id, photoUrl) => {
+  await ensureSchema();
+  return (await pool.query("UPDATE students SET photo_url=? WHERE id=?", [photoUrl, id]))[0];
 };
 exports.findId = async (idNumber, excludeId = null) => {
   await ensureSchema();
@@ -62,10 +75,9 @@ exports.create = async (data) => {
   await ensureSchema();
   return (
     await pool.query(
-      `INSERT INTO students (id_number,program_section,contact,first_name,middle_name,last_name,program_id,year_level,birthday,institutional_email,gender,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,TRUE)`,
+      `INSERT INTO students (id_number,contact,first_name,middle_name,last_name,program_id,year_level,birthday,institutional_email,gender,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,TRUE)`,
       [
         data.idNumber,
-        data.programSection,
         data.institutionalEmail || null,
         data.firstName,
         data.middleName || null,
@@ -83,10 +95,9 @@ exports.update = async (id, data) => {
   await ensureSchema();
   return (
     await pool.query(
-      `UPDATE students SET id_number=?,program_section=?,contact=?,first_name=?,middle_name=?,last_name=?,program_id=?,year_level=?,birthday=?,institutional_email=?,gender=? WHERE id=?`,
+      `UPDATE students SET id_number=?,contact=?,first_name=?,middle_name=?,last_name=?,program_id=?,year_level=?,birthday=?,institutional_email=?,gender=? WHERE id=?`,
       [
         data.idNumber,
-        data.programSection,
         data.institutionalEmail || null,
         data.firstName,
         data.middleName || null,

@@ -18,6 +18,8 @@ exports.scan = async (req, res) => {
   } catch (error) {
     if (error.code === "INVALID_LOCATION")
       return res.status(400).json({ message: error.message });
+    if (error.code === "INACTIVE_STUDENT")
+      return res.status(403).json({ message: error.message });
     throw error;
   }
 };
