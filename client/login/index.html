@@ -11,7 +11,12 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="university-brand" href="/"><img src="/client/images/NDMU-Logo.png" alt="NDMU seal" /><span><strong>Notre Dame of Marbel University</strong><small>Excellence through service</small></span></a>
+      <a class="university-brand" href="/"
+        ><img src="/client/images/NDMU-Logo.png" alt="NDMU seal" /><span
+          ><strong>Notre Dame of Marbel University</strong
+          ><small>Excellence through service</small></span
+        ></a
+      >
       <p>Smart Attendance Management System</p>
     </header>
     <main>
@@ -19,37 +24,100 @@
         <aside class="story-panel login-story">
           <div class="story-content">
             <img class="story-seal" src="/client/images/NDMU-Logo.png" alt="" />
-            <div class="product-name"><span>Tap</span><strong>Track</strong></div>
+            <div class="product-name">
+              <span>Tap</span><strong>Track</strong>
+            </div>
             <p class="eyebrow gold">ATTENDANCE PORTAL</p>
             <h1>Welcome<br />back.</h1>
-            <p class="story-description">Sign in to manage attendance, maintain directories, and support a safer and more connected NDMU community.</p>
-            <a class="back-home" href="/"><span aria-hidden="true">←</span> Back to home</a>
+            <p class="story-description">
+              Sign in to manage attendance, maintain directories, and support a
+              safer and more connected NDMU community.
+            </p>
+            <a class="back-home" href="/"
+              ><span aria-hidden="true">←</span> Back to home</a
+            >
           </div>
         </aside>
         <div class="action-panel login-panel">
           <div class="login-content">
-            <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8c.6-4 3-6 7-6s6.4 2 7 6H5Z" /></svg></span>
+            <span class="action-icon" aria-hidden="true"
+              ><svg viewBox="0 0 24 24">
+                <path
+                  d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8c.6-4 3-6 7-6s6.4 2 7 6H5Z"
+                /></svg
+            ></span>
             <p class="eyebrow">STAFF PORTAL</p>
             <h1 id="login-title">Sign in to TapTrack</h1>
             <p class="login-intro">Enter your account details to continue.</p>
             <form class="login-form" id="loginForm">
-              <div class="field"><label for="username">Username</label><input id="username" autocomplete="username" placeholder="Enter your username" required autofocus /></div>
               <div class="field">
-                <div class="field-heading"><label for="password">Password</label></div>
-                <div class="password-wrap"><input id="password" type="password" autocomplete="current-password" placeholder="Enter your password" required /><button class="password-toggle" id="passwordToggle" type="button" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button></div>
+                <label for="username">Username</label
+                ><input
+                  id="username"
+                  autocomplete="username"
+                  placeholder="Enter your username"
+                  required
+                  autofocus
+                />
               </div>
-              <button class="login-submit" type="submit"><span>Sign in</span><span aria-hidden="true">→</span></button>
-              <div class="auth-divider" id="googleDivider" hidden><span>OR</span></div>
-              <p class="google-note" id="googleNote" hidden>Sign in using your institutional email.</p>
-              <a class="google-signin" id="googleSignIn" href="/api/auth/google" hidden><span class="google-mark">G</span><span>Sign in with Google</span></a>
+              <div class="field">
+                <div class="field-heading">
+                  <label for="password">Password</label>
+                </div>
+                <div class="password-wrap">
+                  <input
+                    id="password"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="Enter your password"
+                    required
+                  /><button
+                    class="password-toggle"
+                    id="passwordToggle"
+                    type="button"
+                    aria-label="Show password"
+                    aria-pressed="false"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+                      />
+                      <circle cx="12" cy="12" r="2.7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <button class="login-submit" type="submit">
+                <span>Sign in</span><span aria-hidden="true">→</span>
+              </button>
+              <div class="auth-divider" id="googleDivider" hidden>
+                <span>OR</span>
+              </div>
+              <p class="google-note" id="googleNote" hidden>
+                Sign in using your institutional email.
+              </p>
+              <a
+                class="google-signin"
+                id="googleSignIn"
+                href="/api/auth/google"
+                hidden
+                ><span class="google-mark">G</span
+                ><span>Sign in with Google</span></a
+              >
               <div class="auth-error" id="authError" role="alert"></div>
-              <div class="login-help">Need help? Visit the <strong>MIS Department</strong> for technical assistance.</div>
+              <div class="login-help">
+                Need help? Visit the <strong>MIS Department</strong> for
+                technical assistance.
+              </div>
             </form>
           </div>
         </div>
       </section>
     </main>
-    <footer><span>© 2026 Notre Dame of Marbel University</span><i aria-hidden="true"></i><span>Developed by the MIS Department</span></footer>
+    <footer>
+      <span>© 2026 Notre Dame of Marbel University</span
+      ><i aria-hidden="true"></i><span>Developed by the MIS Department</span>
+    </footer>
     <script src="/auth.js"></script>
   </body>
 </html>

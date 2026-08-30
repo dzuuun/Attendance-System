@@ -13,8 +13,9 @@ const isToday = (timestamp, now = new Date()) => {
 };
 
 const visible = (rows, user) => {
-  const scope =
-    user?.role === "Superadmin" ? "Both" : user?.peopleAccess || "Both";
+  const scope = ["Superadmin", "Administrator"].includes(user?.role)
+    ? "Both"
+    : user?.peopleAccess || "Both";
   if (scope === "Both") return rows;
   const type = scope === "Students" ? "Student" : "Employee";
   return rows.filter((row) => row.type === type);
@@ -36,19 +37,110 @@ exports.getEventScans = async (req, res) => {
   const event = await eventModel.getById(req.params.id);
   if (!event)
     return res.status(404).json({ message: "This event was not found." });
-  const scope =
-    req.user?.role === "Superadmin" ? "Both" : req.user?.peopleAccess || "Both";
+  if (Number(event.createdBy) !== Number(req.user?.id))
+    return res
+      .status(403)
+      .json({ message: "You can view only events you created." });
+  const scope = ["Superadmin", "Administrator"].includes(req.user?.role)
+    ? "Both"
+    : req.user?.peopleAccess || "Both";
   if (
     scope !== "Both" &&
     event.targetAudience !== "Both" &&
     event.targetAudience !== scope
   )
-    return res
-      .status(403)
-      .json({
-        message: "Your permission does not include this event audience.",
-      });
+    return res.status(403).json({
+      message: "Your permission does not include this event audience.",
+    });
   res.json(visible(await model.getByEvent(req.params.id), req.user));
+};
+
+const canCorrectEvent = (user, event) =>
+  ["Superadmin", "Administrator"].includes(user?.role) ||
+  Number(event?.createdBy) === Number(user?.id);
+
+exports.getEventCorrections = async (req, res) => {
+  const event = await eventModel.getById(req.params.id);
+  if (!event)
+    return res.status(404).json({ message: "This event was not found." });
+  if (!canCorrectEvent(req.user, event))
+    return res.status(403).json({
+      message: "You can view corrections only for events you manage.",
+    });
+  res.json(await model.getEventCorrections(event.id));
+};
+
+exports.correctEventScan = async (req, res) => {
+  const event = await eventModel.getById(req.params.id);
+  if (!event)
+    return res.status(404).json({ message: "This event was not found." });
+  if (!canCorrectEvent(req.user, event))
+    return res.status(403).json({
+      message: "You can correct scans only for events you manage.",
+    });
+  const action = String(req.body.action || "").trim();
+  const reason = String(req.body.reason || "").trim();
+  const submittedTimestamp = String(req.body.timestamp || "").trim();
+  const timestamp = submittedTimestamp.replace("T", " ");
+  const parsedTimestamp = new Date(submittedTimestamp);
+  if (
+    !["Time In", "Time Out"].includes(action) ||
+    !reason ||
+    reason.length > 500 ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(submittedTimestamp) ||
+    Number.isNaN(parsedTimestamp.getTime())
+  )
+    return res.status(400).json({
+      message: "Select an action and time, then provide a correction reason.",
+    });
+  if (action === "Time Out" && Number(event.maxTimeOuts) === 0)
+    return res.status(400).json({
+      message: "This event records Time In only.",
+    });
+  if (
+    parsedTimestamp < new Date(event.startsAt) ||
+    parsedTimestamp > new Date(event.endsAt)
+  )
+    return res.status(400).json({
+      message: "The corrected time must be within the event schedule.",
+    });
+  const corrected = await model.correctEventScan(
+    event.id,
+    req.params.scanId,
+    { action, timestamp, reason },
+    req.user,
+  );
+  if (!corrected)
+    return res.status(404).json({ message: "This scan was not found." });
+  req.activityLabel = event.name;
+  req.activityDescription = `Corrected an attendance scan for ${event.name}. Reason: ${reason}`;
+  res.json({ message: "Attendance scan corrected." });
+};
+
+exports.deleteEventScan = async (req, res) => {
+  const event = await eventModel.getById(req.params.id);
+  if (!event)
+    return res.status(404).json({ message: "This event was not found." });
+  if (!canCorrectEvent(req.user, event))
+    return res.status(403).json({
+      message: "You can delete scans only for events you manage.",
+    });
+  const reason = String(req.body.reason || "").trim();
+  if (!reason || reason.length > 500)
+    return res.status(400).json({
+      message: "Provide a reason for deleting this attendance scan.",
+    });
+  const deleted = await model.deleteEventScan(
+    event.id,
+    req.params.scanId,
+    reason,
+    req.user,
+  );
+  if (!deleted)
+    return res.status(404).json({ message: "This scan was not found." });
+  req.activityLabel = event.name;
+  req.activityDescription = `Deleted an attendance scan from ${event.name}. Reason: ${reason}`;
+  res.status(204).end();
 };
 
 exports.scan = async (req, res) => {
@@ -57,7 +149,10 @@ exports.scan = async (req, res) => {
     .toUpperCase();
   const eventId = req.body.eventId ? Number(req.body.eventId) : null;
   let action = String(req.body.action || "").trim();
-  const location = String(req.body.location || "Main Entrance").trim().slice(0, 120) || "Main Entrance";
+  const location =
+    String(req.body.location || "Main Entrance")
+      .trim()
+      .slice(0, 120) || "Main Entrance";
   if (!idNumber)
     return res.status(400).json({ message: "Enter an ID number." });
   if (!["Time In", "Time Out", "Auto"].includes(action))
@@ -74,6 +169,12 @@ exports.scan = async (req, res) => {
     event = await eventModel.getById(eventId);
     if (!event)
       return res.status(404).json({ message: "This event was not found." });
+    if (req.user && Number(event.createdBy) !== Number(req.user.id))
+      return res
+        .status(403)
+        .json({
+          message: "You can scan attendance only for events you created.",
+        });
     if (!event.isActive)
       return res.status(409).json({
         message:
@@ -89,18 +190,16 @@ exports.scan = async (req, res) => {
   if (
     event &&
     req.user &&
-    req.user.role !== "Superadmin" &&
+    !["Superadmin", "Administrator"].includes(req.user.role) &&
     req.user.peopleAccess !== "Both"
   ) {
     if (
       event.targetAudience !== "Both" &&
       event.targetAudience !== req.user.peopleAccess
     )
-      return res
-        .status(403)
-        .json({
-          message: `Your permission does not include ${event.targetAudience.toLowerCase()}.`,
-        });
+      return res.status(403).json({
+        message: `Your permission does not include ${event.targetAudience.toLowerCase()}.`,
+      });
     lookupAudience = req.user.peopleAccess;
   }
   const person = await model.findPerson(idNumber, lookupAudience);
@@ -181,6 +280,7 @@ exports.scan = async (req, res) => {
     name: person.name,
     type: person.type,
     program: person.type === "Student" ? person.program : null,
+    college: person.type === "Student" ? person.college : null,
     yearLevel: person.type === "Student" ? person.yearLevel : null,
     department: person.type === "Employee" ? person.department : null,
     photoUrl: person.photoUrl || null,

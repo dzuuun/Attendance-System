@@ -1,12 +1,20 @@
 const model = require("./event.model");
 const canAccessAudience = (user, audience) =>
-  user?.role === "Superadmin" ||
+  ["Superadmin", "Administrator"].includes(user?.role) ||
   user?.peopleAccess === "Both" ||
-  audience === "Both" ||
   user?.peopleAccess === audience;
+const canAccessEvent = (user, event) =>
+  Boolean(event) &&
+  Number(event.createdBy) === Number(user?.id) &&
+  canAccessAudience(user, event.targetAudience);
+const canAccessPastEvent = (user, event) =>
+  Boolean(event) &&
+  (["Superadmin", "Administrator"].includes(user?.role) ||
+    Number(event.createdBy) === Number(user?.id)) &&
+  canAccessAudience(user, event.targetAudience);
 exports.getAll = async (req, res) =>
   res.json(
-    (await model.getAll()).filter((event) =>
+    (await model.getAll(req.user)).filter((event) =>
       canAccessAudience(req.user, event.targetAudience),
     ),
   );
@@ -31,11 +39,9 @@ exports.create = async (req, res) => {
         "Enter a name, audience, valid duration, at least one Time In, and zero or more Time Outs.",
     });
   if (!canAccessAudience(req.user, targetAudience))
-    return res
-      .status(403)
-      .json({
-        message: `Your permission does not include ${targetAudience.toLowerCase()} events.`,
-      });
+    return res.status(403).json({
+      message: `Your permission does not include ${targetAudience.toLowerCase()} events.`,
+    });
   const data = {
     name: name.trim(),
     description: description.trim(),
@@ -47,18 +53,16 @@ exports.create = async (req, res) => {
     createdBy: req.user.id,
   };
   const result = await model.create(data);
-  res.status(201).json({ id: result.insertId, ...data, isActive: 1 });
+  res.status(201).json(await model.getById(result.insertId));
 };
 exports.update = async (req, res) => {
   const event = await model.getById(req.params.id);
   if (!event)
     return res.status(404).json({ message: "This event was not found." });
-  if (!canAccessAudience(req.user, event.targetAudience))
-    return res
-      .status(403)
-      .json({
-        message: "Your permission does not include this event audience.",
-      });
+  if (!canAccessEvent(req.user, event))
+    return res.status(403).json({
+      message: "You can manage only events you created.",
+    });
   const name = String(req.body.name || "").trim();
   const description = String(req.body.description || "").trim();
   const startsAt = req.body.startsAt;
@@ -77,18 +81,14 @@ exports.update = async (req, res) => {
     maxTimeOuts < 0 ||
     !["Students", "Employees", "Both"].includes(targetAudience)
   )
-    return res
-      .status(400)
-      .json({
-        message:
-          "Enter a name, audience, valid duration, at least one Time In, and zero or more Time Outs.",
-      });
+    return res.status(400).json({
+      message:
+        "Enter a name, audience, valid duration, at least one Time In, and zero or more Time Outs.",
+    });
   if (!canAccessAudience(req.user, targetAudience))
-    return res
-      .status(403)
-      .json({
-        message: `Your permission does not include ${targetAudience.toLowerCase()} events.`,
-      });
+    return res.status(403).json({
+      message: `Your permission does not include ${targetAudience.toLowerCase()} events.`,
+    });
   const data = {
     name,
     description,
@@ -100,21 +100,21 @@ exports.update = async (req, res) => {
   };
   req.activityLabel = name;
   await model.update(req.params.id, data);
-  res.json({ id: event.id, ...data, isActive: event.isActive });
+  res.json(await model.getById(event.id));
 };
 exports.setActive = async (req, res) => {
   const event = await model.getById(req.params.id);
   if (!event)
     return res.status(404).json({ message: "This event was not found." });
-  if (!canAccessAudience(req.user, event.targetAudience))
-    return res
-      .status(403)
-      .json({
-        message: "Your permission does not include this event audience.",
-      });
+  if (!canAccessEvent(req.user, event))
+    return res.status(403).json({
+      message: "You can manage only events you created.",
+    });
   req.activityLabel = event.name;
   await model.setActive(req.params.id, Boolean(req.body.isActive));
   res.status(204).end();
 };
 
 exports.canAccessAudience = canAccessAudience;
+exports.canAccessEvent = canAccessEvent;
+exports.canAccessPastEvent = canAccessPastEvent;

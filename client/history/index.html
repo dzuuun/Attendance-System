@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Historical Data — TapTrack</title>
+    <title>Past Events — TapTrack</title>
     <link rel="stylesheet" href="/client/dashboard/style.css" />
     <link rel="stylesheet" href="/client/dashboard/events.css" />
     <link rel="stylesheet" href="/client/page-shell.css" />
@@ -15,20 +15,23 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">EVENTS</p>
-            <h1>Event historical data</h1>
+            <h1>Past events</h1>
           </div>
           <div class="live-time">
             <span id="liveTime"></span><small id="liveDate"></small>
           </div>
         </header>
         <div class="section-header">
-          <p>Review event details and event attendance from any academic period.</p>
-          <label>Academic period<select id="period"></select></label>
+          <p>
+            Review your completed events and their attendance from any academic
+            period.
+          </p>
+          <label>Academic period<select id="period" required></select></label>
         </div>
         <article class="table-card">
           <div class="table-toolbar">
             <div>
-              <span class="section-kicker">EVENT HISTORY</span>
+              <span class="section-kicker">PAST EVENTS</span>
               <h2 id="periodTitle">Events</h2>
             </div>
           </div>
@@ -68,6 +71,29 @@
                 </tr>
               </thead>
               <tbody id="scanBody"></tbody>
+            </table>
+          </div>
+          <div class="table-toolbar history-correction-heading">
+            <div>
+              <span class="section-kicker">AUDIT TRAIL</span>
+              <h2>Correction history</h2>
+              <p>Updated and deleted attendance records remain visible.</p>
+            </div>
+            <strong id="correctionCount">0 changes</strong>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ATTENDEE</th>
+                  <th>CHANGE</th>
+                  <th>ORIGINAL</th>
+                  <th>CORRECTED TO</th>
+                  <th>REASON</th>
+                  <th>CORRECTED BY</th>
+                </tr>
+              </thead>
+              <tbody id="correctionBody"></tbody>
             </table>
           </div>
         </article>

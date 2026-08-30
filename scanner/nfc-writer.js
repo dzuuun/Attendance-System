@@ -60,7 +60,9 @@ function execute(mode, value = "") {
     let stderr = "";
     const timer = setTimeout(() => {
       child.kill();
-      reject(new Error("NFC operation timed out. Keep the card on the reader."));
+      reject(
+        new Error("NFC operation timed out. Keep the card on the reader."),
+      );
     }, 30000);
     const finish = (callback) => {
       clearTimeout(timer);
@@ -123,7 +125,9 @@ function writeAndVerify(value) {
     );
   if (!lastReadAt || Date.now() - lastReadAt > 60000)
     return Promise.reject(
-      new Error("Read the NFC card before writing. Card reads expire after one minute."),
+      new Error(
+        "Read the NFC card before writing. Card reads expire after one minute.",
+      ),
     );
   lastReadAt = 0;
   return execute("write", value);

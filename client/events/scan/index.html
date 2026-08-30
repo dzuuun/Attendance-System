@@ -26,9 +26,17 @@
               <div>
                 <span class="section-kicker">ATTENDANT TERMINAL</span>
                 <h2>Scan attendance</h2>
+                <span class="event-audience-badge" id="eventAudienceBadge"
+                  >Loading accepted attendees…</span
+                >
                 <p id="eventDetails">Loading event information…</p>
               </div>
-              <a class="secondary-button" href="/events">Back to events</a>
+              <div class="event-scan-heading-actions">
+                <button class="primary-button" id="exportEventBtn" disabled>
+                  Export event
+                </button>
+                <a class="secondary-button" href="/events">Back to events</a>
+              </div>
             </div>
             <fieldset class="action-selector">
               <legend>SCANS CURRENTLY ACCEPT</legend>
@@ -48,14 +56,17 @@
               >
             </fieldset>
             <form id="eventScanForm">
-              <label for="eventScanInput">ID NUMBER</label>
+              <label for="eventScanInput" id="eventScanLabel"
+                >ID NUMBER FOR TIME IN</label
+              >
               <div class="event-scan-input">
                 <input
                   id="eventScanInput"
                   autocomplete="off"
-                  placeholder="Tap card or enter ID…"
+                  placeholder="Tap card or enter ID for Time In…"
                   autofocus
-                /><button class="primary-button">Record scan</button
+                /><button class="primary-button" id="recordScanBtn">
+                  Record Time In</button
                 ><button
                   type="button"
                   class="camera-scan-button"
@@ -74,6 +85,28 @@
               <strong>Ready to scan</strong
               ><span>Select Time In or Time Out, then scan an ID.</span>
             </div>
+            <section class="current-attendee is-idle" id="currentAttendee">
+              <div class="current-attendee-photo">
+                <img
+                  id="currentAttendeePhoto"
+                  src="/client/images/NDMU-Logo.png"
+                  alt="Scanned attendee"
+                />
+              </div>
+              <div class="current-attendee-content">
+                <span class="section-kicker" id="currentAttendeeKicker"
+                  >CURRENT ATTENDEE</span
+                >
+                <h3 id="currentAttendeeName">Ready to scan</h3>
+                <p id="currentAttendeeId">
+                  The scanned attendee will appear here.
+                </p>
+                <div
+                  class="current-attendee-details"
+                  id="currentAttendeeDetails"
+                ></div>
+              </div>
+            </section>
           </article>
           <article class="table-card">
             <div class="table-toolbar">
@@ -81,7 +114,12 @@
                 <span class="section-kicker">THIS EVENT</span>
                 <h2>Attendance scans</h2>
               </div>
-              <strong id="sessionCount">0 scans</strong>
+              <strong class="live-scan-count"
+                ><span aria-hidden="true"></span
+                ><span id="sessionCount"
+                  >0 scans across all stations</span
+                ></strong
+              >
             </div>
             <div class="table-wrap">
               <table>
@@ -92,15 +130,94 @@
                     <th>TYPE</th>
                     <th>ACTION</th>
                     <th>TIME</th>
+                    <th>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody id="scanBody"></tbody>
               </table>
             </div>
           </article>
+          <article class="table-card correction-history-card">
+            <div class="table-toolbar">
+              <div>
+                <span class="section-kicker">AUDIT TRAIL</span>
+                <h2>Correction history</h2>
+                <p>
+                  Every updated or deleted attendance scan remains visible here.
+                </p>
+              </div>
+              <strong id="correctionCount">0 changes</strong>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ATTENDEE</th>
+                    <th>CHANGE</th>
+                    <th>ORIGINAL</th>
+                    <th>CORRECTED TO</th>
+                    <th>REASON</th>
+                    <th>CORRECTED BY</th>
+                  </tr>
+                </thead>
+                <tbody id="correctionBody"></tbody>
+              </table>
+            </div>
+          </article>
         </section>
       </main>
     </div>
+    <dialog id="correctionDialog" class="scan-correction-dialog">
+      <form id="correctionForm">
+        <input type="hidden" id="correctionScanId" />
+        <div class="modal-head">
+          <div>
+            <span class="modal-kicker">ATTENDANCE CORRECTION</span>
+            <h2>Rectify scan</h2>
+          </div>
+          <button type="button" class="close-button" id="closeCorrectionDialog">
+            ×
+          </button>
+        </div>
+        <div class="form-grid">
+          <div
+            class="full correction-person-summary"
+            id="correctionPerson"
+          ></div>
+          <label
+            >Attendance action<select id="correctionAction" required>
+              <option value="Time In">Time In</option>
+              <option value="Time Out">Time Out</option>
+            </select></label
+          >
+          <label
+            >Recorded time<input
+              id="correctionTimestamp"
+              type="datetime-local"
+              required
+          /></label>
+          <label class="full"
+            >Reason for correction<textarea
+              id="correctionReason"
+              maxlength="500"
+              rows="4"
+              required
+              placeholder="Explain why this record is being corrected..."
+            ></textarea>
+          </label>
+        </div>
+        <p class="form-error" id="correctionError"></p>
+        <div class="modal-actions">
+          <button type="button" class="danger-button" id="deleteScanBtn">
+            Delete scan
+          </button>
+          <button type="button" class="secondary-button" id="cancelCorrection">
+            Cancel
+          </button>
+          <button class="primary-button">Save correction</button>
+        </div>
+      </form>
+    </dialog>
     <script src="/client/shared-ui.js"></script>
     <script src="/client/camera-scanner.js"></script>
     <script src="/client/events/scan/script.js"></script>

@@ -27,16 +27,50 @@ const indexes = {
   },
   university_entrance_logs: {
     idx_university_period_time: ["academic_period_id", "checked_in_at", "id"],
-    idx_university_student_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
-    idx_university_employee_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
+    idx_university_student_time: [
+      "student_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
+    idx_university_employee_time: [
+      "employee_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
   },
   event_attendance_logs: {
     idx_event_attendance_event_time: ["event_id", "checked_in_at", "id"],
-    idx_event_attendance_student_time: ["student_id", "event_id", "checked_in_at", "id"],
-    idx_event_attendance_employee_time: ["employee_id", "event_id", "checked_in_at", "id"],
-    idx_event_attendance_period_time: ["academic_period_id", "checked_in_at", "id"],
-    idx_event_student_period_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
-    idx_event_employee_period_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
+    idx_event_attendance_student_time: [
+      "student_id",
+      "event_id",
+      "checked_in_at",
+      "id",
+    ],
+    idx_event_attendance_employee_time: [
+      "employee_id",
+      "event_id",
+      "checked_in_at",
+      "id",
+    ],
+    idx_event_attendance_period_time: [
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
+    idx_event_student_period_time: [
+      "student_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
+    idx_event_employee_period_time: [
+      "employee_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
   },
   users: {
     idx_users_permission_name: ["permission_id", "last_name", "first_name"],
@@ -45,13 +79,33 @@ const indexes = {
   activity_logs: { idx_activity_created_id: ["created_at", "id"] },
   library_entrance_logs: {
     idx_period_time: ["academic_period_id", "checked_in_at", "id"],
-    idx_student_period_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
-    idx_employee_period_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
+    idx_student_period_time: [
+      "student_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
+    idx_employee_period_time: [
+      "employee_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
   },
   internet_section_entrance_logs: {
     idx_period_time: ["academic_period_id", "checked_in_at", "id"],
-    idx_student_period_time: ["student_id", "academic_period_id", "checked_in_at", "id"],
-    idx_employee_period_time: ["employee_id", "academic_period_id", "checked_in_at", "id"],
+    idx_student_period_time: [
+      "student_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
+    idx_employee_period_time: [
+      "employee_id",
+      "academic_period_id",
+      "checked_in_at",
+      "id",
+    ],
   },
 };
 

@@ -57,11 +57,9 @@ exports.forEntity = (entity) => ({
       res.json({ id: Number(req.params.id), name, code, parentId, isActive });
     } catch (error) {
       if (error.code === "ER_DUP_ENTRY")
-        return res
-          .status(409)
-          .json({
-            message: `That ${entity} code already exists under the selected parent.`,
-          });
+        return res.status(409).json({
+          message: `That ${entity} code already exists under the selected parent.`,
+        });
       throw error;
     }
   },

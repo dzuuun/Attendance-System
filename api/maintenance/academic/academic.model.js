@@ -21,7 +21,9 @@ const config = {
 };
 async function ensureEntity(entity) {
   if (entity === "employee_department")
-    await pool.query(`CREATE TABLE IF NOT EXISTS employee_departments (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(180) NOT NULL UNIQUE,code VARCHAR(40) NOT NULL UNIQUE,is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,INDEX idx_employee_departments_active_name (is_active,name))`);
+    await pool.query(
+      `CREATE TABLE IF NOT EXISTS employee_departments (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(180) NOT NULL UNIQUE,code VARCHAR(40) NOT NULL UNIQUE,is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,INDEX idx_employee_departments_active_name (is_active,name))`,
+    );
 }
 exports.getAll = async (entity) => {
   await ensureEntity(entity);
@@ -73,6 +75,8 @@ exports.update = async (entity, id, data) => {
 };
 exports.remove = async (entity, id) => {
   await ensureEntity(entity);
-  return (await pool.query(`DELETE FROM ${config[entity].table} WHERE id=?`, [id]))[0];
+  return (
+    await pool.query(`DELETE FROM ${config[entity].table} WHERE id=?`, [id])
+  )[0];
 };
 exports.config = config;

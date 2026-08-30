@@ -15,14 +15,20 @@
           <div>
             <p class="eyebrow">ACCOUNT SECURITY</p>
             <h1>Update password</h1>
-            <p class="satp-page-description">Replace your current password with a new secure password.</p>
+            <p class="satp-page-description">
+              Replace your current password with a new secure password.
+            </p>
           </div>
-          <div class="live-time"><span id="liveTime"></span><small id="liveDate"></small></div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
         </header>
         <section class="account-password-layout">
           <article class="table-card account-password-card">
             <div class="account-password-heading">
-              <span class="material-symbols-rounded" aria-hidden="true">shield_lock</span>
+              <span class="material-symbols-rounded" aria-hidden="true"
+                >shield_lock</span
+              >
               <div>
                 <span class="section-kicker">SECURITY CHECK</span>
                 <h2>Choose a new password</h2>
@@ -30,21 +36,50 @@
               </div>
             </div>
             <form id="changePasswordForm">
-              <label>Current password
-                <input id="currentPassword" type="password" autocomplete="current-password" required />
+              <label
+                >Current password
+                <input
+                  id="currentPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                />
               </label>
-              <label>New password
-                <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
+              <label
+                >New password
+                <input
+                  id="newPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="8"
+                  required
+                />
                 <small>Use at least 8 characters.</small>
               </label>
-              <label>Confirm new password
-                <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required />
+              <label
+                >Confirm new password
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="8"
+                  required
+                />
               </label>
-              <label class="show-passwords-control"><input id="showPasswords" type="checkbox" /><span>Show passwords</span></label>
+              <label class="show-passwords-control"
+                ><input id="showPasswords" type="checkbox" /><span
+                  >Show passwords</span
+                ></label
+              >
               <p id="passwordError" class="form-error" role="alert"></p>
               <div class="account-password-actions">
                 <a class="secondary-button" href="/app">Cancel</a>
-                <button class="primary-button" id="savePassword" type="submit"><span class="material-symbols-rounded" aria-hidden="true">check</span> Update password</button>
+                <button class="primary-button" id="savePassword" type="submit">
+                  <span class="material-symbols-rounded" aria-hidden="true"
+                    >check</span
+                  >
+                  Update password
+                </button>
               </div>
             </form>
           </article>
@@ -52,11 +87,26 @@
             <span class="section-kicker">PASSWORD GUIDANCE</span>
             <h2>Keep your account secure</h2>
             <ul>
-              <li><span class="material-symbols-rounded" aria-hidden="true">check</span>Use a password unique to TapTrack.</li>
-              <li><span class="material-symbols-rounded" aria-hidden="true">check</span>Avoid names and predictable sequences.</li>
-              <li><span class="material-symbols-rounded" aria-hidden="true">check</span>Do not share your password with anyone.</li>
+              <li>
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >check</span
+                >Use a password unique to TapTrack.
+              </li>
+              <li>
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >check</span
+                >Avoid names and predictable sequences.
+              </li>
+              <li>
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >check</span
+                >Do not share your password with anyone.
+              </li>
             </ul>
-            <p>If you cannot remember your current password, contact the MIS Department for assistance.</p>
+            <p>
+              If you cannot remember your current password, contact the MIS
+              Department for assistance.
+            </p>
           </aside>
         </section>
       </main>

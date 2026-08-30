@@ -1,77 +1,225 @@
 <aside class="sidebar" aria-label="Primary navigation">
   <div class="sidebar-inner">
     <header class="sidebar-header">
-      <a class="brand" href="/app"><img class="ndmu-brand-seal" src="/client/images/NDMU-Logo.png"
-          alt="" /><span><strong>TapTrack</strong><small>Admin portal</small></span></a>
-      <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Close navigation"
-        aria-expanded="true">
+      <a class="brand" href="/app"
+        ><img
+          class="ndmu-brand-seal"
+          src="/client/images/NDMU-Logo.png"
+          alt=""
+        /><span><strong>TapTrack</strong><small>Admin portal</small></span></a
+      >
+      <button
+        class="sidebar-toggle"
+        id="sidebarToggle"
+        type="button"
+        aria-label="Close navigation"
+        aria-expanded="true"
+      >
         <span class="material-symbols-rounded">close</span>
       </button>
     </header>
     <nav class="nav" aria-label="Main navigation">
       <p class="nav-section-label">Workspace</p>
-      <a class="nav-item" data-access="overviewAccess" data-nav="dashboard" href="/app"><span
-          class="nav-icon material-symbols-rounded">dashboard</span><span class="nav-label">Overview</span></a>
-      <a class="nav-item" data-access="attendanceAccess" data-nav="attendance" href="/attendance"><span
-          class="nav-icon material-symbols-rounded">fact_check</span><span class="nav-label">University entrance logs</span></a>
+      <a
+        class="nav-item"
+        data-access="overviewAccess"
+        data-nav="dashboard"
+        href="/app"
+        ><span class="nav-icon material-symbols-rounded">dashboard</span
+        ><span class="nav-label">Overview</span></a
+      >
+      <a
+        class="nav-item"
+        data-access="attendanceAccess"
+        data-nav="attendance"
+        href="/attendance"
+        ><span class="nav-icon material-symbols-rounded">fact_check</span
+        ><span class="nav-label">University entrance logs</span></a
+      >
       <div class="nav-group" data-access="specialEventsAccess" id="eventsGroup">
-        <button class="nav-item nav-group-toggle" id="eventsToggle" type="button" aria-expanded="false"><span
-            class="nav-icon material-symbols-rounded">event</span><span class="nav-label">Events</span><span
-            class="nav-chevron material-symbols-rounded">expand_more</span></button>
+        <button
+          class="nav-item nav-group-toggle"
+          id="eventsToggle"
+          type="button"
+          aria-expanded="false"
+        >
+          <span class="nav-icon material-symbols-rounded">event</span
+          ><span class="nav-label">Events</span
+          ><span class="nav-chevron material-symbols-rounded">expand_more</span>
+        </button>
         <div class="nav-submenu" id="eventsSubmenu">
-          <a class="nav-subitem" data-access="specialEventsAccess" data-nav="events" href="/events">Event management</a>
-          <a class="nav-subitem" data-access="specialEventsAccess" data-nav="history" href="/history">Event historical data</a>
+          <a
+            class="nav-subitem"
+            data-access="specialEventsAccess"
+            data-nav="events"
+            href="/events"
+            >Event management</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="specialEventsAccess"
+            data-nav="history"
+            href="/events/past"
+            >Past events</a
+          >
         </div>
       </div>
       <div class="nav-group" data-access="libraryAccess" id="libraryGroup">
-        <button class="nav-item nav-group-toggle" id="libraryToggle" type="button" aria-expanded="false"><span
-            class="nav-icon material-symbols-rounded">local_library</span><span class="nav-label">Library</span><span
-            class="nav-chevron material-symbols-rounded">expand_more</span></button>
+        <button
+          class="nav-item nav-group-toggle"
+          id="libraryToggle"
+          type="button"
+          aria-expanded="false"
+        >
+          <span class="nav-icon material-symbols-rounded">local_library</span
+          ><span class="nav-label">Library</span
+          ><span class="nav-chevron material-symbols-rounded">expand_more</span>
+        </button>
         <div class="nav-submenu" id="librarySubmenu">
-          <a class="nav-subitem" data-nav="libraryEntrance" href="/library/entrance">Library entrance logs</a>
-          <a class="nav-subitem" data-nav="internetEntrance" href="/library/internet-section">Internet section logs</a>
+          <a
+            class="nav-subitem"
+            data-nav="libraryEntrance"
+            href="/library/entrance"
+            >Library entrance logs</a
+          >
+          <a
+            class="nav-subitem"
+            data-nav="internetEntrance"
+            href="/library/internet-section"
+            >Internet section logs</a
+          >
         </div>
       </div>
       <div class="nav-group" id="maintenanceGroup">
-        <button class="nav-item nav-group-toggle" id="maintenanceToggle" type="button" aria-expanded="false">
-          <span class="nav-icon material-symbols-rounded">settings</span><span class="nav-label">Maintenance</span><span
-            class="nav-chevron material-symbols-rounded">expand_more</span>
+        <button
+          class="nav-item nav-group-toggle"
+          id="maintenanceToggle"
+          type="button"
+          aria-expanded="false"
+        >
+          <span class="nav-icon material-symbols-rounded">settings</span
+          ><span class="nav-label">Maintenance</span
+          ><span class="nav-chevron material-symbols-rounded">expand_more</span>
         </button>
         <div class="nav-submenu" id="maintenanceSubmenu">
-          <a class="nav-subitem" data-people="Students" data-nav="students" href="/maintenance/student">Students</a>
-          <a class="nav-subitem" data-people="Employees" data-nav="employees" href="/maintenance/employee">Employees</a>
-          <a class="nav-subitem" data-access="maintenanceAccess" data-nav="school" href="/maintenance/school">Schools</a>
-          <a class="nav-subitem" data-access="maintenanceAccess" data-nav="college" href="/maintenance/college">Colleges</a>
-          <a class="nav-subitem" data-access="maintenanceAccess" data-nav="department" href="/maintenance/department">Departments</a>
-          <a class="nav-subitem" data-access="maintenanceAccess" data-people="Employees" data-nav="employee_department" href="/maintenance/employee-department">Employee departments</a>
-          <a class="nav-subitem" data-access="maintenanceAccess" data-nav="program" href="/maintenance/program">Programs</a>
-          <a class="nav-subitem" data-access="maintenanceAccess" data-nav="periods" href="/maintenance/academic-periods">Academic period</a>
-          <a class="nav-subitem" data-access="maintenanceAccess" data-nav="maintenance" href="/maintenance/settings">System settings</a>
+          <a
+            class="nav-subitem"
+            data-people="Students"
+            data-nav="students"
+            href="/maintenance/student"
+            >Students</a
+          >
+          <a
+            class="nav-subitem"
+            data-people="Employees"
+            data-nav="employees"
+            href="/maintenance/employee"
+            >Employees</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="maintenanceAccess"
+            data-nav="school"
+            href="/maintenance/school"
+            >Schools</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="maintenanceAccess"
+            data-nav="college"
+            href="/maintenance/college"
+            >Colleges</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="maintenanceAccess"
+            data-nav="department"
+            href="/maintenance/department"
+            >Departments</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="maintenanceAccess"
+            data-people="Employees"
+            data-nav="employee_department"
+            href="/maintenance/employee-department"
+            >Employee departments</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="maintenanceAccess"
+            data-nav="program"
+            href="/maintenance/program"
+            >Programs</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="maintenanceAccess"
+            data-nav="periods"
+            href="/maintenance/academic-periods"
+            >Academic period</a
+          >
+          <a
+            class="nav-subitem"
+            data-access="maintenanceAccess"
+            data-nav="maintenance"
+            href="/maintenance/settings"
+            >System settings</a
+          >
         </div>
       </div>
       <div class="nav-group" data-access="usersAccess" id="usersGroup">
-        <button class="nav-item nav-group-toggle" id="usersToggle" type="button" aria-expanded="false">
-          <span class="nav-icon material-symbols-rounded">manage_accounts</span><span class="nav-label">Users &amp;
-            access</span><span class="nav-chevron material-symbols-rounded">expand_more</span>
+        <button
+          class="nav-item nav-group-toggle"
+          id="usersToggle"
+          type="button"
+          aria-expanded="false"
+        >
+          <span class="nav-icon material-symbols-rounded">manage_accounts</span
+          ><span class="nav-label">Users &amp; access</span
+          ><span class="nav-chevron material-symbols-rounded">expand_more</span>
         </button>
         <div class="nav-submenu" id="usersSubmenu">
-          <a class="nav-subitem" data-nav="activity" href="/user/activity-log">Activity log</a><a class="nav-subitem"
-            data-nav="permissions" href="/user/permissions">Permissions</a><a class="nav-subitem" data-nav="users"
-            href="/user/user-management">User management</a>
+          <a class="nav-subitem" data-nav="activity" href="/user/activity-log"
+            >Activity log</a
+          ><a
+            class="nav-subitem"
+            data-nav="permissions"
+            href="/user/permissions"
+            >Permissions</a
+          ><a class="nav-subitem" data-nav="users" href="/user/user-management"
+            >User management</a
+          >
         </div>
       </div>
     </nav>
     <footer class="sidebar-foot">
       <div class="profile-card">
-        <span class="profile-avatar material-symbols-rounded">account_circle</span>
+        <span class="profile-avatar" aria-hidden="true"
+          ><span class="material-symbols-rounded">person</span></span
+        >
         <div class="profile-info">
-          <strong id="signedInName">Signed in</strong><small id="signedInRole"></small>
+          <strong id="signedInName">Signed in</strong
+          ><small id="signedInRole"></small>
         </div>
         <div class="profile-actions">
-          <a class="profile-action" data-nav="changePassword" href="/account/change-password"><span
-              class="material-symbols-rounded" aria-hidden="true">password</span> Password</a><button
-            class="profile-action logout-button" id="logoutBtn" type="button">
-            <span class="material-symbols-rounded" aria-hidden="true">logout</span> Sign out
+          <a
+            class="profile-action"
+            data-nav="changePassword"
+            href="/account/change-password"
+            ><span class="material-symbols-rounded" aria-hidden="true"
+              >lock_reset</span
+            >
+            Password</a
+          ><button
+            class="profile-action logout-button"
+            id="logoutBtn"
+            type="button"
+          >
+            <span class="material-symbols-rounded" aria-hidden="true"
+              >logout</span
+            >
+            Sign out
           </button>
         </div>
       </div>

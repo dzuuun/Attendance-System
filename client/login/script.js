@@ -29,16 +29,18 @@ request("/api/auth/google/status")
     if (note) note.hidden = !enabled;
   })
   .catch(() => {});
-document.querySelector("#passwordToggle")?.addEventListener("click", (event) => {
-  const password = document.querySelector("#password");
-  const showing = password.type === "text";
-  password.type = showing ? "password" : "text";
-  event.currentTarget.setAttribute("aria-pressed", String(!showing));
-  event.currentTarget.setAttribute(
-    "aria-label",
-    showing ? "Show password" : "Hide password",
-  );
-});
+document
+  .querySelector("#passwordToggle")
+  ?.addEventListener("click", (event) => {
+    const password = document.querySelector("#password");
+    const showing = password.type === "text";
+    password.type = showing ? "password" : "text";
+    event.currentTarget.setAttribute("aria-pressed", String(!showing));
+    event.currentTarget.setAttribute(
+      "aria-label",
+      showing ? "Show password" : "Hide password",
+    );
+  });
 document
   .querySelector("#loginForm")
   ?.addEventListener("submit", async (event) => {

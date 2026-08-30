@@ -22,7 +22,11 @@
       <header class="kiosk-header">
         <div class="kiosk-brand-wrap">
           <a class="brand" href="/" title="TapTrack Home">
-            <img src="/client/images/NDMU-Logo.png" alt="NDMU Logo" class="brand-seal-img ndmu-brand-seal" />
+            <img
+              src="/client/images/NDMU-Logo.png"
+              alt="NDMU Logo"
+              class="brand-seal-img ndmu-brand-seal"
+            />
             <div class="brand-text">
               <strong>NOTRE DAME OF MARBEL UNIVERSITY</strong>
               <small>TapTrack Attendance System · University Entrance</small>
@@ -31,7 +35,11 @@
         </div>
 
         <div class="header-actions">
-          <div class="terminal-status" id="terminalStatusBadge" title="Terminal Connection Status">
+          <div
+            class="terminal-status"
+            id="terminalStatusBadge"
+            title="Terminal Connection Status"
+          >
             <span class="status-dot"></span>
             <b id="terminalStatusText">ENTRANCE TERMINAL ONLINE</b>
           </div>
@@ -43,7 +51,9 @@
             title="Toggle Sound Effects (Press M)"
             aria-label="Toggle Sound Effects"
           >
-            <span class="btn-icon material-symbols-rounded" id="soundIcon">volume_up</span>
+            <span class="btn-icon material-symbols-rounded" id="soundIcon"
+              >volume_up</span
+            >
             <span class="btn-label">Sound</span>
           </button>
 
@@ -83,7 +93,9 @@
             </div>
             <div class="date-display">
               <span id="date" class="calendar-date">Loading date...</span>
-              <span class="academic-year-badge" id="terminalLocationBadge">MAIN ENTRANCE</span>
+              <span class="academic-year-badge" id="terminalLocationBadge"
+                >MAIN ENTRANCE</span
+              >
             </div>
           </div>
 
@@ -108,7 +120,9 @@
 
           <!-- Input Bar & Camera Scanner -->
           <form id="kioskForm" class="scan-input-form">
-            <label for="kioskInput" class="input-label">MANUAL ID ENTRY / SCANNER BUFFER</label>
+            <label for="kioskInput" class="input-label"
+              >MANUAL ID ENTRY / SCANNER BUFFER</label
+            >
             <div class="input-container">
               <span class="input-icon material-symbols-rounded">badge</span>
               <input
@@ -140,16 +154,38 @@
         <!-- Right Column: Result Card & Recent Activity Feed -->
         <section class="kiosk-feed-panel">
           <!-- Active Result / Feedback Card -->
-          <div class="result-hero-card" id="kioskResult" role="status" aria-live="polite">
+          <div
+            class="result-hero-card"
+            id="kioskResult"
+            role="status"
+            aria-live="polite"
+          >
             <div class="result-header">
-              <div class="result-person-photo" id="resultPersonPhotoWrap" hidden>
-                <img id="resultPersonPhoto" src="/client/images/NDMU-Logo.png" alt="Scanned attendee" />
+              <div
+                class="result-person-photo"
+                id="resultPersonPhotoWrap"
+                hidden
+              >
+                <img
+                  id="resultPersonPhoto"
+                  src="/client/images/NDMU-Logo.png"
+                  alt="Scanned attendee"
+                />
               </div>
-              <div class="result-icon-badge material-symbols-rounded" id="resultIcon">center_focus_strong</div>
+              <div
+                class="result-icon-badge material-symbols-rounded"
+                id="resultIcon"
+              >
+                center_focus_strong
+              </div>
               <div class="result-status-text">
-                <span class="result-badge-kicker" id="resultKicker">SYSTEM READY</span>
+                <span class="result-badge-kicker" id="resultKicker"
+                  >SYSTEM READY</span
+                >
                 <h2 id="resultTitle">Ready to Scan</h2>
-                <p id="resultDetail">The terminal is ready to record attendance.</p>
+                <p id="resultDetail">
+                  The terminal is ready to record attendance.
+                </p>
               </div>
             </div>
 
@@ -157,10 +193,18 @@
             <div class="attendee-details-container" id="attendeeDetails"></div>
 
             <!-- Previous Log Notice -->
-            <div class="previous-log-notice" id="previousLogNotice" style="display: none;"></div>
+            <div
+              class="previous-log-notice"
+              id="previousLogNotice"
+              style="display: none"
+            ></div>
 
             <!-- Auto Reset Countdown Bar -->
-            <div class="reset-progress-track" id="resetProgressTrack" style="display: none;">
+            <div
+              class="reset-progress-track"
+              id="resetProgressTrack"
+              style="display: none"
+            >
               <div class="reset-progress-bar" id="resetProgressBar"></div>
             </div>
           </div>
@@ -188,14 +232,21 @@
                 <span class="feed-pulse-dot"></span>
                 <h3>Recent Entrance Scans</h3>
               </div>
-              <span class="feed-count-badge" id="feedCountBadge">Live Feed</span>
+              <span class="feed-count-badge" id="feedCountBadge"
+                >Live Feed</span
+              >
             </div>
 
             <div class="recent-scans-list" id="recentScansList">
               <div class="feed-empty-state" id="feedEmptyState">
-                <span class="material-symbols-rounded" aria-hidden="true">schedule</span>
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >schedule</span
+                >
                 <span>No scans recorded yet this session</span>
-                <small>Recent attendance records will appear here in real-time</small>
+                <small
+                  >Recent attendance records will appear here in
+                  real-time</small
+                >
               </div>
             </div>
           </div>
@@ -205,7 +256,10 @@
       <!-- Kiosk Footer -->
       <footer class="kiosk-footer satp-site-footer">
         <div class="footer-left">
-          <span>&copy; <span id="currentYear">2026</span> Notre Dame of Marbel University</span>
+          <span
+            >&copy; <span id="currentYear">2026</span> Notre Dame of Marbel
+            University</span
+          >
           <span class="footer-dot">&middot;</span>
           <span>Management Information Systems Department</span>
         </div>
@@ -214,42 +268,75 @@
 
     <!-- Hardware Scanner Pairing Modal / Drawer -->
     <div class="scanner-modal-backdrop" id="scannerModalBackdrop">
-      <div class="scanner-modal" role="dialog" aria-labelledby="scannerModalTitle" aria-modal="true">
+      <div
+        class="scanner-modal"
+        role="dialog"
+        aria-labelledby="scannerModalTitle"
+        aria-modal="true"
+      >
         <div class="modal-top">
           <div class="modal-title-wrap">
             <span class="modal-kicker">HARDWARE CONFIGURATION</span>
             <h2 id="scannerModalTitle">Scanner Bridge Settings</h2>
           </div>
-          <button type="button" class="modal-close-btn" id="closeScannerModal" aria-label="Close modal"></button>
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="closeScannerModal"
+            aria-label="Close modal"
+          ></button>
         </div>
 
         <div class="modal-body">
           <div class="pairing-section">
-            <label class="section-label" for="terminalLocationInput">TERMINAL LOCATION</label>
-            <p class="section-sub">This location is saved with every ID scanned on this terminal.</p>
+            <label class="section-label" for="terminalLocationInput"
+              >TERMINAL LOCATION</label
+            >
+            <p class="section-sub">
+              This location is saved with every ID scanned on this terminal.
+            </p>
             <div class="input-container">
-              <span class="input-icon material-symbols-rounded">location_on</span>
-              <input id="terminalLocationInput" type="text" maxlength="120" autocomplete="off" placeholder="Example: Main Gate" />
+              <span class="input-icon material-symbols-rounded"
+                >location_on</span
+              >
+              <input
+                id="terminalLocationInput"
+                type="text"
+                maxlength="120"
+                autocomplete="off"
+                placeholder="Example: Main Gate"
+              />
             </div>
           </div>
 
           <div class="bridge-status-card" id="bridgeStatusBox">
             <div class="status-indicator-row">
-              <span class="status-pill" id="bridgeStatusPill">Connecting...</span>
-              <span class="platform-info" id="bridgePlatformInfo">Platform: --</span>
+              <span class="status-pill" id="bridgeStatusPill"
+                >Connecting...</span
+              >
+              <span class="platform-info" id="bridgePlatformInfo"
+                >Platform: --</span
+              >
             </div>
-            <p id="bridgeStatusDesc">Checking background hardware scanner helper service...</p>
+            <p id="bridgeStatusDesc">
+              Checking background hardware scanner helper service...
+            </p>
           </div>
 
           <div class="pairing-section">
             <label class="section-label">HARDWARE SCANNER ASSIGNMENTS</label>
-            <p class="section-sub">Pair dedicated USB / RFID scanners for automated directional routing.</p>
+            <p class="section-sub">
+              Pair dedicated USB / RFID scanners for automated directional
+              routing.
+            </p>
 
             <div class="assignment-card">
               <div class="assignment-info">
                 <div class="action-tag in">TIME IN SCANNER</div>
                 <strong id="timeInDeviceName">Not assigned</strong>
-                <small id="timeInDeviceId">Waiting for hardware device mapping...</small>
+                <small id="timeInDeviceId"
+                  >Waiting for hardware device mapping...</small
+                >
               </div>
               <button type="button" class="pair-btn" data-pair="Time In">
                 Assign Scanner
@@ -260,7 +347,9 @@
               <div class="assignment-info">
                 <div class="action-tag out">TIME OUT SCANNER</div>
                 <strong id="timeOutDeviceName">Not assigned</strong>
-                <small id="timeOutDeviceId">Waiting for hardware device mapping...</small>
+                <small id="timeOutDeviceId"
+                  >Waiting for hardware device mapping...</small
+                >
               </div>
               <button type="button" class="pair-btn" data-pair="Time Out">
                 Assign Scanner
@@ -270,8 +359,13 @@
         </div>
 
         <div class="modal-foot">
-          <small>Hardware scanner mappings are stored only in this kiosk terminal's browser.</small>
-          <button type="button" class="done-btn" id="doneScannerModal">Done</button>
+          <small
+            >Hardware scanner mappings are stored only in this kiosk terminal's
+            browser.</small
+          >
+          <button type="button" class="done-btn" id="doneScannerModal">
+            Done
+          </button>
         </div>
       </div>
     </div>
@@ -279,6 +373,6 @@
     <!-- Scripts -->
     <script src="/client/camera-scanner.js"></script>
     <script src="/client/kiosk/script.js"></script>
-    <script src="/client/brand-ui.js?v=20260824-5" data-brand-ui></script>
+    <script src="/client/brand-ui.js?v=20260830-1" data-brand-ui></script>
   </body>
 </html>

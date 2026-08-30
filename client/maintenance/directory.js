@@ -1,9 +1,23 @@
-const { $, api, uploadProfilePhoto, escapeHtml, personCell, personName, emptyRow, init } = TapTrack;
+const {
+  $,
+  api,
+  uploadProfilePhoto,
+  escapeHtml,
+  personCell,
+  personName,
+  emptyRow,
+  init,
+} = TapTrack;
 const type = document.body.dataset.type;
 const lower = type.toLowerCase();
-let people = [], departments = [];
+let people = [],
+  departments = [],
+  currentUser = null;
 
-$("#form").insertAdjacentHTML("afterbegin", '<input type="hidden" id="recordId">');
+$("#form").insertAdjacentHTML(
+  "afterbegin",
+  '<input type="hidden" id="recordId">',
+);
 $("#form .form-grid").insertAdjacentHTML(
   "beforeend",
   `<label class="full status-toggle-field"><span><strong>Active ${lower}</strong><small>Available throughout the system</small></span><input id="isActive" type="checkbox" checked></label>`,
@@ -35,18 +49,43 @@ function render() {
     data: rows,
     deferRender: true,
     columns: [
-      { data: "idNumber", render: (value, mode) => mode === "display" ? `<strong>${escapeHtml(value)}</strong>` : value },
-      { data: null, render: (_value, mode, person) => mode === "display" ? personCell(person) : personName(person) },
-      { data: "departmentName", render: (value, mode) => mode === "display" ? escapeHtml(value) : value },
-      { data: "contact", render: (value, mode) => mode === "display" ? escapeHtml(value || "—") : value || "" },
-      { data: "isActive", render: (value, mode) => mode === "display" ? `<span class="status-pill ${value ? "" : "time-out"}">${value ? "Active" : "Inactive"}</span>` : value ? "Active" : "Inactive" },
+      {
+        data: "idNumber",
+        render: (value, mode) =>
+          mode === "display" ? `<strong>${escapeHtml(value)}</strong>` : value,
+      },
+      {
+        data: null,
+        render: (_value, mode, person) =>
+          mode === "display" ? personCell(person) : personName(person),
+      },
+      {
+        data: "departmentName",
+        render: (value, mode) =>
+          mode === "display" ? escapeHtml(value) : value,
+      },
+      {
+        data: "contact",
+        render: (value, mode) =>
+          mode === "display" ? escapeHtml(value || "—") : value || "",
+      },
+      {
+        data: "isActive",
+        render: (value, mode) =>
+          mode === "display"
+            ? `<span class="status-pill ${value ? "" : "time-out"}">${value ? "Active" : "Inactive"}</span>`
+            : value
+              ? "Active"
+              : "Inactive",
+      },
       {
         data: null,
         orderable: false,
         searchable: false,
-        render: (_value, mode, person) => mode === "display"
-          ? `<div class="event-actions"><button class="secondary-button edit edit-icon" data-id="${person.id}" aria-label="Edit ${escapeHtml(person.name)}" title="Edit"></button><button class="secondary-button card-enroll" data-id="${person.id}" ${person.isActive ? "" : "disabled"}>Enroll card</button><button class="secondary-button person-log-export" data-person-id="${person.id}" data-person-type="employee" data-person-name="${escapeHtml(person.name)}" data-id-number="${escapeHtml(person.idNumber)}">Export</button></div>`
-          : "",
+        render: (_value, mode, person) =>
+          mode === "display"
+            ? `<div class="event-actions"><button class="secondary-button edit edit-icon" data-id="${person.id}" aria-label="Edit ${escapeHtml(person.name)}" title="Edit"></button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="secondary-button card-enroll" data-id="${person.id}" ${person.isActive ? "" : "disabled"}>Enroll card</button>` : ""}<button class="secondary-button person-log-export" data-person-id="${person.id}" data-person-type="employee" data-person-name="${escapeHtml(person.name)}" data-id-number="${escapeHtml(person.idNumber)}">Export</button></div>`
+            : "",
       },
     ],
     order: [[1, "asc"]],
@@ -56,7 +95,9 @@ function render() {
 function open(person = null) {
   $("#form").reset();
   $("#recordId").value = person?.id || "";
-  $("#dialog .modal-head h2").textContent = person ? `Edit ${lower}` : `Add ${lower}`;
+  $("#dialog .modal-head h2").textContent = person
+    ? `Edit ${lower}`
+    : `Add ${lower}`;
   $("#isActive").checked = person ? Boolean(person.isActive) : true;
   $("#photoHelp").textContent = person?.photoUrl
     ? "Choose a new image to replace the current photo when you save."
@@ -108,7 +149,8 @@ $("#readCardBtn").addEventListener("click", async () => {
       method: "POST",
     });
     enrollmentCardRead = true;
-    $("#cardCurrentValue").textContent = `Current card text: ${result.value || "Blank card"}`;
+    $("#cardCurrentValue").textContent =
+      `Current card text: ${result.value || "Blank card"}`;
     $("#cardEnrollmentStatus").textContent =
       "Card read successfully. Keep the same card in place to write.";
     $("#writeCardBtn").disabled = false;
@@ -152,7 +194,9 @@ $("#search").addEventListener("input", render);
 $("#showInactive").addEventListener("change", render);
 $("#addBtn").addEventListener("click", () => open());
 document.addEventListener("taptrack:photo-updated", (event) => {
-  const person = people.find((item) => String(item.id) === String(event.detail.id));
+  const person = people.find(
+    (item) => String(item.id) === String(event.detail.id),
+  );
   if (person) {
     person.photoUrl = `${event.detail.photoUrl}?v=${Date.now()}`;
     $("#editPhotoBtn").textContent = "Replace photo";
@@ -165,7 +209,9 @@ document.addEventListener("click", (event) => {
     event.target.closest("dialog").close();
     return;
   }
-  const person = people.find((item) => String(item.id) === event.target.dataset.id);
+  const person = people.find(
+    (item) => String(item.id) === event.target.dataset.id,
+  );
   if (!person) return;
   if (event.target.classList.contains("edit")) open(person);
   if (event.target.classList.contains("card-enroll"))
@@ -193,19 +239,30 @@ $("#form").addEventListener("submit", async (event) => {
     const photoFile = $("#photoInput").files[0];
     if (photoFile) {
       try {
-        const photo = await uploadProfilePhoto(lower, id || record.id, photoFile);
+        const photo = await uploadProfilePhoto(
+          lower,
+          id || record.id,
+          photoFile,
+        );
         record.photoUrl = photo.photoUrl + "?v=" + Date.now();
       } catch (error) {
         photoError = error;
       }
     }
-    if (id) Object.assign(people.find((item) => String(item.id) === id), record);
+    if (id)
+      Object.assign(
+        people.find((item) => String(item.id) === id),
+        record,
+      );
     else people.push(record);
     render();
     $("#dialog").close();
     if (photoError)
       TapTrack.toast(
-        "The " + lower + " was saved, but the photo could not be uploaded: " + photoError.message,
+        "The " +
+          lower +
+          " was saved, but the photo could not be uploaded: " +
+          photoError.message,
         "error",
       );
   } catch (error) {
@@ -223,21 +280,31 @@ $("#form").addEventListener("submit", async (event) => {
     await new Promise(requestAnimationFrame);
     loadingTitle.textContent = "Loading employee directory";
     loadingMessage.textContent = "Checking your access and preparing the page.";
-    await init("employees");
+    ({ user: currentUser } = await init("employees"));
     loadingTitle.textContent = "Loading employee records";
     loadingMessage.textContent = "Retrieving employee information.";
     [people, departments] = await Promise.all([
       api(`/api/${lower}`),
       api("/api/employee_department"),
     ]);
-    $("#department").innerHTML = `<option value="">Select department</option>${departments.filter((item) => item.isActive).map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}`;
+    $("#department").innerHTML =
+      `<option value="">Select department</option>${departments
+        .filter((item) => item.isActive)
+        .map(
+          (item) =>
+            `<option value="${item.id}">${escapeHtml(item.name)}</option>`,
+        )
+        .join("")}`;
     $("#department").searchableSelectSync?.();
     loadingTitle.textContent = "Preparing the table";
     loadingMessage.textContent = `Displaying ${people.length.toLocaleString()} employee records.`;
     await render();
     await new Promise(requestAnimationFrame);
   } catch (error) {
-    TapTrack.toast(error.message || "Employee records could not be loaded.", "error");
+    TapTrack.toast(
+      error.message || "Employee records could not be loaded.",
+      "error",
+    );
   } finally {
     if (loadingDialog.open) loadingDialog.close();
   }

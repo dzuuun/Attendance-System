@@ -3,7 +3,9 @@ const input = $("#kioskInput");
 const form = $("#kioskForm");
 const resultCard = $("#kioskResult");
 const fallbackPhotoUrl = "/client/images/NDMU-Logo.png";
-const locationKey = location.pathname.includes("internet-section") ? "internet" : "library";
+const locationKey = location.pathname.includes("internet-section")
+  ? "internet"
+  : "library";
 const locationName = locationKey === "library" ? "Library" : "Internet Section";
 let resetTimer = null;
 let scanQueue = Promise.resolve();
@@ -12,12 +14,15 @@ let sessionTotal = 0;
 let studentTotal = 0;
 let employeeTotal = 0;
 let recentScans = [];
-let soundEnabled = localStorage.getItem("taptrack_library_kiosk_sound") !== "false";
+let soundEnabled =
+  localStorage.getItem("taptrack_library_kiosk_sound") !== "false";
 let audioContext = null;
 
 document.title = `${locationName} Entrance Terminal — TapTrack`;
-$("#brandContext").textContent = `TapTrack Attendance System · ${locationName} Entrance`;
-$("#terminalStatusText").textContent = `${locationName.toUpperCase()} TERMINAL ONLINE`;
+$("#brandContext").textContent =
+  `TapTrack Attendance System · ${locationName} Entrance`;
+$("#terminalStatusText").textContent =
+  `${locationName.toUpperCase()} TERMINAL ONLINE`;
 $("#locationBadge").textContent = `${locationName.toUpperCase()} ACCESS`;
 $("#locationLane").textContent = `${locationName.toUpperCase()} ENTRANCE`;
 $("#recentTitle").textContent = `Recent ${locationName} Scans`;
@@ -35,7 +40,8 @@ const formatTime = (value) =>
   });
 
 function tone(success) {
-  if (!soundEnabled || !(window.AudioContext || window.webkitAudioContext)) return;
+  if (!soundEnabled || !(window.AudioContext || window.webkitAudioContext))
+    return;
   try {
     audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
     void audioContext.resume();
@@ -56,7 +62,8 @@ function tone(success) {
 function updateClock() {
   const now = new Date();
   const hours = now.getHours();
-  $("#clock").textContent = `${String(hours % 12 || 12).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+  $("#clock").textContent =
+    `${String(hours % 12 || 12).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
   $("#clockPeriod").textContent = hours >= 12 ? "PM" : "AM";
   $("#date").textContent = now.toLocaleDateString([], {
     weekday: "long",
@@ -88,7 +95,9 @@ function personDetails(data) {
 function showResult(success, title, detail, data = null) {
   clearTimeout(resetTimer);
   resultCard.className = `result-hero-card ${success ? "success-in" : "error"}`;
-  $("#resultKicker").textContent = success ? "TIME IN RECORDED" : "ATTENTION REQUIRED";
+  $("#resultKicker").textContent = success
+    ? "TIME IN RECORDED"
+    : "ATTENTION REQUIRED";
   $("#resultTitle").textContent = title;
   $("#resultDetail").textContent = detail;
   $("#attendeeDetails").innerHTML = data ? personDetails(data) : "";
@@ -135,16 +144,27 @@ function addRecent(data) {
   $("#feedCountBadge").textContent = `${recentScans.length} RECENT`;
   $("#recentScansList").innerHTML = recentScans
     .map((item) => {
-      const initials = item.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+      const initials = item.name
+        .split(/\s+/)
+        .map((part) => part[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
       return `<div class="feed-item"><div class="feed-item-person"><div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name)} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div><div class="feed-item-info"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type)}</small></div></div><div class="feed-item-meta"><span class="feed-badge in">TIME IN</span><span class="feed-time">${formatTime(item.timestamp)}</span></div></div>`;
     })
     .join("");
 }
 
 function scan(raw) {
-  const idNumber = String(raw || "").trim().toUpperCase();
+  const idNumber = String(raw || "")
+    .trim()
+    .toUpperCase();
   if (!idNumber)
-    return Promise.resolve({ success: false, title: "Scan not recorded", detail: "Enter an ID number." });
+    return Promise.resolve({
+      success: false,
+      title: "Scan not recorded",
+      detail: "Enter an ID number.",
+    });
   pendingScans += 1;
   $("#submitScanBtn").disabled = true;
   const request = scanQueue.then(async () => {
@@ -155,15 +175,29 @@ function scan(raw) {
         body: JSON.stringify({ idNumber }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || "Unable to record entrance.");
+      if (!response.ok)
+        throw new Error(data.message || "Unable to record entrance.");
       tone(true);
-      showResult(true, data.name, `Time In recorded at ${formatTime(data.timestamp)}.`, data);
+      showResult(
+        true,
+        data.name,
+        `Time In recorded at ${formatTime(data.timestamp)}.`,
+        data,
+      );
       addRecent(data);
-      return { success: true, title: `${data.name} · Time In`, detail: `Recorded at ${formatTime(data.timestamp)}.` };
+      return {
+        success: true,
+        title: `${data.name} · Time In`,
+        detail: `Recorded at ${formatTime(data.timestamp)}.`,
+      };
     } catch (error) {
       tone(false);
       showResult(false, "Scan Not Recorded", error.message);
-      return { success: false, title: "Scan Not Recorded", detail: error.message };
+      return {
+        success: false,
+        title: "Scan Not Recorded",
+        detail: error.message,
+      };
     } finally {
       input.value = "";
       input.focus();
@@ -180,7 +214,9 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   scan(input.value);
 });
-$("#kioskCameraScan").addEventListener("click", () => window.TapTrackCameraScanner?.open(scan));
+$("#kioskCameraScan").addEventListener("click", () =>
+  window.TapTrackCameraScanner?.open(scan),
+);
 $("#soundToggleBtn").addEventListener("click", () => {
   soundEnabled = !soundEnabled;
   localStorage.setItem("taptrack_library_kiosk_sound", String(soundEnabled));
@@ -191,7 +227,12 @@ $("#fullscreenBtn").addEventListener("click", () => {
   if (document.fullscreenElement) document.exitFullscreen?.();
   else document.documentElement.requestFullscreen?.();
 });
-document.addEventListener("fullscreenchange", () => document.body.classList.toggle("is-fullscreen", Boolean(document.fullscreenElement)));
+document.addEventListener("fullscreenchange", () =>
+  document.body.classList.toggle(
+    "is-fullscreen",
+    Boolean(document.fullscreenElement),
+  ),
+);
 
 let buffer = "";
 let bufferTimer = null;

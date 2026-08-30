@@ -7,7 +7,9 @@ function apiNotFound(_req, res) {
 }
 function apiErrorHandler(error, _req, res, _next) {
   console.error(error);
-  const uploadError = error?.name === "MulterError" || /Profile photos must be/.test(error?.message || "");
+  const uploadError =
+    error?.name === "MulterError" ||
+    /Profile photos must be/.test(error?.message || "");
   if (uploadError)
     return res.status(400).json({
       success: 0,

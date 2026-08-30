@@ -56,7 +56,9 @@ function handlers(type, model) {
     },
     bulk: async (req, res) => {
       if (!req.files?.length)
-        return res.status(400).json({ message: "Choose one or more image files." });
+        return res
+          .status(400)
+          .json({ message: "Choose one or more image files." });
       const people = await model.getAll();
       const byIdNumber = new Map(
         people.map((person) => [safeId(person.idNumber), person]),

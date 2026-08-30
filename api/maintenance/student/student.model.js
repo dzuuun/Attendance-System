@@ -54,7 +54,12 @@ exports.getById = async (id) => {
 };
 exports.updatePhoto = async (id, photoUrl) => {
   await ensureSchema();
-  return (await pool.query("UPDATE students SET photo_url=? WHERE id=?", [photoUrl, id]))[0];
+  return (
+    await pool.query("UPDATE students SET photo_url=? WHERE id=?", [
+      photoUrl,
+      id,
+    ])
+  )[0];
 };
 exports.findId = async (idNumber, excludeId = null) => {
   await ensureSchema();

@@ -4622,7 +4622,8 @@ CREATE TABLE IF NOT EXISTS events (
   academic_period_id INT UNSIGNED NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_event_schedule (starts_at, ends_at),
-  INDEX idx_events_period_schedule (academic_period_id, starts_at)
+  INDEX idx_events_period_schedule (academic_period_id, starts_at),
+  INDEX idx_events_creator_period (created_by, academic_period_id, starts_at)
 );
 
 CREATE TABLE IF NOT EXISTS university_entrance_logs (
@@ -4652,6 +4653,26 @@ CREATE TABLE IF NOT EXISTS event_attendance_logs (
   INDEX idx_event_attendance_period_time (academic_period_id, checked_in_at, id),
   INDEX idx_event_student_period_time (student_id, academic_period_id, checked_in_at, id),
   INDEX idx_event_employee_period_time (employee_id, academic_period_id, checked_in_at, id)
+);
+
+CREATE TABLE IF NOT EXISTS event_attendance_corrections (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  attendance_log_id BIGINT UNSIGNED NOT NULL,
+  event_id INT UNSIGNED NOT NULL,
+  attendee_id_number VARCHAR(50) NOT NULL,
+  attendee_name VARCHAR(255) NOT NULL,
+  attendee_type ENUM('Student', 'Employee') NOT NULL,
+  correction_type ENUM('Updated', 'Deleted') NOT NULL,
+  original_action ENUM('Time In', 'Time Out') NOT NULL,
+  original_checked_in_at DATETIME NOT NULL,
+  corrected_action ENUM('Time In', 'Time Out') NULL,
+  corrected_checked_in_at DATETIME NULL,
+  reason VARCHAR(500) NOT NULL,
+  corrected_by INT UNSIGNED NOT NULL,
+  corrector_name VARCHAR(255) NOT NULL,
+  corrected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_event_corrections_event_time (event_id, corrected_at, id),
+  INDEX idx_event_corrections_log (attendance_log_id, corrected_at)
 );
 
 CREATE TABLE IF NOT EXISTS permissions (

@@ -12,7 +12,9 @@ const {
 let periods = [],
   events = [],
   selectedEvent = null,
-  scans = [];
+  scans = [],
+  corrections = [],
+  currentUser = null;
 function renderEvents() {
   const table = $("#eventBody").closest("table");
   TapTrack.destroyDataTable(table);
@@ -20,9 +22,9 @@ function renderEvents() {
     events
       .map(
         (event) =>
-          `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td><td>${escapeHtml(event.targetAudience)}</td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${event.maxTimeIns} in · ${event.maxTimeOuts} out</td><td><span class="status-pill ${event.isActive ? "" : "time-out"}">${event.isActive ? "Active" : "Disabled"}</span></td><td><div class="event-actions"><button class="secondary-button view" data-id="${event.id}">View</button><button class="secondary-button export-event" data-id="${event.id}">Export</button></div></td></tr>`,
+          `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<br><small>Created by ${escapeHtml(event.creatorName || "Unknown user")}</small>` : ""}</td><td>${escapeHtml(event.targetAudience)}</td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${event.maxTimeIns} in · ${event.maxTimeOuts} out</td><td><span class="status-pill ${event.isActive ? "" : "time-out"}">${event.isActive ? "Active" : "Disabled"}</span></td><td><div class="event-actions"><button class="secondary-button view" data-id="${event.id}">View</button><button class="secondary-button export-event" data-id="${event.id}">Export</button></div></td></tr>`,
       )
-      .join("") || emptyRow(6, "No events in this academic period.");
+      .join("") || emptyRow(6, "No past events in this academic period.");
   TapTrack.initDataTable(table);
 }
 function renderScans() {
@@ -37,6 +39,24 @@ function renderScans() {
       .join("") || emptyRow(5, "No attendance recorded for this event.");
   TapTrack.initDataTable(table, { pageLength: 25 });
 }
+function renderCorrections() {
+  const table = $("#correctionBody").closest("table");
+  TapTrack.destroyDataTable(table);
+  $("#correctionCount").textContent =
+    `${corrections.length} change${corrections.length === 1 ? "" : "s"}`;
+  $("#correctionBody").innerHTML =
+    corrections
+      .map((item) => {
+        const original = `${item.originalAction} · ${formatDate(item.originalTimestamp)} ${formatTime(item.originalTimestamp)}`;
+        const corrected =
+          item.correctionType === "Deleted"
+            ? "Record deleted"
+            : `${item.correctedAction} · ${formatDate(item.correctedTimestamp)} ${formatTime(item.correctedTimestamp)}`;
+        return `<tr><td><strong>${escapeHtml(item.name)}</strong><br><small>${escapeHtml(item.type)} · ${escapeHtml(item.idNumber)}</small></td><td><span class="status-pill ${item.correctionType === "Deleted" ? "time-out" : ""}">${escapeHtml(item.correctionType)}</span></td><td>${escapeHtml(original)}</td><td>${escapeHtml(corrected)}</td><td>${escapeHtml(item.reason)}</td><td><strong>${escapeHtml(item.correctorName)}</strong><br><small>${formatDate(item.correctedAt)} ${formatTime(item.correctedAt)}</small></td></tr>`;
+      })
+      .join("") || emptyRow(6, "No corrections were made for this event.");
+  TapTrack.initDataTable(table, { pageLength: 10 });
+}
 async function loadEvents() {
   const id = $("#period").value,
     period = periods.find((p) => String(p.id) === id);
@@ -50,16 +70,27 @@ async function loadEvents() {
 }
 async function viewEvent(id) {
   selectedEvent = events.find((event) => String(event.id) === String(id));
-  scans = await api(`/api/history/events/${id}/scans`);
+  [scans, corrections] = await Promise.all([
+    api(`/api/history/events/${id}/scans`),
+    api(`/api/history/events/${id}/corrections`),
+  ]);
   $("#attendanceTitle").textContent = selectedEvent.name;
   $("#attendanceCard").hidden = false;
   renderScans();
+  renderCorrections();
   $("#attendanceCard").scrollIntoView({ behavior: "smooth", block: "start" });
 }
-async function exportEvent(eventRecord, eventScans = null) {
+async function exportEvent(
+  eventRecord,
+  eventScans = null,
+  eventCorrections = null,
+) {
   await loadXlsx();
-  const records =
-      eventScans || (await api(`/api/history/events/${eventRecord.id}/scans`)),
+  const [records, auditRecords] = await Promise.all([
+      eventScans || api(`/api/history/events/${eventRecord.id}/scans`),
+      eventCorrections ||
+        api(`/api/history/events/${eventRecord.id}/corrections`),
+    ]),
     grouped = new Map();
   records.forEach((scan) => {
     const key = `${scan.type}-${scan.personId}`;
@@ -118,6 +149,41 @@ async function exportEvent(eventRecord, eventScans = null) {
     wch: header === "Full Name" ? 28 : 20,
   }));
   XLSX.utils.book_append_sheet(book, sheet, "Attendance");
+  const correctionHeaders = [
+    "ID Number",
+    "Full Name",
+    "Type",
+    "Change",
+    "Original Action",
+    "Original Time",
+    "Corrected Action",
+    "Corrected Time",
+    "Reason",
+    "Corrected By",
+    "Corrected At",
+  ];
+  const correctionRows = auditRecords.map((record) => ({
+    "ID Number": record.idNumber,
+    "Full Name": record.name,
+    Type: record.type,
+    Change: record.correctionType,
+    "Original Action": record.originalAction,
+    "Original Time": `${formatDate(record.originalTimestamp)} ${formatTime(record.originalTimestamp)}`,
+    "Corrected Action": record.correctedAction || "",
+    "Corrected Time": record.correctedTimestamp
+      ? `${formatDate(record.correctedTimestamp)} ${formatTime(record.correctedTimestamp)}`
+      : "",
+    Reason: record.reason,
+    "Corrected By": record.correctorName,
+    "Corrected At": `${formatDate(record.correctedAt)} ${formatTime(record.correctedAt)}`,
+  }));
+  const correctionSheet = XLSX.utils.json_to_sheet(correctionRows, {
+    header: correctionHeaders,
+  });
+  correctionSheet["!cols"] = correctionHeaders.map((header) => ({
+    wch: ["Full Name", "Reason"].includes(header) ? 30 : 20,
+  }));
+  XLSX.utils.book_append_sheet(book, correctionSheet, "Corrections");
   XLSX.writeFile(
     book,
     `${eventRecord.name.replace(/[^a-z0-9]+/gi, "_")}_attendance.xlsx`,
@@ -143,19 +209,19 @@ document.addEventListener("click", async (event) => {
 $("#period").onchange = loadEvents;
 $("#exportBtn").textContent = "Export";
 $("#exportBtn").onclick = async () => {
-  if (selectedEvent) await exportEvent(selectedEvent, scans);
+  if (selectedEvent) await exportEvent(selectedEvent, scans, corrections);
 };
 (async () => {
-  await init("history");
+  ({ user: currentUser } = await init("history"));
   periods = await api("/api/history/periods");
-  $("#period").innerHTML = periods
-    .map(
-      (p) =>
-        `<option value="${p.id}">${escapeHtml(p.schoolYear)} · ${escapeHtml(p.term)}${p.isCurrent ? " (Current)" : ""}</option>`,
-    )
-    .join("");
-  const historical = periods.find((p) => !p.isCurrent);
-  if (historical) $("#period").value = historical.id;
-  if (periods.length) await loadEvents();
-  else renderEvents();
+  $("#period").innerHTML =
+    '<option value="" disabled selected>Select academic period</option>' +
+    periods
+      .map(
+        (p) =>
+          `<option value="${p.id}">${escapeHtml(p.schoolYear)} · ${escapeHtml(p.term)}${p.isCurrent ? " (Current)" : ""}</option>`,
+      )
+      .join("");
+  $("#periodTitle").textContent = "Select an academic period";
+  renderEvents();
 })();

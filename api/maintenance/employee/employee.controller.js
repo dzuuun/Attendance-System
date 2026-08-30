@@ -45,12 +45,7 @@ exports.create = async (req, res) => {
   data.name = [data.firstName, data.middleName, data.lastName]
     .filter(Boolean)
     .join(" ");
-  if (
-    !data.firstName ||
-    !data.lastName ||
-    !data.idNumber ||
-    !data.departmentId
-  )
+  if (!data.firstName || !data.lastName || !data.idNumber || !data.departmentId)
     return res
       .status(400)
       .json({ message: "Name, ID number, and department are required." });
@@ -60,7 +55,9 @@ exports.create = async (req, res) => {
       .json({ message: "That ID number is already registered." });
   const department = await model.getDepartment(data.departmentId);
   if (!department?.isActive)
-    return res.status(400).json({ message: "Choose an active employee department." });
+    return res
+      .status(400)
+      .json({ message: "Choose an active employee department." });
   data.departmentName = department.name;
   data.groupName = department.name;
   const result = await model.create(data);

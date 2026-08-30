@@ -71,30 +71,28 @@ function requireSuperadmin(req, res, next) {
 const requireAccess = (key) => (req, res, next) =>
   req.user?.role === "Superadmin" || req.user?.[key]
     ? next()
-    : res
-        .status(403)
-        .json({
-          success: 0,
-          message: "You do not have access to this module.",
-        });
-const requireAnyAccess = (...keys) => (req, res, next) =>
-  req.user?.role === "Superadmin" || keys.some((key) => req.user?.[key])
-    ? next()
     : res.status(403).json({
         success: 0,
         message: "You do not have access to this module.",
       });
+const requireAnyAccess =
+  (...keys) =>
+  (req, res, next) =>
+    req.user?.role === "Superadmin" || keys.some((key) => req.user?.[key])
+      ? next()
+      : res.status(403).json({
+          success: 0,
+          message: "You do not have access to this module.",
+        });
 const requirePeopleAccess = (type) => (req, res, next) =>
   req.user?.role === "Superadmin" ||
   req.user?.peopleAccess === "Both" ||
   req.user?.peopleAccess === type
     ? next()
-    : res
-        .status(403)
-        .json({
-          success: 0,
-          message: `Your permission does not include ${type.toLowerCase()}.`,
-        });
+    : res.status(403).json({
+        success: 0,
+        message: `Your permission does not include ${type.toLowerCase()}.`,
+      });
 function createToken(user) {
   return jwt.sign({ sub: String(user.id), type: "session" }, secret(), {
     expiresIn: "8h",

@@ -1,5 +1,7 @@
 const router = require("express").Router();
-const controller = require("../academic/academic.controller").forEntity("employee_department");
+const controller = require("../academic/academic.controller").forEntity(
+  "employee_department",
+);
 
 router.get("/", controller.getAll);
 router.post("/", controller.create);

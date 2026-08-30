@@ -1,6 +1,7 @@
 const { $, api, escapeHtml, personCell, emptyRow, init, loadXlsx } = TapTrack;
 let students = [],
-  programs = [];
+  programs = [],
+  currentUser = null;
 
 function enhanceSearchableSelect(select) {
   const wrapper = document.createElement("div");
@@ -49,7 +50,8 @@ function enhanceSearchableSelect(select) {
   trigger.addEventListener("click", () => {
     const opening = menu.hidden;
     document.querySelectorAll(".searchable-select.open").forEach((item) => {
-      if (item !== wrapper) item.querySelector(".searchable-select-menu").hidden = true;
+      if (item !== wrapper)
+        item.querySelector(".searchable-select-menu").hidden = true;
       if (item !== wrapper) item.classList.remove("open");
     });
     if (!opening) return close();
@@ -108,7 +110,9 @@ function render() {
     rows = students.filter(
       (s) =>
         (showInactive || Boolean(s.isActive)) &&
-        `${s.name} ${s.idNumber} ${s.programCode || ""}`.toLowerCase().includes(q),
+        `${s.name} ${s.idNumber} ${s.programCode || ""}`
+          .toLowerCase()
+          .includes(q),
     );
   $("#studentDirectoryTitle").textContent = showInactive
     ? "All students"
@@ -145,14 +149,24 @@ function render() {
               })
             : TapTrack.personName(student),
       },
-      { data: "programCode", render: (value, type) => type === "display" ? display(value || "Not assigned") : value || "" },
-      { data: "yearLevel", render: (value, type) => type === "display" ? display(value) : value || "" },
+      {
+        data: "programCode",
+        render: (value, type) =>
+          type === "display" ? display(value || "Not assigned") : value || "",
+      },
+      {
+        data: "yearLevel",
+        render: (value, type) =>
+          type === "display" ? display(value) : value || "",
+      },
       {
         data: "isActive",
         render: (value, type) =>
           type === "display"
             ? `<span class="status-pill ${value ? "" : "time-out"}">${value ? "Active" : "Inactive"}</span>`
-            : value ? "Active" : "Inactive",
+            : value
+              ? "Active"
+              : "Inactive",
       },
       {
         data: null,
@@ -160,7 +174,7 @@ function render() {
         searchable: false,
         render: (_value, type, student) =>
           type === "display"
-            ? `<div class="event-actions"><button class="secondary-button edit" data-id="${student.id}" title="Edit" aria-label="Edit student"></button><button class="secondary-button card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button><button class="secondary-button person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button></div>`
+            ? `<div class="event-actions"><button class="secondary-button edit" data-id="${student.id}" title="Edit" aria-label="Edit student"></button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="secondary-button card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button>` : ""}<button class="secondary-button person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button></div>`
             : "",
       },
     ],
@@ -257,7 +271,8 @@ $("#readCardBtn").addEventListener("click", async () => {
       method: "POST",
     });
     enrollmentCardRead = true;
-    $("#cardCurrentValue").textContent = `Current card text: ${result.value || "Blank card"}`;
+    $("#cardCurrentValue").textContent =
+      `Current card text: ${result.value || "Blank card"}`;
     $("#cardEnrollmentStatus").textContent =
       "Card read successfully. Keep the same card in place to write.";
     $("#writeCardBtn").disabled = false;
@@ -321,10 +336,16 @@ $("#exportStudentsBtn").addEventListener("click", async () => {
     }));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, sheet, "Students");
-    XLSX.writeFile(workbook, includeInactive ? "all_students.xlsx" : "active_students.xlsx");
+    XLSX.writeFile(
+      workbook,
+      includeInactive ? "all_students.xlsx" : "active_students.xlsx",
+    );
     TapTrack.toast("Student export created.", "success");
   } catch (error) {
-    TapTrack.toast(error.message || "Student export could not be created.", "error");
+    TapTrack.toast(
+      error.message || "Student export could not be created.",
+      "error",
+    );
   }
 });
 document.addEventListener("taptrack:photo-updated", (event) => {
@@ -436,7 +457,7 @@ $("#form").addEventListener("submit", async (event) => {
     await new Promise(requestAnimationFrame);
     loadingTitle.textContent = "Loading student directory";
     loadingMessage.textContent = "Checking your access and preparing the page.";
-    await init("students");
+    ({ user: currentUser } = await init("students"));
     loadingTitle.textContent = "Loading student records";
     loadingMessage.textContent = "Retrieving students and academic programs.";
     [students, programs] = await Promise.all([

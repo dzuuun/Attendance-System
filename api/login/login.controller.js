@@ -197,20 +197,24 @@ exports.changePassword = async (req, res) => {
   const confirmPassword = String(req.body.confirmPassword || "");
   if (!currentPassword || newPassword.length < 8)
     return res.status(400).json({
-      message: "Enter your current password and use at least 8 characters for the new password.",
+      message:
+        "Enter your current password and use at least 8 characters for the new password.",
     });
   if (newPassword !== confirmPassword)
     return res.status(400).json({ message: "The new passwords do not match." });
   if (currentPassword === newPassword)
     return res.status(400).json({
-      message: "Your new password must be different from your current password.",
+      message:
+        "Your new password must be different from your current password.",
     });
   const account = await model.findPasswordById(req.user.id);
   if (
     !account?.passwordHash ||
     !(await bcrypt.compare(currentPassword, account.passwordHash))
   )
-    return res.status(400).json({ message: "The current password is incorrect." });
+    return res
+      .status(400)
+      .json({ message: "The current password is incorrect." });
   await model.updatePassword(req.user.id, await bcrypt.hash(newPassword, 12));
   await logAuth(
     req,

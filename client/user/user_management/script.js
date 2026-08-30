@@ -22,10 +22,9 @@ function render() {
   TapTrack.destroyDataTable(table);
   $("#body").innerHTML =
     users
-      .map(
-        (u) =>
-          `<tr><td>${personCell({ name: u.fullName, contact: u.institutionalEmail || u.role })}</td><td><strong>${escapeHtml(u.username)}</strong></td><td>${escapeHtml(u.role)}</td><td><span class="status-pill">${u.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${u.id}" aria-label="Edit ${escapeHtml(u.fullName)}" title="Edit"></button></td></tr>`,
-      )
+      .map((u) => {
+        return `<tr><td>${personCell({ name: u.fullName, contact: u.institutionalEmail || u.role })}</td><td><strong>${escapeHtml(u.username)}</strong></td><td>${escapeHtml(u.role)}</td><td><span class="status-pill">${u.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${u.id}" aria-label="Edit ${escapeHtml(u.fullName)}" title="Edit"></button></td></tr>`;
+      })
       .join("") || emptyRow(5, "No users.");
   TapTrack.initDataTable(table);
 }

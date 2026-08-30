@@ -50,19 +50,22 @@ let soundEnabled = localStorage.getItem("taptrack_kiosk_sound") !== "false";
 const fallbackPhotoUrl = "/client/images/NDMU-Logo.png";
 const scannerAssignmentKey = "taptrack_kiosk_scanner_assignments";
 const terminalLocationKey = "taptrack_kiosk_terminal_location";
-let terminalLocation = localStorage.getItem(terminalLocationKey)?.trim() || "Main Entrance";
+let terminalLocation =
+  localStorage.getItem(terminalLocationKey)?.trim() || "Main Entrance";
 let pendingScannerAction = null;
 let localScannerAssignments = loadScannerAssignments();
 
 function loadScannerAssignments() {
   try {
-    const saved = JSON.parse(localStorage.getItem(scannerAssignmentKey) || "{}");
+    const saved = JSON.parse(
+      localStorage.getItem(scannerAssignmentKey) || "{}",
+    );
     return Object.fromEntries(
       ["Time In", "Time Out"].map((action) => [
         action,
-        (Array.isArray(saved[action]) ? saved[action] : []).filter(
-          (device) => device?.deviceId,
-        ).slice(0, 2),
+        (Array.isArray(saved[action]) ? saved[action] : [])
+          .filter((device) => device?.deviceId)
+          .slice(0, 2),
       ]),
     );
   } catch (_error) {
@@ -71,14 +74,18 @@ function loadScannerAssignments() {
 }
 
 function saveScannerAssignments() {
-  localStorage.setItem(scannerAssignmentKey, JSON.stringify(localScannerAssignments));
+  localStorage.setItem(
+    scannerAssignmentKey,
+    JSON.stringify(localScannerAssignments),
+  );
 }
 
 function updateTerminalLocation(value) {
   terminalLocation = String(value || "").trim() || "Main Entrance";
   localStorage.setItem(terminalLocationKey, terminalLocation);
   if (terminalLocationInput) terminalLocationInput.value = terminalLocation;
-  if (terminalLocationBadge) terminalLocationBadge.textContent = terminalLocation.toUpperCase();
+  if (terminalLocationBadge)
+    terminalLocationBadge.textContent = terminalLocation.toUpperCase();
 }
 
 updateTerminalLocation(terminalLocation);
@@ -112,7 +119,10 @@ class SoundController {
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
 
       gain.gain.setValueAtTime(gainLevel, this.ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + delay + duration);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        this.ctx.currentTime + delay + duration,
+      );
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
@@ -155,7 +165,9 @@ const SoundFX = new SoundController();
 function updateSoundUI() {
   if (soundToggleBtn && soundIcon) {
     soundIcon.textContent = soundEnabled ? "volume_up" : "volume_off";
-    soundToggleBtn.title = soundEnabled ? "Sound ON (Press M to mute)" : "Sound MUTED (Press M to unmute)";
+    soundToggleBtn.title = soundEnabled
+      ? "Sound ON (Press M to mute)"
+      : "Sound MUTED (Press M to unmute)";
     soundToggleBtn.style.opacity = soundEnabled ? "1" : "0.65";
   }
 }
@@ -164,7 +176,10 @@ if (soundToggleBtn) {
   soundToggleBtn.addEventListener("click", () => {
     SoundFX.init();
     soundEnabled = !soundEnabled;
-    localStorage.setItem("taptrack_kiosk_sound", soundEnabled ? "true" : "false");
+    localStorage.setItem(
+      "taptrack_kiosk_sound",
+      soundEnabled ? "true" : "false",
+    );
     updateSoundUI();
     if (soundEnabled) SoundFX.beep();
   });
@@ -246,15 +261,24 @@ function renderIdleState() {
   if (scannerVisual) {
     scannerVisual.className = "scanner-hero";
   }
-  if (scannerPromptTitle) scannerPromptTitle.textContent = "Tap RFID Card or Scan Barcode";
-  if (readyMessage) readyMessage.textContent = "Hold card steady in front of reader";
+  if (scannerPromptTitle)
+    scannerPromptTitle.textContent = "Tap RFID Card or Scan Barcode";
+  if (readyMessage)
+    readyMessage.textContent = "Hold card steady in front of reader";
 }
 
 function showResult(type, title, detail, previous = "", data = null) {
   clearTimeout(resetTimer);
 
-  const isSuccess = type === "success" || type === "success-in" || type === "success-out" || type === "out";
-  const isTimeOut = type === "out" || type === "success-out" || (data && data.action === "Time Out");
+  const isSuccess =
+    type === "success" ||
+    type === "success-in" ||
+    type === "success-out" ||
+    type === "out";
+  const isTimeOut =
+    type === "out" ||
+    type === "success-out" ||
+    (data && data.action === "Time Out");
   const isError = type === "error";
 
   // Card classes
@@ -317,7 +341,7 @@ function showResult(type, title, detail, previous = "", data = null) {
             </div>
             <div>
               <span>PROGRAM / STRAND</span>
-              <b title="${escapeHtml(data.program || 'N/A')}">${escapeHtml(data.program || "Not specified")}</b>
+              <b title="${escapeHtml(data.program || "N/A")}">${escapeHtml(data.program || "Not specified")}</b>
             </div>
             <div>
               <span>YEAR LEVEL</span>
@@ -332,7 +356,7 @@ function showResult(type, title, detail, previous = "", data = null) {
             </div>
             <div>
               <span>DEPARTMENT / OFFICE</span>
-              <b title="${escapeHtml(data.department || 'N/A')}">${escapeHtml(data.department || "Not specified")}</b>
+              <b title="${escapeHtml(data.department || "N/A")}">${escapeHtml(data.department || "Not specified")}</b>
             </div>
           </div>`;
     } else {
@@ -361,9 +385,12 @@ function showResult(type, title, detail, previous = "", data = null) {
   }
 
   // Reset back to idle after delay
-  resetTimer = setTimeout(() => {
-    renderIdleState();
-  }, isError ? 5000 : 30000);
+  resetTimer = setTimeout(
+    () => {
+      renderIdleState();
+    },
+    isError ? 5000 : 30000,
+  );
 }
 
 // --- Recent Scans List & Stats ---
@@ -410,7 +437,8 @@ function renderRecentScans() {
   }
 
   if (feedEmptyState) feedEmptyState.style.display = "none";
-  if (feedCountBadge) feedCountBadge.textContent = `${recentScans.length} Recent`;
+  if (feedCountBadge)
+    feedCountBadge.textContent = `${recentScans.length} Recent`;
 
   const itemsHtml = recentScans
     .map((item) => {
@@ -432,7 +460,7 @@ function renderRecentScans() {
             </div>
           </div>
           <div class="feed-item-meta">
-            <span class="feed-badge ${isOut ? 'out' : 'in'}">${escapeHtml(item.action)}</span>
+            <span class="feed-badge ${isOut ? "out" : "in"}">${escapeHtml(item.action)}</span>
             <span class="feed-time">${formatShortTime(item.timestamp)}</span>
           </div>
         </div>`;
@@ -448,7 +476,9 @@ const recentBridgeScans = new Map();
 const pendingManualScans = new Set();
 
 function rememberBridgeScan(raw) {
-  const idNumber = String(raw || "").trim().toUpperCase();
+  const idNumber = String(raw || "")
+    .trim()
+    .toUpperCase();
   if (!idNumber) return;
   const now = Date.now();
   recentBridgeScans.set(idNumber, now);
@@ -457,12 +487,16 @@ function rememberBridgeScan(raw) {
 }
 
 function wasJustHandledByBridge(raw) {
-  const idNumber = String(raw || "").trim().toUpperCase();
+  const idNumber = String(raw || "")
+    .trim()
+    .toUpperCase();
   return Date.now() - (recentBridgeScans.get(idNumber) || 0) < 1000;
 }
 
 function submitManualScan(raw) {
-  const idNumber = String(raw || "").trim().toUpperCase();
+  const idNumber = String(raw || "")
+    .trim()
+    .toUpperCase();
   if (!idNumber) return;
   // Raw-input scanner devices also type into the focused field. Give the SSE
   // bridge event a moment to arrive, then suppress that keyboard echo.
@@ -481,7 +515,9 @@ function submitManualScan(raw) {
 
 // --- Main Scan Request Handler ---
 function scan(raw, actionOverride) {
-  const idNumber = String(raw || "").trim().toUpperCase();
+  const idNumber = String(raw || "")
+    .trim()
+    .toUpperCase();
   if (!idNumber)
     return Promise.resolve({
       success: false,
@@ -500,12 +536,12 @@ function scan(raw, actionOverride) {
 }
 
 async function performScan(idNumber, actionOverride) {
-
   const action = actionOverride || "Auto";
 
   // Visual processing state
   if (scannerVisual) scannerVisual.className = "scanner-hero processing";
-  if (scannerPromptTitle) scannerPromptTitle.textContent = "Validating Attendance...";
+  if (scannerPromptTitle)
+    scannerPromptTitle.textContent = "Validating Attendance...";
   if (readyMessage)
     readyMessage.textContent =
       action === "Auto"
@@ -645,14 +681,17 @@ function renderScannerStatus(status) {
   const laneInDevice = document.querySelector("#laneInDevice");
   const laneOutDevice = document.querySelector("#laneOutDevice");
 
-  if (timeInDev) timeInDev.textContent = deviceNames("Time In") || "Not assigned";
-  if (timeInId) timeInId.textContent = deviceIds("Time In") || "No hardware device mapped";
-  if (timeOutDev) timeOutDev.textContent = deviceNames("Time Out") || "Not assigned";
-  if (timeOutId) timeOutId.textContent = deviceIds("Time Out") || "No hardware device mapped";
-  if (laneInDevice)
-    laneInDevice.textContent = laneLabel("Time In");
-  if (laneOutDevice)
-    laneOutDevice.textContent = laneLabel("Time Out");
+  if (timeInDev)
+    timeInDev.textContent = deviceNames("Time In") || "Not assigned";
+  if (timeInId)
+    timeInId.textContent = deviceIds("Time In") || "No hardware device mapped";
+  if (timeOutDev)
+    timeOutDev.textContent = deviceNames("Time Out") || "Not assigned";
+  if (timeOutId)
+    timeOutId.textContent =
+      deviceIds("Time Out") || "No hardware device mapped";
+  if (laneInDevice) laneInDevice.textContent = laneLabel("Time In");
+  if (laneOutDevice) laneOutDevice.textContent = laneLabel("Time Out");
 
   const bridgeStatusPill = document.querySelector("#bridgeStatusPill");
   const bridgeStatusDesc = document.querySelector("#bridgeStatusDesc");
@@ -752,7 +791,11 @@ try {
         if (!alreadyAssigned && target.length >= 2) {
           pendingScannerAction = null;
           SoundFX.error();
-          showResult("error", "Assignment Limit Reached", `${action} already has two assigned scanners.`);
+          showResult(
+            "error",
+            "Assignment Limit Reached",
+            `${action} already has two assigned scanners.`,
+          );
           renderScannerStatus({ connected: bridgeConnected });
           return;
         }
@@ -769,16 +812,25 @@ try {
         pendingScannerAction = null;
         saveScannerAssignments();
         SoundFX.timeIn();
-        showResult("success", `${action} Scanner Assigned`, "The hardware device was saved on this kiosk terminal.");
+        showResult(
+          "success",
+          `${action} Scanner Assigned`,
+          "The hardware device was saved on this kiosk terminal.",
+        );
         renderScannerStatus({ connected: bridgeConnected });
         return;
       }
       const assignment = Object.entries(localScannerAssignments).find(
-        ([, devices]) => devices.some((device) => device.deviceId === data.deviceId),
+        ([, devices]) =>
+          devices.some((device) => device.deviceId === data.deviceId),
       );
       if (!assignment) {
         SoundFX.error();
-        showResult("error", "Scanner Not Assigned", `${data.name || "This scanner"} must be assigned on this terminal before use.`);
+        showResult(
+          "error",
+          "Scanner Not Assigned",
+          `${data.name || "This scanner"} must be assigned on this terminal before use.`,
+        );
         return;
       }
       scan(data.idNumber, assignment[0]);
@@ -805,7 +857,8 @@ try {
       showResult(
         "error",
         "Scanner Not Assigned",
-        data.message || `${data.name || "New scanner"} must be assigned before use.`,
+        data.message ||
+          `${data.name || "New scanner"} must be assigned before use.`,
       );
     } catch (_e) {}
   });
@@ -826,18 +879,33 @@ document.addEventListener("keydown", (event) => {
   }
 
   // Hotkeys
-  if ((event.key === "m" || event.key === "M") && !event.ctrlKey && !event.metaKey) {
+  if (
+    (event.key === "m" || event.key === "M") &&
+    !event.ctrlKey &&
+    !event.metaKey
+  ) {
     soundEnabled = !soundEnabled;
-    localStorage.setItem("taptrack_kiosk_sound", soundEnabled ? "true" : "false");
+    localStorage.setItem(
+      "taptrack_kiosk_sound",
+      soundEnabled ? "true" : "false",
+    );
     updateSoundUI();
     if (soundEnabled) SoundFX.beep();
     return;
   }
-  if ((event.key === "f" || event.key === "F") && !event.ctrlKey && !event.metaKey) {
+  if (
+    (event.key === "f" || event.key === "F") &&
+    !event.ctrlKey &&
+    !event.metaKey
+  ) {
     toggleFullscreen();
     return;
   }
-  if ((event.key === "s" || event.key === "S") && !event.ctrlKey && !event.metaKey) {
+  if (
+    (event.key === "s" || event.key === "S") &&
+    !event.ctrlKey &&
+    !event.metaKey
+  ) {
     toggleScannerModal();
     return;
   }
@@ -900,7 +968,10 @@ document.addEventListener("fullscreenchange", () => {
 // --- Scanner Settings Modal Drawer ---
 function toggleScannerModal(open) {
   if (!scannerModalBackdrop) return;
-  const shouldOpen = open !== undefined ? open : !scannerModalBackdrop.classList.contains("open");
+  const shouldOpen =
+    open !== undefined
+      ? open
+      : !scannerModalBackdrop.classList.contains("open");
   if (shouldOpen) {
     scannerModalBackdrop.classList.add("open");
     fetch("/api/kiosk/scanners")

@@ -9,7 +9,8 @@ function render() {
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
   $("#tableTitle").textContent = `${label()} entrance`;
-  $("#kioskLink").href = `/kiosk/${isInternetSection ? "internet-section" : "library"}`;
+  $("#kioskLink").href =
+    `/kiosk/${isInternetSection ? "internet-section" : "library"}`;
   $("#body").innerHTML =
     records
       .map(
@@ -70,7 +71,8 @@ $("#exportBtn").addEventListener("click", async () => {
 (async () => {
   document.title = `${label()} entrance logs — TapTrack`;
   $("#pageTitle").textContent = `${label()} entrance logs`;
-  $("#pageDescription").textContent = `Review every entrance recorded at the ${label().toLowerCase()}.`;
+  $("#pageDescription").textContent =
+    `Review every entrance recorded at the ${label().toLowerCase()}.`;
   await init(pageKey);
   await load();
 })();

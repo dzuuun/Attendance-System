@@ -3,7 +3,9 @@ const { $, api, init } = TapTrack;
 $("#showPasswords").addEventListener("change", (event) => {
   document
     .querySelectorAll('#changePasswordForm input:not([type="checkbox"])')
-    .forEach((input) => (input.type = event.target.checked ? "text" : "password"));
+    .forEach(
+      (input) => (input.type = event.target.checked ? "text" : "password"),
+    );
 });
 
 $("#changePasswordForm").addEventListener("submit", async (event) => {
@@ -26,9 +28,9 @@ $("#changePasswordForm").addEventListener("submit", async (event) => {
       }),
     });
     event.currentTarget.reset();
-    document.querySelectorAll('#changePasswordForm input:not([type="checkbox"])').forEach(
-      (input) => (input.type = "password"),
-    );
+    document
+      .querySelectorAll('#changePasswordForm input:not([type="checkbox"])')
+      .forEach((input) => (input.type = "password"));
     TapTrack.toast("Your password has been changed.", "success");
   } catch (error) {
     errorNode.textContent = error.message;

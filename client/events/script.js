@@ -57,8 +57,9 @@ function openEvent(item = null) {
   $("#dialog").showModal();
 }
 async function exportEvent(item) {
-  const [scans] = await Promise.all([
+  const [scans, corrections] = await Promise.all([
     api(`/api/events/${item.id}/scans`),
+    api(`/api/events/${item.id}/corrections`),
     loadXlsx(),
   ]);
   const attendees = new Map();
@@ -116,6 +117,41 @@ async function exportEvent(item) {
   }));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "Attendance");
+  const correctionHeaders = [
+    "ID Number",
+    "Full Name",
+    "Type",
+    "Change",
+    "Original Action",
+    "Original Time",
+    "Corrected Action",
+    "Corrected Time",
+    "Reason",
+    "Corrected By",
+    "Corrected At",
+  ];
+  const correctionRows = corrections.map((record) => ({
+    "ID Number": record.idNumber,
+    "Full Name": record.name,
+    Type: record.type,
+    Change: record.correctionType,
+    "Original Action": record.originalAction,
+    "Original Time": excelTime(record.originalTimestamp),
+    "Corrected Action": record.correctedAction || "",
+    "Corrected Time": record.correctedTimestamp
+      ? excelTime(record.correctedTimestamp)
+      : "",
+    Reason: record.reason,
+    "Corrected By": record.correctorName,
+    "Corrected At": excelTime(record.correctedAt),
+  }));
+  const correctionSheet = XLSX.utils.json_to_sheet(correctionRows, {
+    header: correctionHeaders,
+  });
+  correctionSheet["!cols"] = correctionHeaders.map((header) => ({
+    wch: ["Full Name", "Reason"].includes(header) ? 30 : 20,
+  }));
+  XLSX.utils.book_append_sheet(workbook, correctionSheet, "Corrections");
   const filename =
     item.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "") ||
     `event_${item.id}`;
@@ -231,10 +267,14 @@ $("#form").addEventListener("submit", async (event) => {
 });
 (async () => {
   const { user } = await init("events");
-  if (user.role !== "Superadmin" && user.peopleAccess !== "Both") {
-    const unavailable =
-      user.peopleAccess === "Students" ? "Employees" : "Students";
-    $(`#audience option[value="${unavailable}"]`)?.remove();
+  if (
+    !["Superadmin", "Administrator"].includes(user.role) &&
+    user.peopleAccess !== "Both"
+  ) {
+    const allowed = user.peopleAccess;
+    [...$("#audience").options].forEach((option) => {
+      if (option.value && option.value !== allowed) option.remove();
+    });
   }
   events = await api("/api/events");
   render();

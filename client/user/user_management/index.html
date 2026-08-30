@@ -43,7 +43,7 @@
         </article>
       </main>
     </div>
-    <dialog id="dialog">
+    <dialog id="dialog" class="wide-record-dialog">
       <form id="form">
         <input type="hidden" id="recordId" />
         <div class="modal-head">
@@ -64,11 +64,12 @@
               type="email"
               autocomplete="email"
               placeholder="name@ndmu.edu.ph" /></label
-          ><label
+          ><label class="full"
             >Permission<select id="role" required>
               <option value="">Select permission</option>
             </select></label
-          ><label class="full"
+          >
+          <label class="full"
             ><span id="passwordLabel">Temporary password</span
             ><span class="password-input-wrap"
               ><input

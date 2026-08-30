@@ -15,7 +15,7 @@ async function ensureNames() {
   }
 }
 const findByUsername = async (username) => {
-  await permissionModel.ensureSchema();
+  await require("../user/user_management/user_management.model").ensureSchema();
   await ensureNames();
   return (
     await pool.query(

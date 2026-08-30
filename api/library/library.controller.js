@@ -9,11 +9,9 @@ exports.scan = async (req, res) => {
   try {
     const record = await model.scan(req.params.location, idNumber);
     if (!record)
-      return res
-        .status(404)
-        .json({
-          message: `ID “${idNumber}” is not registered as an active student or employee.`,
-        });
+      return res.status(404).json({
+        message: `ID “${idNumber}” is not registered as an active student or employee.`,
+      });
     res.status(201).json(record);
   } catch (error) {
     if (error.code === "INVALID_LOCATION")

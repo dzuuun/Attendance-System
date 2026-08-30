@@ -111,13 +111,17 @@
         </div>
       </div>
     </dialog>
-    ${type === "student" ? `<dialog id="deactivateMissingDialog" class="satp-modal">
+    ${
+      type === "student"
+        ? `<dialog id="deactivateMissingDialog" class="satp-modal">
       <div>
         <div class="modal-head"><div><span class="modal-kicker">STUDENT STATUS</span><h2>Deactivate missing students?</h2></div><button type="button" class="close-button" id="deactivateMissingClose" aria-label="Close">Ã—</button></div>
         <div class="satp-modal-body"><p>Would you like to deactivate active students who are not included in this import file?</p><p class="satp-review-intro">Students in the file will still be imported whichever option you choose.</p></div>
         <div class="modal-actions"><button type="button" class="secondary-button" id="importWithoutDeactivation">Import only</button><button type="button" class="primary-button" id="importWithDeactivation">Import and deactivate missing</button></div>
       </div>
-    </dialog>` : ""}`,
+    </dialog>`
+        : ""
+    }`,
   );
 
   const fileInput = $("#importFile"),

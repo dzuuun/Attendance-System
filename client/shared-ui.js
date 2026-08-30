@@ -1,7 +1,7 @@
 (function () {
   if (!document.querySelector("script[data-brand-ui]")) {
     const brandUi = document.createElement("script");
-    brandUi.src = "/client/brand-ui.js?v=20260824-5";
+    brandUi.src = "/client/brand-ui.js?v=20260830-1";
     brandUi.dataset.brandUi = "true";
     document.head.appendChild(brandUi);
   }
@@ -99,7 +99,11 @@
     );
     const generation = table.dataset.dtGeneration || "0";
     const hasCustomSearch = Boolean(
-      table.closest(".table-card")?.querySelector(".filter-row input[type='search'], .filter-row input#search"),
+      table
+        .closest(".table-card")
+        ?.querySelector(
+          ".filter-row input[type='search'], .filter-row input#search",
+        ),
     );
     return dataTablesReady.then((DataTable) => {
       if (
@@ -210,8 +214,15 @@
     select.before(wrapper);
     wrapper.appendChild(select);
     select.classList.add("searchable-select-native");
-    wrapper.insertAdjacentHTML("beforeend", `<button type="button" class="searchable-select-trigger" aria-haspopup="listbox" aria-expanded="false"><span></span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button><div class="searchable-select-menu" hidden><input type="search" class="searchable-select-search" placeholder="Search options..." autocomplete="off"><div class="searchable-select-options" role="listbox"></div></div>`);
-    const trigger = wrapper.querySelector(".searchable-select-trigger"), triggerLabel = trigger.querySelector("span:first-child"), menu = wrapper.querySelector(".searchable-select-menu"), search = wrapper.querySelector(".searchable-select-search"), optionList = wrapper.querySelector(".searchable-select-options");
+    wrapper.insertAdjacentHTML(
+      "beforeend",
+      `<button type="button" class="searchable-select-trigger" aria-haspopup="listbox" aria-expanded="false"><span></span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button><div class="searchable-select-menu" hidden><input type="search" class="searchable-select-search" placeholder="Search options..." autocomplete="off"><div class="searchable-select-options" role="listbox"></div></div>`,
+    );
+    const trigger = wrapper.querySelector(".searchable-select-trigger"),
+      triggerLabel = trigger.querySelector("span:first-child"),
+      menu = wrapper.querySelector(".searchable-select-menu"),
+      search = wrapper.querySelector(".searchable-select-search"),
+      optionList = wrapper.querySelector(".searchable-select-options");
     const close = () => {
       menu.hidden = true;
       menu.style.removeProperty("top");
@@ -229,13 +240,31 @@
     };
     const renderOptions = () => {
       const query = search.value.trim().toLowerCase();
-      const available = [...select.options].filter((option) => !option.disabled && option.value && option.textContent.toLowerCase().includes(query));
-      optionList.innerHTML = available.length ? available.map((option) => `<button type="button" role="option" data-value="${escapeHtml(option.value)}" aria-selected="${String(option.value === select.value)}" class="${option.value === select.value ? "selected" : ""}">${escapeHtml(option.textContent)}</button>`).join("") : '<p class="searchable-select-empty">No matching options</p>';
+      const available = [...select.options].filter(
+        (option) =>
+          !option.disabled &&
+          option.value &&
+          option.textContent.toLowerCase().includes(query),
+      );
+      optionList.innerHTML = available.length
+        ? available
+            .map(
+              (option) =>
+                `<button type="button" role="option" data-value="${escapeHtml(option.value)}" aria-selected="${String(option.value === select.value)}" class="${option.value === select.value ? "selected" : ""}">${escapeHtml(option.textContent)}</button>`,
+            )
+            .join("")
+        : '<p class="searchable-select-empty">No matching options</p>';
     };
     trigger.addEventListener("click", () => {
       const opening = menu.hidden;
       document.querySelectorAll(".searchable-select.open").forEach((item) => {
-        if (item !== wrapper) { item.classList.remove("open", "open-up"); item.querySelector(".searchable-select-menu").hidden = true; item.querySelector(".searchable-select-trigger").setAttribute("aria-expanded", "false"); }
+        if (item !== wrapper) {
+          item.classList.remove("open", "open-up");
+          item.querySelector(".searchable-select-menu").hidden = true;
+          item
+            .querySelector(".searchable-select-trigger")
+            .setAttribute("aria-expanded", "false");
+        }
       });
       if (!opening) return close();
       search.value = "";
@@ -269,11 +298,24 @@
       close();
       trigger.focus();
     });
-    wrapper.addEventListener("keydown", (event) => { if (event.key === "Escape") { close(); trigger.focus(); } });
+    wrapper.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        close();
+        trigger.focus();
+      }
+    });
     select.addEventListener("change", sync);
-    select.addEventListener("invalid", (event) => { event.preventDefault(); trigger.focus(); if (menu.hidden) trigger.click(); });
+    select.addEventListener("invalid", (event) => {
+      event.preventDefault();
+      trigger.focus();
+      if (menu.hidden) trigger.click();
+    });
     select.searchableSelectSync = sync;
-    new MutationObserver(sync).observe(select, { childList: true, subtree: true, attributes: true });
+    new MutationObserver(sync).observe(select, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
     sync();
     return select;
   }
@@ -356,7 +398,21 @@
       }[page];
     const hasPageAccess = !pageAccess || user[pageAccess];
     if (!hasPageAccess && user.role !== "Superadmin") {
-      const landing = user.overviewAccess ? "/app" : user.attendanceAccess ? "/attendance" : user.specialEventsAccess ? "/events" : user.libraryAccess ? "/library/entrance" : user.maintenanceAccess || user.peopleAccess ? (user.peopleAccess === "Employees" ? "/maintenance/employee" : "/maintenance/student") : user.usersAccess ? "/user/permissions" : null;
+      const landing = user.overviewAccess
+        ? "/app"
+        : user.attendanceAccess
+          ? "/attendance"
+          : user.specialEventsAccess
+            ? "/events"
+            : user.libraryAccess
+              ? "/library/entrance"
+              : user.maintenanceAccess || user.peopleAccess
+                ? user.peopleAccess === "Employees"
+                  ? "/maintenance/employee"
+                  : "/maintenance/student"
+                : user.usersAccess
+                  ? "/user/permissions"
+                  : null;
       if (!landing) {
         localStorage.removeItem(TOKEN_KEY);
         location.href = "/login?error=no_access";
@@ -370,7 +426,7 @@
           ? "Employees"
           : page === "employee_department"
             ? "Employees"
-          : null;
+            : null;
     if (
       peoplePage &&
       user.role !== "Superadmin" &&
@@ -410,10 +466,7 @@
     });
     sidebarMount.querySelectorAll("[data-access-any]").forEach((element) => {
       const accessKeys = element.dataset.accessAny.split(/\s+/).filter(Boolean);
-      if (
-        user.role !== "Superadmin" &&
-        !accessKeys.some((key) => user[key])
-      )
+      if (user.role !== "Superadmin" && !accessKeys.some((key) => user[key]))
         element.remove();
     });
     sidebarMount.querySelectorAll("[data-people]").forEach((element) => {
@@ -661,7 +714,9 @@
     document.querySelectorAll(".searchable-select.open").forEach((wrapper) => {
       wrapper.classList.remove("open", "open-up");
       wrapper.querySelector(".searchable-select-menu").hidden = true;
-      wrapper.querySelector(".searchable-select-trigger").setAttribute("aria-expanded", "false");
+      wrapper
+        .querySelector(".searchable-select-trigger")
+        .setAttribute("aria-expanded", "false");
     });
   });
   enhanceSearchableSelects();

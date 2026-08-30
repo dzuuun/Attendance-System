@@ -60,7 +60,8 @@ app.post(
 );
 app.post("/api/kiosk/scanners/pair", (req, res) => {
   res.status(410).json({
-    message: "Scanner assignments are configured locally on each kiosk terminal.",
+    message:
+      "Scanner assignments are configured locally on each kiosk terminal.",
   });
 });
 app.get("/api/kiosk/scanners/events", (req, res) => {
@@ -239,11 +240,9 @@ app.post(
       req.user.peopleAccess !== "Both" &&
       req.user.peopleAccess !== type
     )
-      return res
-        .status(403)
-        .json({
-          message: `Your permission does not include ${type.toLowerCase()}.`,
-        });
+      return res.status(403).json({
+        message: `Your permission does not include ${type.toLowerCase()}.`,
+      });
     return req.body.type === "Student"
       ? require("./api/maintenance/student/student.controller").create(req, res)
       : require("./api/maintenance/employee/employee.controller").create(
@@ -262,11 +261,9 @@ app.delete(
       req.user.peopleAccess !== "Both" &&
       req.user.peopleAccess !== type
     )
-      return res
-        .status(403)
-        .json({
-          message: `Your permission does not include ${type.toLowerCase()}.`,
-        });
+      return res.status(403).json({
+        message: `Your permission does not include ${type.toLowerCase()}.`,
+      });
     return req.params.type === "Student"
       ? res.status(405).json({
           message:
@@ -359,7 +356,8 @@ app.get(
 );
 app.get("/events", adminPage("events/index.html"));
 app.get("/events/:id/scan", adminPage("events/scan/index.html"));
-app.get("/history", adminPage("history/index.html"));
+app.get("/history", (_req, res) => res.redirect(302, "/events/past"));
+app.get("/events/past", adminPage("history/index.html"));
 app.get("/library", (_req, res) => res.redirect("/library/entrance"));
 app.get("/library/entrance", adminPage("library/index.html"));
 app.get("/library/internet-section", adminPage("library/index.html"));

@@ -313,7 +313,7 @@
       const heading = document.createElement("div");
       heading.className = "satp-records-heading";
       heading.innerHTML = `<span>RECORD DIRECTORY</span><h2>${pageTitle}</h2>`;
-      if (copy) heading.appendChild(copy);
+      copy?.remove();
       recordsHeading.prepend(heading);
     }
     const footer = document.createElement("footer");

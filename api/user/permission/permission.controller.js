@@ -49,12 +49,10 @@ exports.update = async (req, res) => {
       !data.libraryAccess ||
       data.peopleAccess !== "Both")
   )
-    return res
-      .status(400)
-      .json({
-        message:
-          "The Superadmin permission must remain active with access to students and employees.",
-      });
+    return res.status(400).json({
+      message:
+        "The Superadmin permission must remain active with access to students and employees.",
+    });
   try {
     const result = await model.update(req.params.id, data);
     if (!result.affectedRows)

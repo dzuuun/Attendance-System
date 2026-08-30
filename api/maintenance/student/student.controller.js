@@ -78,8 +78,7 @@ exports.readCard = async (req, res) => {
 };
 exports.enrollCard = async (req, res) => {
   const student = await model.getById(req.params.id);
-  if (!student)
-    return res.status(404).json({ message: "Student not found." });
+  if (!student) return res.status(404).json({ message: "Student not found." });
   if (!student.isActive)
     return res
       .status(400)

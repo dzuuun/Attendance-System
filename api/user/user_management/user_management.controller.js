@@ -29,11 +29,9 @@ exports.create = async (req, res) => {
     !permission?.isActive ||
     (role === "Superadmin" && req.user.role !== "Superadmin")
   )
-    return res
-      .status(400)
-      .json({
-        message: "Complete all required fields; passwords need 8 characters.",
-      });
+    return res.status(400).json({
+      message: "Complete all required fields; passwords need 8 characters.",
+    });
   try {
     const result = await model.create({
       fullName: fullName.trim(),
@@ -61,11 +59,9 @@ exports.create = async (req, res) => {
     });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY")
-      return res
-        .status(409)
-        .json({
-          message: "That username or institutional email already exists.",
-        });
+      return res.status(409).json({
+        message: "That username or institutional email already exists.",
+      });
     throw error;
   }
 };
@@ -101,12 +97,10 @@ exports.update = async (req, res) => {
     !canAssign ||
     (password && password.length < 8)
   )
-    return res
-      .status(400)
-      .json({
-        message:
-          "Complete all required fields; a new password needs 8 characters.",
-      });
+    return res.status(400).json({
+      message:
+        "Complete all required fields; a new password needs 8 characters.",
+    });
   if (Number(req.params.id) === req.user.id && !isActive)
     return res
       .status(400)
@@ -140,11 +134,9 @@ exports.update = async (req, res) => {
     });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY")
-      return res
-        .status(409)
-        .json({
-          message: "That username or institutional email already exists.",
-        });
+      return res.status(409).json({
+        message: "That username or institutional email already exists.",
+      });
     throw error;
   }
 };

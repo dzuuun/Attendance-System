@@ -104,8 +104,12 @@
       success = outcome?.success !== false;
     confirmation.hidden = false;
     confirmation.className = `camera-scan-confirmation ${success ? "success" : "error"}`;
-    confirmation.querySelector("span").classList.add("material-symbols-rounded");
-    confirmation.querySelector("span").textContent = success ? "check_circle" : "error";
+    confirmation
+      .querySelector("span")
+      .classList.add("material-symbols-rounded");
+    confirmation.querySelector("span").textContent = success
+      ? "check_circle"
+      : "error";
     confirmation.querySelector("strong").textContent =
       outcome?.title || (success ? "Attendance recorded" : "Scan not recorded");
     confirmation.querySelector("p").textContent = outcome?.detail || "";

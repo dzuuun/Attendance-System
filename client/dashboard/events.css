@@ -51,6 +51,16 @@ dialog > form {
   background: white;
   font: 500 13px "DM Sans";
 }
+.history-correction-heading {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid #dce5e0;
+}
+.history-correction-heading p {
+  margin: 5px 0 0;
+  color: #65736c;
+  font-size: 12px;
+}
 
 #eventDialog .modal-actions {
   position: sticky;
