@@ -44,19 +44,23 @@ CREATE TABLE IF NOT EXISTS employee_departments (
   INDEX idx_employee_departments_active_name (is_active, name)
 );
 
-INSERT INTO `employee_departments` (`id`, `name`, `code`, `is_active`, `created_at`) VALUES
-(1, 'NON-TEACHING PERSONNEL', 'NTP', 1, '2026-08-28 23:36:27'),
-(2, 'ADMINISTRATOR', 'ADMIN', 1, '2026-08-28 23:36:27'),
-(4, 'COLLEGE OF HEALTH SCIENCES', 'CHS', 1, '2026-08-28 23:40:10'),
-(5, 'COLLEGE OF ARTS AND SCIENCES', 'CAS', 1, '2026-08-28 23:40:21'),
-(6, 'COLLEGE OF BUSINESS, GOVERNANCE, AND ACCOUNTANCY', 'CBGA', 1, '2026-08-28 23:40:36'),
-(7, 'COLLEGE OF EDUCATION', 'CED', 1, '2026-08-28 23:40:53'),
-(8, 'COLLEGE OF ENGINEERING, ARCHITECTURE, AND COMPUTING', 'CEAC', 1, '2026-08-28 23:41:15'),
-(9, 'JUNIOR HIGH SCHOOL', 'JHS', 1, '2026-08-28 23:41:32'),
-(10, 'SENIOR HIGH SCHOOL', 'SHS', 1, '2026-08-28 23:41:40'),
-(11, 'ELEMENTARY', 'ELEM', 1, '2026-08-28 23:41:48'),
-(12, 'GRADUATE SCHOOL', 'GS', 1, '2026-08-28 23:41:59'),
-(13, 'LAW SCHOOL', 'LS', 1, '2026-08-28 23:42:07');
+INSERT INTO employee_departments (id, name, code, is_active) VALUES
+(1, 'NON-TEACHING PERSONNEL', 'NTP', 1),
+(2, 'ADMINISTRATOR', 'ADMIN', 1),
+(4, 'COLLEGE OF HEALTH SCIENCES', 'CHS', 1),
+(5, 'COLLEGE OF ARTS AND SCIENCES', 'CAS', 1),
+(6, 'COLLEGE OF BUSINESS, GOVERNANCE, AND ACCOUNTANCY', 'CBGA', 1),
+(7, 'COLLEGE OF EDUCATION', 'CED', 1),
+(8, 'COLLEGE OF ENGINEERING, ARCHITECTURE, AND COMPUTING', 'CEAC', 1),
+(9, 'JUNIOR HIGH SCHOOL', 'JHS', 1),
+(10, 'SENIOR HIGH SCHOOL', 'SHS', 1),
+(11, 'ELEMENTARY', 'ELEM', 1),
+(12, 'GRADUATE SCHOOL', 'GS', 1),
+(13, 'LAW SCHOOL', 'LS', 1)
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  code = VALUES(code),
+  is_active = VALUES(is_active);
 
 CREATE TABLE IF NOT EXISTS employees (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -82,43 +86,6 @@ CREATE TABLE IF NOT EXISTS schools (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_schools_active_name (is_active, name)
-);
-
-CREATE TABLE IF NOT EXISTS colleges (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  school_id INT UNSIGNED NOT NULL,
-  name VARCHAR(180) NOT NULL,
-  code VARCHAR(40) NOT NULL,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_college_school_code (school_id, code),
-  INDEX idx_colleges_school_name (school_id, name),
-  CONSTRAINT fk_college_school FOREIGN KEY (school_id) REFERENCES schools(id) ON UPDATE CASCADE ON DELETE RESTRICT
-);
-
-CREATE TABLE IF NOT EXISTS departments (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  college_id INT UNSIGNED NOT NULL,
-  name VARCHAR(180) NOT NULL,
-  code VARCHAR(40) NOT NULL,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_department_college_code (college_id, code),
-  INDEX idx_departments_college_name (college_id, name),
-  CONSTRAINT fk_department_college FOREIGN KEY (college_id) REFERENCES colleges(id) ON UPDATE CASCADE ON DELETE RESTRICT
-);
-
-CREATE TABLE IF NOT EXISTS programs (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  department_id INT UNSIGNED NOT NULL,
-  name VARCHAR(180) NOT NULL,
-  code VARCHAR(40) NOT NULL,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_program_department_code (department_id, code),
-  INDEX idx_programs_department_name (department_id, name),
-  INDEX idx_programs_code (code),
-  CONSTRAINT fk_program_department FOREIGN KEY (department_id) REFERENCES departments(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- Preliminary academic data imported from the installation templates.
@@ -162,6 +129,18 @@ UPDATE
 VALUES
 (name),
   is_active = TRUE;
+
+CREATE TABLE IF NOT EXISTS colleges (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  school_id INT UNSIGNED NOT NULL,
+  name VARCHAR(180) NOT NULL,
+  code VARCHAR(40) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_college_school_code (school_id, code),
+  INDEX idx_colleges_school_name (school_id, name),
+  CONSTRAINT fk_college_school FOREIGN KEY (school_id) REFERENCES schools(id) ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
 INSERT INTO
   colleges (school_id, name, code)
@@ -329,8 +308,8 @@ INSERT INTO
   colleges (school_id, name, code)
 SELECT
   id,
-  'SENIOR HIGHSCHOOL',
-  'SEN-HISCH'
+  'SENIOR HIGH SCHOOL',
+  'SHS'
 FROM
   schools
 WHERE
@@ -396,6 +375,18 @@ UPDATE
 VALUES
 (name),
   is_active = TRUE;
+
+CREATE TABLE IF NOT EXISTS departments (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  college_id INT UNSIGNED NOT NULL,
+  name VARCHAR(180) NOT NULL,
+  code VARCHAR(40) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_department_college_code (college_id, code),
+  INDEX idx_departments_college_name (college_id, name),
+  CONSTRAINT fk_department_college FOREIGN KEY (college_id) REFERENCES colleges(id) ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
 INSERT INTO
   departments (college_id, name, code)
@@ -928,7 +919,7 @@ SELECT
 FROM
   colleges
 WHERE
-  code = 'SEN-HISCH'
+  code = 'SHS'
 LIMIT
   1 ON DUPLICATE KEY
 UPDATE
@@ -1026,6 +1017,19 @@ UPDATE
 VALUES
 (name),
   is_active = TRUE;
+
+CREATE TABLE IF NOT EXISTS programs (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  department_id INT UNSIGNED NOT NULL,
+  name VARCHAR(180) NOT NULL,
+  code VARCHAR(40) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_program_department_code (department_id, code),
+  INDEX idx_programs_department_name (department_id, name),
+  INDEX idx_programs_code (code),
+  CONSTRAINT fk_program_department FOREIGN KEY (department_id) REFERENCES departments(id) ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
 INSERT INTO
   programs (department_id, name, code)
@@ -4523,6 +4527,24 @@ INSERT INTO
   programs (department_id, name, code)
 SELECT
   id,
+  'SENIOR HIGH SCHOOL',
+  'SHS'
+FROM
+  departments
+WHERE
+  code = 'SEN-HISCH'
+LIMIT
+  1 ON DUPLICATE KEY
+UPDATE
+  name =
+VALUES
+(name),
+  is_active = TRUE;
+
+INSERT INTO
+  programs (department_id, name, code)
+SELECT
+  id,
   'SPORTS',
   'SPORTS'
 FROM
@@ -4685,73 +4707,27 @@ CREATE TABLE IF NOT EXISTS permissions (
   library_access BOOLEAN NOT NULL DEFAULT FALSE,
   maintenance_access BOOLEAN NOT NULL DEFAULT FALSE,
   users_access BOOLEAN NOT NULL DEFAULT FALSE,
-  people_access ENUM('Students', 'Employees', 'Both') NOT NULL DEFAULT 'Both',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT
-  IGNORE INTO permissions (
-    name,
-    description,
-    overview_access,
-    attendance_access,
-    special_events_access,
-    library_access,
-    maintenance_access,
-    users_access,
-    people_access,
-    is_active
-  )
-VALUES
-  (
-    'Administrator',
-    'Administrative access',
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    'Both',
-    TRUE
-  ),
-  (
-    'Staff',
-    'Standard attendance access',
-    TRUE,
-    TRUE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    'Both',
-    TRUE
-  ),
-  (
-    'Student Organizations',
-    NULL,
-    TRUE,
-    TRUE,
-    TRUE,
-    FALSE,
-    FALSE,
-    FALSE,
-    'Students',
-    TRUE
-  ),
-  (
-    'Superadmin',
-    'Full system access',
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    'Both',
-    TRUE
-  );
+INSERT INTO permissions (id, name, description, overview_access, attendance_access, special_events_access, library_access, maintenance_access, users_access, is_active) VALUES
+(1, 'Administrator', 'Administrative access', TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+(2, 'Event Staff', 'Standard attendance access', FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE),
+(3, 'Student Organizations', NULL, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE),
+(4, 'Superadmin', 'Full system access', TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+(156, 'Human Resources', NULL, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE),
+(157, 'Attendance Access', NULL, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE)
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  description = VALUES(description),
+  overview_access = VALUES(overview_access),
+  attendance_access = VALUES(attendance_access),
+  special_events_access = VALUES(special_events_access),
+  library_access = VALUES(library_access),
+  maintenance_access = VALUES(maintenance_access),
+  users_access = VALUES(users_access),
+  is_active = VALUES(is_active);
 
 CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

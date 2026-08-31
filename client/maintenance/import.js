@@ -62,8 +62,8 @@
     actions = form && $(".modal-actions", form);
   if (!addDialog || !actions) return;
   const choice = document.createElement("div");
-  choice.className = "satp-import-action";
-  choice.innerHTML = `<button type="button" class="satp-import-link" id="openImport"><span class="material-symbols-rounded" aria-hidden="true">upload_file</span> Import multiple</button>`;
+  choice.className = "attendance-system-import-action";
+  choice.innerHTML = `<button type="button" class="attendance-system-import-link" id="openImport"><span class="material-symbols-rounded" aria-hidden="true">upload_file</span> Import multiple</button>`;
   actions.prepend(choice);
 
   document.body.insertAdjacentHTML(
@@ -83,40 +83,42 @@
     </div></dialog>`,
   );
 
-  // Normalize the generated dialogs to the same SATP modal composition used
+  // Normalize the generated dialogs to the same attendance-system modal composition used
   // throughout maintenance, independent of Tailwind/CDN load timing.
   const importDialog = $("#importDialog");
-  importDialog.className = "satp-modal satp-import-modal";
+  importDialog.className =
+    "attendance-system-modal attendance-system-import-modal";
   $("#importForm").innerHTML = `
     <div class="modal-head"><div><span class="modal-kicker">BULK ACTION</span><h2>Import ${plural}</h2></div><button type="button" class="close-button" data-close aria-label="Close">×</button></div>
-    <div class="satp-modal-body"><label class="satp-file-drop" id="importDrop"><span class="satp-upload-icon material-symbols-rounded" aria-hidden="true">upload_file</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${type === "student" ? ". Optional values: MiddleName, InstitutionalEmail" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="satp-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
+    <div class="attendance-system-modal-body"><label class="attendance-system-file-drop" id="importDrop"><span class="attendance-system-upload-icon material-symbols-rounded" aria-hidden="true">upload_file</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${type === "student" ? ". Optional values: MiddleName, InstitutionalEmail" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="attendance-system-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
     <div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button type="submit" class="primary-button">Validate file</button></div>`;
   const previewDialog = $("#previewDialog");
-  previewDialog.className = "satp-modal satp-review-modal";
+  previewDialog.className =
+    "attendance-system-modal attendance-system-review-modal";
   previewDialog.firstElementChild.innerHTML = `
     <div class="modal-head"><div><span class="modal-kicker">VALIDATION COMPLETE</span><h2>Review ${type} import</h2></div><button type="button" class="close-button" data-close aria-label="Close">×</button></div>
-    <p class="satp-review-intro">Review all detected rows before updating records.</p><div class="satp-review-body" id="previewGroups"></div>
-    <p id="importProgress" class="satp-import-progress"></p><div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button type="button" class="primary-button" id="runImport">Run import</button></div>`;
+    <p class="attendance-system-review-intro">Review all detected rows before updating records.</p><div class="attendance-system-review-body" id="previewGroups"></div>
+    <p id="importProgress" class="attendance-system-import-progress"></p><div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button type="button" class="primary-button" id="runImport">Run import</button></div>`;
   document.body.insertAdjacentHTML(
     "beforeend",
-    `<dialog id="progressDialog" class="satp-modal satp-progress-modal">
+    `<dialog id="progressDialog" class="attendance-system-modal attendance-system-progress-modal">
       <div>
         <div class="modal-head"><div><span class="modal-kicker">IMPORT IN PROGRESS</span><h2>Importing ${plural}</h2></div></div>
-        <div class="satp-progress-body">
-          <span class="satp-progress-icon material-symbols-rounded" aria-hidden="true">upload_file</span>
+        <div class="attendance-system-progress-body">
+          <span class="attendance-system-progress-icon material-symbols-rounded" aria-hidden="true">upload_file</span>
           <strong id="progressHeading">Preparing import...</strong>
           <p id="progressDetail">Please keep this page open until all records are processed.</p>
-          <div class="satp-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack"><span id="progressFill"></span></div>
-          <div class="satp-progress-count"><span id="progressProcessed">0 processed</span><b id="progressPercent">0%</b></div>
+          <div class="attendance-system-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack"><span id="progressFill"></span></div>
+          <div class="attendance-system-progress-count"><span id="progressProcessed">0 processed</span><b id="progressPercent">0%</b></div>
         </div>
       </div>
     </dialog>
     ${
       type === "student"
-        ? `<dialog id="deactivateMissingDialog" class="satp-modal">
+        ? `<dialog id="deactivateMissingDialog" class="attendance-system-modal">
       <div>
-        <div class="modal-head"><div><span class="modal-kicker">STUDENT STATUS</span><h2>Deactivate missing students?</h2></div><button type="button" class="close-button" id="deactivateMissingClose" aria-label="Close">Ã—</button></div>
-        <div class="satp-modal-body"><p>Would you like to deactivate active students who are not included in this import file?</p><p class="satp-review-intro">Students in the file will still be imported whichever option you choose.</p></div>
+        <div class="modal-head"><div><span class="modal-kicker">STUDENT STATUS</span><h2>Deactivate missing students?</h2></div><button type="button" class="close-button" id="deactivateMissingClose" aria-label="Close">×</button></div>
+        <div class="attendance-system-modal-body"><p>Would you like to deactivate active students who are not included in this import file?</p><p class="attendance-system-review-intro">Students in the file will still be imported whichever option you choose.</p></div>
         <div class="modal-actions"><button type="button" class="secondary-button" id="importWithoutDeactivation">Import only</button><button type="button" class="primary-button" id="importWithDeactivation">Import and deactivate missing</button></div>
       </div>
     </dialog>`
@@ -442,7 +444,7 @@
     $("#previewGroups").innerHTML = groups
       .map(
         ([kind, label, items, fallback]) =>
-          `<section class="satp-review-group ${kind}"><header><span class="satp-result-dot"></span><strong>${label}</strong><b>${items.length}</b></header><div>${items.length ? items.map((item) => `<p><small>Row ${item.row}</small><span>${TapTrack.escapeHtml(recordLabel(item))}</span><em>${TapTrack.escapeHtml(item.errors.length ? item.errors.join("; ") : fallback)}</em></p>`).join("") : `<p class="satp-empty">No ${kind} found</p>`}</div></section>`,
+          `<section class="attendance-system-review-group ${kind}"><header><span class="attendance-system-result-dot"></span><strong>${label}</strong><b>${items.length}</b></header><div>${items.length ? items.map((item) => `<p><small>Row ${item.row}</small><span>${TapTrack.escapeHtml(recordLabel(item))}</span><em>${TapTrack.escapeHtml(item.errors.length ? item.errors.join("; ") : fallback)}</em></p>`).join("") : `<p class="attendance-system-empty">No ${kind} found</p>`}</div></section>`,
       )
       .join("");
     $("#runImport").disabled =

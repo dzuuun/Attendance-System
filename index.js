@@ -5,7 +5,6 @@ const {
   checkSession,
   requireAdmin,
   requireAccess,
-  requirePeopleAccess,
 } = require("./auth/auth_validation");
 const {
   asyncHandler,
@@ -14,7 +13,7 @@ const {
 } = require("./api/middleware/api_standards");
 const morgan = require("morgan");
 const app = express(),
-  port = Number(process.env.PORT) || 3000,
+  port = Number(process.env.PORT) || 4000,
   client = path.join(__dirname, "client");
 const scannerBridge = require("./scanner/scanner-bridge");
 app.use(morgan("combined"));
@@ -52,6 +51,10 @@ app.post(
     req.body.eventId = null;
     return require("./api/attendance/attendance.controller").scan(req, res);
   }),
+);
+app.get(
+  "/api/kiosk/scans",
+  asyncHandler(require("./api/attendance/attendance.controller").kioskRecent),
 );
 app.get("/api/kiosk/scanners", (_req, res) => res.json(scannerBridge.status()));
 app.post(
@@ -118,26 +121,17 @@ app.use(
 );
 app.use(
   "/api/person-logs",
-  (req, res, next) => {
-    if (req.user?.role === "Superadmin" || req.user?.maintenanceAccess)
-      return next();
-    const type = req.path.split("/").filter(Boolean)[0];
-    return requirePeopleAccess(type === "employee" ? "Employees" : "Students")(
-      req,
-      res,
-      next,
-    );
-  },
+  requireAccess("maintenanceAccess"),
   wrapRouter(personLogsRouter),
 );
 app.use(
   "/api/student",
-  requirePeopleAccess("Students"),
+  requireAccess("maintenanceAccess"),
   wrapRouter(studentRouter),
 );
 app.use(
   "/api/employee",
-  requirePeopleAccess("Employees"),
+  requireAccess("maintenanceAccess"),
   wrapRouter(employeeRouter),
 );
 app.use(
@@ -162,7 +156,7 @@ app.use(
 );
 app.get(
   "/api/employee_department",
-  requirePeopleAccess("Employees"),
+  requireAccess("maintenanceAccess"),
   asyncHandler(async (_req, res) =>
     res.json(
       await require("./api/maintenance/academic/academic.model").getAll(
@@ -174,7 +168,6 @@ app.get(
 app.use(
   "/api/employee_department",
   requireAccess("maintenanceAccess"),
-  requirePeopleAccess("Employees"),
   wrapRouter(employeeDepartmentRouter),
 );
 app.use(
@@ -189,7 +182,7 @@ app.use(
 );
 app.get(
   "/api/program-options",
-  requirePeopleAccess("Students"),
+  requireAccess("maintenanceAccess"),
   asyncHandler(async (_req, res) =>
     res.json(
       await require("./api/maintenance/academic/academic.model").getAll(
@@ -212,17 +205,7 @@ app.use(
 app.get(
   "/api/people",
   requireAccess("maintenanceAccess"),
-  asyncHandler(async (req, res) => {
-    const scope =
-      req.user.role === "Superadmin" ? "Both" : req.user.peopleAccess;
-    if (scope === "Students")
-      return res.json(
-        await require("./api/maintenance/student/student.model").getAll(),
-      );
-    if (scope === "Employees")
-      return res.json(
-        await require("./api/maintenance/employee/employee.model").getAll(),
-      );
+  asyncHandler(async (_req, res) => {
     const [students, employees] = await Promise.all([
       require("./api/maintenance/student/student.model").getAll(),
       require("./api/maintenance/employee/employee.model").getAll(),
@@ -234,15 +217,6 @@ app.post(
   "/api/people",
   requireAccess("maintenanceAccess"),
   asyncHandler((req, res) => {
-    const type = req.body.type === "Student" ? "Students" : "Employees";
-    if (
-      req.user.role !== "Superadmin" &&
-      req.user.peopleAccess !== "Both" &&
-      req.user.peopleAccess !== type
-    )
-      return res.status(403).json({
-        message: `Your permission does not include ${type.toLowerCase()}.`,
-      });
     return req.body.type === "Student"
       ? require("./api/maintenance/student/student.controller").create(req, res)
       : require("./api/maintenance/employee/employee.controller").create(
@@ -255,15 +229,6 @@ app.delete(
   "/api/people/:type/:id",
   requireAccess("maintenanceAccess"),
   asyncHandler((req, res) => {
-    const type = req.params.type === "Student" ? "Students" : "Employees";
-    if (
-      req.user.role !== "Superadmin" &&
-      req.user.peopleAccess !== "Both" &&
-      req.user.peopleAccess !== type
-    )
-      return res.status(403).json({
-        message: `Your permission does not include ${type.toLowerCase()}.`,
-      });
     return req.params.type === "Student"
       ? res.status(405).json({
           message:
@@ -390,14 +355,20 @@ app.use(apiErrorHandler);
 require("./api/maintenance/employee/employee.model")
   .ensureSchema()
   .then(() => require("./db/indexes").ensureIndexes())
-  .catch((error) =>
-    console.error("Database index setup failed:", error.message),
-  )
-  .finally(() =>
+  .then(() =>
     app.listen(port, () =>
       console.log(`TapTrack running at http://localhost:${port}`),
     ),
-  );
+  )
+  .catch((error) => {
+    const details =
+      error?.message ||
+      error?.code ||
+      error?.errors?.map((item) => item.message).filter(Boolean).join("; ") ||
+      String(error);
+    console.error("Database initialization failed:", details);
+    process.exitCode = 1;
+  });
 function wrapRouter(router) {
   router.stack.forEach((layer) => {
     if (layer.route)

@@ -22,10 +22,10 @@ function render() {
     permissions
       .map(
         (item) =>
-          `<tr><td><strong>${escapeHtml(item.name)}</strong><small class="mt-1 block text-xs text-[#65736c]">${escapeHtml(accessSummary(item))} · ${escapeHtml(item.peopleAccess || "Both")}</small></td><td>${escapeHtml(item.description || "—")}</td><td><span class="status-pill">${item.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${item.id}" aria-label="Edit ${escapeHtml(item.name)}" title="Edit"></button></td></tr>`,
+          `<tr><td><strong>${escapeHtml(item.name)}</strong><small class="mt-1 block text-xs text-[#65736c]">${escapeHtml(accessSummary(item))}</small></td><td>${escapeHtml(item.description || "—")}</td><td><span class="status-pill">${item.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${item.id}" aria-label="Edit ${escapeHtml(item.name)}" title="Edit"></button></td></tr>`,
       )
       .join("") || emptyRow(4, "No permissions.");
-  TapTrack.initDataTable(table);
+  TapTrack.initDataTable(table, { order: [[1, "asc"]] });
 }
 function open(item = null) {
   $("#form").reset();
@@ -46,7 +46,6 @@ function open(item = null) {
       "usersAccess",
       "isActive",
     ].forEach((key) => ($(`#${key}`).checked = Boolean(item[key])));
-    $("#peopleAccess").value = item.peopleAccess || "Both";
   }
   $("#error").textContent = "";
   $("#dialog").showModal();
@@ -83,7 +82,6 @@ $("#form").onsubmit = async (event) => {
           libraryAccess: $("#libraryAccess").checked,
           maintenanceAccess: $("#maintenanceAccess").checked,
           usersAccess: $("#usersAccess").checked,
-          peopleAccess: $("#peopleAccess").value,
           isActive: $("#isActive").checked,
         }),
       },

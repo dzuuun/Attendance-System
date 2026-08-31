@@ -59,6 +59,7 @@ exports.create = async (req, res) => {
       .status(400)
       .json({ message: "Choose an active employee department." });
   data.departmentName = department.name;
+  data.departmentCode = department.code;
   data.groupName = department.name;
   const result = await model.create(data);
   res.status(201).json({ id: result.insertId, ...data, type: "Employee" });
@@ -91,6 +92,7 @@ exports.update = async (req, res) => {
   if (!department)
     return res.status(400).json({ message: "Choose an employee department." });
   data.departmentName = department.name;
+  data.departmentCode = department.code;
   data.groupName = department.name;
   const result = await model.update(req.params.id, data);
   if (!result.affectedRows)

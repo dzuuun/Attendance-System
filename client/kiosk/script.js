@@ -46,6 +46,7 @@ let lastBridgeStatus = {
 let resetTimer = null;
 let sessionStats = { total: 0, in: 0, out: 0 };
 let recentScans = [];
+let recentScansRequest = 0;
 let soundEnabled = localStorage.getItem("taptrack_kiosk_sound") !== "false";
 const fallbackPhotoUrl = "/client/images/NDMU-Logo.png";
 const scannerAssignmentKey = "taptrack_kiosk_scanner_assignments";
@@ -89,6 +90,41 @@ function updateTerminalLocation(value) {
 }
 
 updateTerminalLocation(terminalLocation);
+
+async function loadRecentScans() {
+  const requestNumber = ++recentScansRequest;
+  const requestedLocation = terminalLocation;
+  recentScans = [];
+  sessionStats = { total: 0, in: 0, out: 0 };
+  if (statTotal) statTotal.textContent = "0";
+  if (statIn) statIn.textContent = "0";
+  if (statOut) statOut.textContent = "0";
+  renderRecentScans();
+  try {
+    const response = await fetch(
+      `/api/kiosk/scans?location=${encodeURIComponent(requestedLocation)}`,
+    );
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || "Unable to load scans.");
+    if (
+      requestNumber !== recentScansRequest ||
+      requestedLocation !== terminalLocation
+    )
+      return;
+    recentScans = Array.isArray(data.records) ? data.records : [];
+    sessionStats = {
+      total: Number(data.stats?.total || 0),
+      in: Number(data.stats?.in || 0),
+      out: Number(data.stats?.out || 0),
+    };
+    if (statTotal) statTotal.textContent = String(sessionStats.total);
+    if (statIn) statIn.textContent = String(sessionStats.in);
+    if (statOut) statOut.textContent = String(sessionStats.out);
+    renderRecentScans();
+  } catch (_error) {
+    // Scanning remains available if the historical feed cannot be loaded.
+  }
+}
 
 // --- Web Audio API Sound Synthesizer ---
 class SoundController {
@@ -396,6 +432,7 @@ function showResult(type, title, detail, previous = "", data = null) {
 // --- Recent Scans List & Stats ---
 function addRecentScan(data) {
   if (!data) return;
+  recentScansRequest += 1;
 
   // Update Stats
   sessionStats.total += 1;
@@ -991,13 +1028,15 @@ if (closeScannerModal) {
   closeScannerModal.addEventListener("click", () => toggleScannerModal(false));
 }
 if (terminalLocationInput) {
-  terminalLocationInput.addEventListener("change", () =>
-    updateTerminalLocation(terminalLocationInput.value),
-  );
+  terminalLocationInput.addEventListener("change", () => {
+    updateTerminalLocation(terminalLocationInput.value);
+    loadRecentScans();
+  });
 }
 if (doneScannerModal) {
   doneScannerModal.addEventListener("click", () => {
     updateTerminalLocation(terminalLocationInput?.value);
+    loadRecentScans();
     toggleScannerModal(false);
   });
 }
@@ -1009,4 +1048,5 @@ if (scannerModalBackdrop) {
 
 // Initial setup
 renderIdleState();
+loadRecentScans();
 input?.focus();

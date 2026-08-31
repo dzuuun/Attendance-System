@@ -1,15 +1,17 @@
 const pool = require("../../../db/db");
+const schema = require("../../../db/schema");
 const permissionModel = require("../permission/permission.model");
 let schemaReady;
 async function ensureSchema() {
   if (!schemaReady)
     schemaReady = (async () => {
       await permissionModel.ensureSchema();
-      await pool.query(`ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,
-        ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,
-        ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name,
-        ADD COLUMN IF NOT EXISTS institutional_email VARCHAR(190) NULL AFTER username`);
+      await schema.addColumns("users", [
+        ["first_name", "VARCHAR(80) NULL"],
+        ["middle_name", "VARCHAR(80) NULL AFTER first_name"],
+        ["last_name", "VARCHAR(80) NULL AFTER middle_name"],
+        ["institutional_email", "VARCHAR(190) NULL AFTER username"],
+      ]);
       const [emailIndexes] = await pool.query(
         "SELECT COUNT(*) count FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='users' AND index_name='uq_users_institutional_email'",
       );

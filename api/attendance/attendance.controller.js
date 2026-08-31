@@ -12,14 +12,7 @@ const isToday = (timestamp, now = new Date()) => {
   );
 };
 
-const visible = (rows, user) => {
-  const scope = ["Superadmin", "Administrator"].includes(user?.role)
-    ? "Both"
-    : user?.peopleAccess || "Both";
-  if (scope === "Both") return rows;
-  const type = scope === "Students" ? "Student" : "Employee";
-  return rows.filter((row) => row.type === type);
-};
+const visible = (rows) => rows;
 
 exports.getAll = async (req, res) => {
   const periodId = req.query.periodId ? Number(req.query.periodId) : null;
@@ -41,17 +34,6 @@ exports.getEventScans = async (req, res) => {
     return res
       .status(403)
       .json({ message: "You can view only events you created." });
-  const scope = ["Superadmin", "Administrator"].includes(req.user?.role)
-    ? "Both"
-    : req.user?.peopleAccess || "Both";
-  if (
-    scope !== "Both" &&
-    event.targetAudience !== "Both" &&
-    event.targetAudience !== scope
-  )
-    return res.status(403).json({
-      message: "Your permission does not include this event audience.",
-    });
   res.json(visible(await model.getByEvent(req.params.id), req.user));
 };
 
@@ -170,11 +152,9 @@ exports.scan = async (req, res) => {
     if (!event)
       return res.status(404).json({ message: "This event was not found." });
     if (req.user && Number(event.createdBy) !== Number(req.user.id))
-      return res
-        .status(403)
-        .json({
-          message: "You can scan attendance only for events you created.",
-        });
+      return res.status(403).json({
+        message: "You can scan attendance only for events you created.",
+      });
     if (!event.isActive)
       return res.status(409).json({
         message:
@@ -186,22 +166,7 @@ exports.scan = async (req, res) => {
       });
   }
 
-  let lookupAudience = event?.targetAudience || "Both";
-  if (
-    event &&
-    req.user &&
-    !["Superadmin", "Administrator"].includes(req.user.role) &&
-    req.user.peopleAccess !== "Both"
-  ) {
-    if (
-      event.targetAudience !== "Both" &&
-      event.targetAudience !== req.user.peopleAccess
-    )
-      return res.status(403).json({
-        message: `Your permission does not include ${event.targetAudience.toLowerCase()}.`,
-      });
-    lookupAudience = req.user.peopleAccess;
-  }
+  const lookupAudience = event?.targetAudience || "Both";
   const person = await model.findPerson(idNumber, lookupAudience);
   if (!person) {
     const inactiveStudent = await model.findInactiveStudent(idNumber);
@@ -292,6 +257,15 @@ exports.scan = async (req, res) => {
     previousAction: previous?.action || null,
     previousTimestamp: previous?.timestamp || null,
   });
+};
+
+exports.kioskRecent = async (req, res) => {
+  const location = String(req.query.location || "")
+    .trim()
+    .slice(0, 120);
+  if (!location)
+    return res.status(400).json({ message: "Provide the terminal location." });
+  res.json(await model.getTodayByLocation(location, 10));
 };
 
 exports.clear = async (_req, res) => {

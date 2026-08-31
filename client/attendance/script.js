@@ -22,6 +22,13 @@ function filtered() {
         a.idNumber.toLowerCase().includes(q)),
   );
 }
+function exportDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 function render() {
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
@@ -74,7 +81,10 @@ $("#exportBtn").addEventListener("click", async () => {
   const suffix = period
     ? `${period.schoolYear}_${period.term}`.replace(/[^a-z0-9]+/gi, "_")
     : "current_period";
-  XLSX.writeFile(workbook, `university_entrance_${suffix}.xlsx`);
+  XLSX.writeFile(
+    workbook,
+    `university_entrance_${suffix}_as_of_${exportDate()}.xlsx`,
+  );
 });
 (async () => {
   await init("attendance");

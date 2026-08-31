@@ -8,9 +8,6 @@ const payload = (body) => ({
   libraryAccess: Boolean(body.libraryAccess),
   maintenanceAccess: Boolean(body.maintenanceAccess),
   usersAccess: Boolean(body.usersAccess),
-  peopleAccess: ["Students", "Employees", "Both"].includes(body.peopleAccess)
-    ? body.peopleAccess
-    : null,
   isActive: Boolean(body.isActive),
 });
 exports.getAll = async (_req, res) => res.json(await model.getAll());
@@ -18,8 +15,6 @@ exports.create = async (req, res) => {
   const data = payload(req.body);
   if (!data.name)
     return res.status(400).json({ message: "Permission name is required." });
-  if (!data.peopleAccess)
-    return res.status(400).json({ message: "Select directory access." });
   try {
     const result = await model.create(data);
     res.status(201).json({ id: result.insertId, ...data });
@@ -35,8 +30,6 @@ exports.update = async (req, res) => {
   const data = payload(req.body);
   if (!data.name)
     return res.status(400).json({ message: "Permission name is required." });
-  if (!data.peopleAccess)
-    return res.status(400).json({ message: "Select directory access." });
   const existing = await model.findById(req.params.id);
   if (!existing)
     return res.status(404).json({ message: "Permission not found." });
@@ -47,11 +40,11 @@ exports.update = async (req, res) => {
       !data.overviewAccess ||
       !data.specialEventsAccess ||
       !data.libraryAccess ||
-      data.peopleAccess !== "Both")
+      !data.maintenanceAccess)
   )
     return res.status(400).json({
       message:
-        "The Superadmin permission must remain active with access to students and employees.",
+        "The Superadmin permission must remain active with Maintenance access.",
     });
   try {
     const result = await model.update(req.params.id, data);

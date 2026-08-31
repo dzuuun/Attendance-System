@@ -175,7 +175,7 @@
   }
 }
 
-/* SATP drawer shell */
+/* attendance-system drawer shell */
 .app-shell {
   grid-template-columns: 280px minmax(0, 1fr) !important;
 }
@@ -433,7 +433,7 @@
   margin: 0 auto;
   padding: 54px 40px;
 }
-.satp-site-header {
+.attendance-system-site-header {
   min-height: 80px;
   padding: 12px 40px;
   display: flex;
@@ -448,52 +448,52 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 20px rgba(7, 50, 34, 0.08);
 }
-.satp-header-brand,
-.satp-header-identity {
+.attendance-system-header-brand,
+.attendance-system-header-identity {
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.satp-header-identity {
+.attendance-system-header-identity {
   color: #fff;
   text-decoration: none;
 }
-.satp-header-identity img {
+.attendance-system-header-identity img {
   width: 44px !important;
   height: 44px !important;
   flex: 0 0 44px;
   object-fit: contain;
   border-radius: 50%;
 }
-.satp-header-identity span,
-.satp-header-context {
+.attendance-system-header-identity span,
+.attendance-system-header-context {
   display: grid;
   min-width: 0;
 }
-.satp-header-identity strong {
+.attendance-system-header-identity strong {
   color: #fff !important;
   font:
     500 17px Georgia,
     serif;
   white-space: nowrap;
 }
-.satp-header-identity small,
-.satp-header-context span {
+.attendance-system-header-identity small,
+.attendance-system-header-context span {
   color: rgba(255, 255, 255, 0.55) !important;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.satp-header-context {
+.attendance-system-header-context {
   text-align: right;
 }
-.satp-header-context strong {
+.attendance-system-header-context strong {
   color: #fff !important;
   font-size: 14px;
 }
-.satp-menu-button {
+.attendance-system-menu-button {
   width: 40px;
   height: 40px;
   display: grid;
@@ -504,14 +504,14 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
 }
-.satp-menu-button svg {
+.attendance-system-menu-button svg {
   width: 20px;
   height: 20px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
 }
-.satp-site-footer {
+.attendance-system-site-footer {
   margin-top: auto;
   padding: 16px 40px;
   display: flex;
@@ -537,16 +537,16 @@
     serif !important;
   letter-spacing: -0.035em !important;
 }
-.satp-page-description {
+.attendance-system-page-description {
   margin: 14px 0 0;
   color: #65736c;
   font-size: 14px;
   line-height: 1.6;
 }
-.satp-topbar-utility {
+.attendance-system-topbar-utility {
   display: none !important;
 }
-.satp-breadcrumb {
+.attendance-system-breadcrumb {
   padding-bottom: 8px;
   display: flex;
   align-items: center;
@@ -558,20 +558,20 @@
   letter-spacing: normal !important;
 }
 
-.satp-breadcrumb span,
-.satp-breadcrumb strong {
+.attendance-system-breadcrumb span,
+.attendance-system-breadcrumb strong {
   text-transform: none !important;
   letter-spacing: normal !important;
 }
-.satp-breadcrumb span:first-child {
+.attendance-system-breadcrumb span:first-child {
   color: #087247;
   font-weight: 800;
 }
-.satp-breadcrumb b {
+.attendance-system-breadcrumb b {
   color: #aab5b0;
   font-weight: 400;
 }
-.satp-breadcrumb strong {
+.attendance-system-breadcrumb strong {
   color: #65736c;
   font-weight: 500;
 }
@@ -587,7 +587,7 @@
   margin: 0;
   color: #65736c;
 }
-.satp-records-heading > span {
+.attendance-system-records-heading > span {
   display: block;
   margin-bottom: 8px;
   color: #087247;
@@ -595,7 +595,7 @@
   font-weight: 850;
   letter-spacing: 0.15em;
 }
-.satp-records-heading h2 {
+.attendance-system-records-heading h2 {
   margin: 0 0 8px;
   color: #183128;
   font:
@@ -664,8 +664,8 @@ dialog[open]::backdrop {
   }
 }
 dialog#dialog form,
-.satp-modal form,
-.satp-modal > div {
+.attendance-system-modal form,
+.attendance-system-modal > div {
   padding: 0 !important;
 }
 dialog > form {
@@ -783,7 +783,7 @@ dialog > form {
   gap: 10px;
   pointer-events: none;
 }
-.satp-toast {
+.attendance-system-toast {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 28px;
   align-items: start;
@@ -800,15 +800,15 @@ dialog > form {
     opacity 0.18s ease,
     transform 0.18s ease;
 }
-.satp-toast.visible {
+.attendance-system-toast.visible {
   transform: translateY(0);
   opacity: 1;
 }
-.satp-toast.leaving {
+.attendance-system-toast.leaving {
   transform: translateY(-8px);
   opacity: 0;
 }
-.satp-toast .toast-mark {
+.attendance-system-toast .toast-mark {
   display: grid;
   width: 34px;
   height: 34px;
@@ -819,19 +819,19 @@ dialog > form {
   font-size: 16px;
   font-weight: 900;
 }
-.satp-toast strong {
+.attendance-system-toast strong {
   display: block;
   margin: 1px 0 3px;
   color: #183128;
   font-size: 12px;
 }
-.satp-toast p {
+.attendance-system-toast p {
   margin: 0;
   color: #64736c;
   font-size: 11px;
   line-height: 1.45;
 }
-.satp-toast button {
+.attendance-system-toast button {
   padding: 0;
   border: 0;
   background: transparent;
@@ -840,10 +840,10 @@ dialog > form {
   font-size: 19px;
   line-height: 1;
 }
-.satp-toast.error {
+.attendance-system-toast.error {
   border-color: #f0c9c5;
 }
-.satp-toast.error .toast-mark {
+.attendance-system-toast.error .toast-mark {
   background: #fdeae8;
   color: #b93830;
 }
@@ -1166,10 +1166,10 @@ div.dt-container .dt-paging .ellipsis {
   box-shadow: 0 -6px 16px rgba(14, 55, 39, 0.05);
   align-items: center;
 }
-.modal-actions .satp-import-action {
+.modal-actions .attendance-system-import-action {
   margin-right: auto;
 }
-.satp-import-link {
+.attendance-system-import-link {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1180,7 +1180,7 @@ div.dt-container .dt-paging .ellipsis {
   font-weight: 800;
   cursor: pointer;
 }
-.satp-import-link span {
+.attendance-system-import-link span {
   font-size: 21px;
   line-height: 1;
 }
@@ -1189,13 +1189,13 @@ div.dt-container .dt-paging .ellipsis {
   min-height: 44px !important;
   padding: 10px 17px !important;
 }
-.satp-import-modal {
+.attendance-system-import-modal {
   width: min(540px, calc(100vw - 32px));
 }
-.satp-modal-body {
+.attendance-system-modal-body {
   padding: 26px 25px 4px;
 }
-.satp-file-drop {
+.attendance-system-file-drop {
   display: flex !important;
   min-height: 210px;
   cursor: pointer;
@@ -1209,14 +1209,14 @@ div.dt-container .dt-paging .ellipsis {
   text-transform: none !important;
   letter-spacing: 0 !important;
 }
-.satp-file-drop:hover {
+.attendance-system-file-drop:hover {
   border-color: #087247 !important;
   background: #f5faf7;
 }
-.satp-file-drop input {
+.attendance-system-file-drop input {
   display: none;
 }
-.satp-upload-icon {
+.attendance-system-upload-icon {
   display: grid;
   width: 50px;
   height: 50px;
@@ -1227,23 +1227,23 @@ div.dt-container .dt-paging .ellipsis {
   color: #087247;
   font-size: 28px;
 }
-.satp-file-drop strong {
+.attendance-system-file-drop strong {
   color: #172b23;
   font-size: 14px;
 }
-.satp-file-drop small {
+.attendance-system-file-drop small {
   margin-top: 10px;
   color: #718078;
   font-size: 11px;
   font-weight: 400;
 }
-.satp-template-copy {
+.attendance-system-template-copy {
   margin: 19px 0 0;
   text-align: center;
   color: #7a8982;
   font-size: 12px;
 }
-.satp-template-copy button {
+.attendance-system-template-copy button {
   padding: 0;
   border: 0;
   background: none;
@@ -1251,17 +1251,17 @@ div.dt-container .dt-paging .ellipsis {
   font-weight: 800;
   cursor: pointer;
 }
-.satp-review-modal {
+.attendance-system-review-modal {
   width: min(820px, calc(100vw - 32px));
 }
-.satp-review-intro {
+.attendance-system-review-intro {
   margin: 0;
   padding: 16px 25px;
   border-bottom: 1px solid #dce5e0;
   color: #65736c;
   font-size: 12px;
 }
-.satp-review-body {
+.attendance-system-review-body {
   display: grid;
   gap: 12px;
   max-height: 470px;
@@ -1269,13 +1269,13 @@ div.dt-container .dt-paging .ellipsis {
   padding: 18px 25px;
   background: #f7faf8;
 }
-.satp-review-group {
+.attendance-system-review-group {
   overflow: hidden;
   border: 1px solid #d8e3dd;
   border-radius: 12px;
   background: white;
 }
-.satp-review-group header {
+.attendance-system-review-group header {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1283,17 +1283,17 @@ div.dt-container .dt-paging .ellipsis {
   padding: 0 14px;
   border-bottom: 1px solid #dce5e0;
 }
-.satp-review-group > div {
+.attendance-system-review-group > div {
   max-height: 190px;
   overflow-x: auto;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
-.satp-review-group header strong {
+.attendance-system-review-group header strong {
   font-size: 12px;
 }
-.satp-review-group header b {
+.attendance-system-review-group header b {
   margin-left: auto;
   padding: 4px 10px;
   border-radius: 999px;
@@ -1301,19 +1301,19 @@ div.dt-container .dt-paging .ellipsis {
   color: #64736c;
   font-size: 10px;
 }
-.satp-result-dot {
+.attendance-system-result-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #2d9666;
 }
-.satp-review-group.updated .satp-result-dot {
+.attendance-system-review-group.updated .attendance-system-result-dot {
   background: #d9a51b;
 }
-.satp-review-group.errors .satp-result-dot {
+.attendance-system-review-group.errors .attendance-system-result-dot {
   background: #c9433a;
 }
-.satp-review-group p {
+.attendance-system-review-group p {
   display: grid;
   grid-template-columns: 56px minmax(140px, 1fr) minmax(200px, 1.5fr);
   gap: 10px;
@@ -1322,36 +1322,36 @@ div.dt-container .dt-paging .ellipsis {
   border-top: 1px solid #edf2ef;
   font-size: 11px;
 }
-.satp-review-group p:first-child {
+.attendance-system-review-group p:first-child {
   border-top: 0;
 }
-.satp-review-group p small,
-.satp-review-group p em {
+.attendance-system-review-group p small,
+.attendance-system-review-group p em {
   color: #718078;
   font-style: normal;
 }
-.satp-review-group .satp-empty {
+.attendance-system-review-group .attendance-system-empty {
   display: block;
   color: #91a099;
 }
-.satp-import-progress {
+.attendance-system-import-progress {
   min-height: 0;
   margin: 0 25px;
   color: #087247;
   font-size: 12px;
   font-weight: 700;
 }
-.satp-progress-modal {
+.attendance-system-progress-modal {
   width: min(540px, calc(100vw - 32px));
 }
-.satp-progress-body {
+.attendance-system-progress-body {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 34px 32px 30px;
   text-align: center;
 }
-.satp-progress-icon {
+.attendance-system-progress-icon {
   display: grid;
   width: 58px;
   height: 58px;
@@ -1363,25 +1363,25 @@ div.dt-container .dt-paging .ellipsis {
   font-size: 28px;
   font-weight: 800;
 }
-.satp-progress-body strong {
+.attendance-system-progress-body strong {
   color: #183128;
   font-size: 17px;
 }
-.satp-progress-body p {
+.attendance-system-progress-body p {
   max-width: 390px;
   margin: 8px 0 24px;
   color: #6c7b74;
   font-size: 12px;
   line-height: 1.6;
 }
-.satp-progress-track {
+.attendance-system-progress-track {
   width: 100%;
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: #e7eeea;
 }
-.satp-progress-track span {
+.attendance-system-progress-track span {
   display: block;
   width: 0;
   height: 100%;
@@ -1389,7 +1389,7 @@ div.dt-container .dt-paging .ellipsis {
   background: #087247;
   transition: width 0.18s ease;
 }
-.satp-progress-count {
+.attendance-system-progress-count {
   display: flex;
   width: 100%;
   justify-content: space-between;
@@ -1397,7 +1397,7 @@ div.dt-container .dt-paging .ellipsis {
   color: #6c7b74;
   font-size: 11px;
 }
-.satp-progress-count b {
+.attendance-system-progress-count b {
   color: #087247;
 }
 .student-loading-modal {
@@ -1466,9 +1466,9 @@ div.dt-container .dt-paging .ellipsis {
 
 .record-photo-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 48%);
-  align-items: center;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
   padding: 16px;
   border: 1px solid #d8e3dd;
   border-radius: 12px;
@@ -1526,12 +1526,6 @@ div.dt-container .dt-paging .ellipsis {
 
 .record-photo-field input[type="file"]::file-selector-button:hover {
   background: #d9ebe2;
-}
-
-@media (max-width: 640px) {
-  .record-photo-field {
-    grid-template-columns: 1fr;
-  }
 }
 
 .directory-card-header {
@@ -1707,7 +1701,7 @@ body:has(.account-password-layout) .topbar h1 {
   line-height: 1 !important;
 }
 
-body:has(.account-password-layout) .satp-page-description {
+body:has(.account-password-layout) .attendance-system-page-description {
   margin-top: 14px;
   color: #65736c !important;
   font-size: 14px !important;
@@ -2051,7 +2045,7 @@ select option {
 @media (max-width: 640px) {
   .modal-head,
   .form-grid,
-  .satp-modal-body {
+  .attendance-system-modal-body {
     padding-left: 18px !important;
     padding-right: 18px !important;
   }
@@ -2059,13 +2053,13 @@ select option {
     padding-left: 18px !important;
     padding-right: 18px !important;
   }
-  .satp-review-group p {
+  .attendance-system-review-group p {
     grid-template-columns: 45px 1fr;
   }
-  .satp-review-group p em {
+  .attendance-system-review-group p em {
     grid-column: 2;
   }
-  .modal-actions .satp-import-action {
+  .modal-actions .attendance-system-import-action {
     width: 100%;
     margin-bottom: 6px;
   }
@@ -2075,8 +2069,8 @@ select option {
 }
 @media (max-width: 640px) {
   .brand-workspace,
-  .satp-site-header,
-  .satp-site-footer {
+  .attendance-system-site-header,
+  .attendance-system-site-footer {
     padding-left: 20px;
     padding-right: 20px;
   }
@@ -2084,11 +2078,11 @@ select option {
     padding-top: 32px;
     padding-bottom: 32px;
   }
-  .satp-header-identity span,
-  .satp-header-context {
+  .attendance-system-header-identity span,
+  .attendance-system-header-context {
     display: none;
   }
-  .satp-breadcrumb {
+  .attendance-system-breadcrumb {
     display: none;
   }
   .brand-workspace .section-header {
@@ -2098,8 +2092,31 @@ select option {
 .event-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   white-space: nowrap;
+}
+.section-header > .event-actions,
+.section-header > .primary-button,
+.section-header > .secondary-button,
+.section-header > label:last-child,
+.directory-card-header > .directory-actions,
+.event-scan-heading > .event-scan-heading-actions,
+.filter-row > .primary-button:last-child,
+.filter-row > .secondary-button:last-child {
+  margin-left: auto !important;
+}
+.table-toolbar > .primary-button:last-child,
+.table-toolbar > .secondary-button:last-child,
+.table-toolbar > .text-button:last-child,
+.attendance-system-actions-column {
+  text-align: right !important;
+}
+.attendance-system-status-column {
+  text-align: center !important;
+}
+.attendance-system-actions-column .event-actions {
+  justify-content: flex-end;
 }
 .scan-event {
   min-height: 36px !important;
@@ -2211,12 +2228,6 @@ body:not(.sidebar-ready) .main {
 }
 .permission-dialog .form-grid {
   padding-top: 0;
-}
-.permission-dialog #peopleAccess:invalid {
-  color: #94a19b;
-}
-.permission-dialog #peopleAccess option {
-  color: #183128;
 }
 .card-enrollment-modal {
   width: min(560px, calc(100vw - 32px)) !important;
@@ -2332,7 +2343,7 @@ body:not(.sidebar-ready) .main {
   }
 }
 
-/* SATP typography scale */
+/* attendance-system typography scale */
 html,
 body,
 body *,
@@ -2362,30 +2373,30 @@ body {
 }
 .eyebrow,
 .section-kicker,
-.satp-records-heading > span,
+.attendance-system-records-heading > span,
 .modal-kicker {
   font-size: 0.69rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.14em !important;
 }
-.satp-page-description,
+.attendance-system-page-description,
 .brand-workspace .section-header p {
   font-size: 0.9rem !important;
   line-height: 1.6 !important;
 }
-.satp-breadcrumb {
+.attendance-system-breadcrumb {
   font-size: 0.74rem !important;
 }
-.satp-header-identity strong {
+.attendance-system-header-identity strong {
   font-size: 0.95rem !important;
 }
-.satp-header-identity small {
+.attendance-system-header-identity small {
   font-size: 0.72rem !important;
 }
-.satp-header-context span {
+.attendance-system-header-context span {
   font-size: 0.68rem !important;
 }
-.satp-header-context strong {
+.attendance-system-header-context strong {
   font-size: 0.83rem !important;
 }
 .nav-item {
@@ -2403,7 +2414,7 @@ body {
 .sidebar-foot {
   font-size: 0.72rem !important;
 }
-.satp-records-heading h2,
+.attendance-system-records-heading h2,
 .table-toolbar h2,
 .card-heading h2,
 .event-scan-heading h2 {
@@ -2427,8 +2438,8 @@ body {
 .icon-button,
 .edit-icon,
 .account-password-heading > .material-symbols-rounded,
-.satp-upload-icon.material-symbols-rounded,
-.satp-progress-icon.material-symbols-rounded {
+.attendance-system-upload-icon.material-symbols-rounded,
+.attendance-system-progress-icon.material-symbols-rounded {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2478,6 +2489,12 @@ table.dataTable thead th {
   font-weight: 850 !important;
   letter-spacing: 0.08em !important;
 }
+table.dataTable thead > tr > th,
+table.dataTable thead > tr > td,
+.dt-container table.dataTable thead > tr > th,
+.dt-container table.dataTable thead > tr > td {
+  text-align: center !important;
+}
 table tbody td,
 table.dataTable tbody td {
   font-size: 0.8rem !important;
@@ -2523,6 +2540,6 @@ table.dataTable tbody td {
 .dt-container .dt-paging {
   font-size: 0.7rem !important;
 }
-.satp-site-footer {
+.attendance-system-site-footer {
   font-size: 0.72rem !important;
 }

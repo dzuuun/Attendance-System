@@ -1,4 +1,5 @@
 const pool = require("../../db/db");
+const schema = require("../../db/schema");
 const periods = require("../maintenance/academic_period/academic_period.model");
 
 let schemaReady;
@@ -11,9 +12,12 @@ async function tableExists(table) {
 }
 async function ensurePersonNames() {
   for (const table of ["students", "employees"]) {
-    await pool.query(
-      `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name,ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500) NULL`,
-    );
+    await schema.addColumns(table, [
+      ["first_name", "VARCHAR(80) NULL"],
+      ["middle_name", "VARCHAR(80) NULL AFTER first_name"],
+      ["last_name", "VARCHAR(80) NULL AFTER middle_name"],
+      ["photo_url", "VARCHAR(500) NULL"],
+    ]);
     const [legacy] = await pool.query(
       "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME='full_name'",
       [table],
@@ -46,8 +50,10 @@ async function ensureSchema() {
       await pool.query(
         `CREATE TABLE IF NOT EXISTS university_entrance_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,student_id INT UNSIGNED NULL,employee_id INT UNSIGNED NULL,attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',scan_location VARCHAR(120) NULL,checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,academic_period_id INT UNSIGNED NULL,INDEX idx_university_period_time (academic_period_id,checked_in_at,id),INDEX idx_university_student_time (student_id,academic_period_id,checked_in_at,id),INDEX idx_university_employee_time (employee_id,academic_period_id,checked_in_at,id))`,
       );
-      await pool.query(
-        "ALTER TABLE university_entrance_logs ADD COLUMN IF NOT EXISTS scan_location VARCHAR(120) NULL AFTER attendance_action",
+      await schema.addColumn(
+        "university_entrance_logs",
+        "scan_location",
+        "VARCHAR(120) NULL AFTER attendance_action",
       );
       await pool.query(
         `CREATE TABLE IF NOT EXISTS event_attendance_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,event_id INT UNSIGNED NOT NULL,student_id INT UNSIGNED NULL,employee_id INT UNSIGNED NULL,attendance_action ENUM('Time In','Time Out') NOT NULL DEFAULT 'Time In',checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,academic_period_id INT UNSIGNED NULL,INDEX idx_event_attendance_event_time (event_id,checked_in_at,id),INDEX idx_event_attendance_student_time (student_id,event_id,checked_in_at,id),INDEX idx_event_attendance_employee_time (employee_id,event_id,checked_in_at,id),INDEX idx_event_attendance_period_time (academic_period_id,checked_in_at,id),INDEX idx_event_student_period_time (student_id,academic_period_id,checked_in_at,id),INDEX idx_event_employee_period_time (employee_id,academic_period_id,checked_in_at,id))`,
@@ -55,9 +61,20 @@ async function ensureSchema() {
       await pool.query(
         `CREATE TABLE IF NOT EXISTS event_attendance_corrections (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,attendance_log_id BIGINT UNSIGNED NOT NULL,event_id INT UNSIGNED NOT NULL,attendee_id_number VARCHAR(50) NOT NULL,attendee_name VARCHAR(255) NOT NULL,attendee_type ENUM('Student','Employee') NOT NULL,correction_type ENUM('Updated','Deleted') NOT NULL,original_action ENUM('Time In','Time Out') NOT NULL,original_checked_in_at DATETIME NOT NULL,corrected_action ENUM('Time In','Time Out') NULL,corrected_checked_in_at DATETIME NULL,reason VARCHAR(500) NOT NULL,corrected_by INT UNSIGNED NOT NULL,corrector_name VARCHAR(255) NOT NULL,corrected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_event_corrections_event_time (event_id,corrected_at,id),INDEX idx_event_corrections_log (attendance_log_id,corrected_at))`,
       );
-      await pool.query(
-        "ALTER TABLE event_attendance_corrections ADD COLUMN IF NOT EXISTS attendee_id_number VARCHAR(50) NOT NULL DEFAULT '' AFTER event_id,ADD COLUMN IF NOT EXISTS attendee_name VARCHAR(255) NOT NULL DEFAULT '' AFTER attendee_id_number,ADD COLUMN IF NOT EXISTS attendee_type ENUM('Student','Employee') NOT NULL DEFAULT 'Student' AFTER attendee_name",
-      );
+      await schema.addColumns("event_attendance_corrections", [
+        [
+          "attendee_id_number",
+          "VARCHAR(50) NOT NULL DEFAULT '' AFTER event_id",
+        ],
+        [
+          "attendee_name",
+          "VARCHAR(255) NOT NULL DEFAULT '' AFTER attendee_id_number",
+        ],
+        [
+          "attendee_type",
+          "ENUM('Student','Employee') NOT NULL DEFAULT 'Student' AFTER attendee_name",
+        ],
+      ]);
       await migrateLegacyTable("student_attendance", "student_id");
       await migrateLegacyTable("employee_attendance", "employee_id");
       const current = await periods.getCurrent();
@@ -98,11 +115,32 @@ exports.getToday = async () => {
     )
   )[0];
 };
+exports.getTodayByLocation = async (location, limit = 10) => {
+  await ensureSchema();
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 25));
+  const where = `a.scan_location=? AND (a.student_id IS NOT NULL OR a.employee_id IS NOT NULL) AND a.checked_in_at>=CURDATE() AND a.checked_in_at<CURDATE()+INTERVAL 1 DAY`;
+  const [records] = await pool.query(
+    `SELECT a.id,${personSelect},a.scan_location location,a.attendance_action action,a.checked_in_at timestamp,pr.name program,c.name college,ed.name department,COALESCE(s.photo_url,e.photo_url) photoUrl FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ap.is_current=TRUE ${personJoins} LEFT JOIN programs pr ON pr.id=s.program_id LEFT JOIN departments d ON d.id=pr.department_id LEFT JOIN colleges c ON c.id=d.college_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE ${where} ORDER BY a.checked_in_at DESC,a.id DESC LIMIT ${safeLimit}`,
+    [location],
+  );
+  const [[stats]] = await pool.query(
+    `SELECT COUNT(*) total,SUM(a.attendance_action='Time In') timeIn,SUM(a.attendance_action='Time Out') timeOut FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ap.is_current=TRUE WHERE ${where}`,
+    [location],
+  );
+  return {
+    records,
+    stats: {
+      total: Number(stats.total || 0),
+      in: Number(stats.timeIn || 0),
+      out: Number(stats.timeOut || 0),
+    },
+  };
+};
 exports.getByEvent = async (eventId) => {
   await ensureSchema();
   return (
     await pool.query(
-      `SELECT a.id,${personSelect},pr.name program,pr.name course,c.name college,CASE WHEN a.employee_id IS NOT NULL THEN ed.name ELSE NULL END department,COALESCE(s.photo_url,e.photo_url) photoUrl,a.event_id eventId,ev.name eventName,a.attendance_action action,a.checked_in_at timestamp FROM event_attendance_logs a ${personJoins} LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id LEFT JOIN programs pr ON pr.id=s.program_id LEFT JOIN departments d ON d.id=pr.department_id LEFT JOIN colleges c ON c.id=d.college_id INNER JOIN events ev ON ev.id=a.event_id WHERE a.event_id=? ORDER BY a.checked_in_at DESC,a.id DESC`,
+      `SELECT a.id,${personSelect},pr.name program,pr.name course,pr.code programCode,d.code departmentCode,c.name college,c.code collegeCode,CASE WHEN a.employee_id IS NOT NULL THEN ed.name ELSE NULL END department,ed.code employeeDepartmentCode,COALESCE(s.photo_url,e.photo_url) photoUrl,a.event_id eventId,ev.name eventName,a.attendance_action action,a.checked_in_at timestamp FROM event_attendance_logs a ${personJoins} LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id LEFT JOIN programs pr ON pr.id=s.program_id LEFT JOIN departments d ON d.id=pr.department_id LEFT JOIN colleges c ON c.id=d.college_id INNER JOIN events ev ON ev.id=a.event_id WHERE a.event_id=? ORDER BY a.checked_in_at DESC,a.id DESC`,
       [eventId],
     )
   )[0];

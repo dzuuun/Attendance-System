@@ -12,8 +12,8 @@ $("#form .form-grid").insertAdjacentHTML(
   "beforeend",
   '<label class="full status-toggle-field"><span><strong>Active record</strong><small>Available throughout the system</small></span><input id="isActive" type="checkbox" checked></label>',
 );
-function parentName(row) {
-  return row.schoolName || row.collegeName || row.departmentName || "—";
+function parentCode(row) {
+  return row.schoolCode || row.collegeCode || row.departmentCode || "—";
 }
 function render() {
   const table = $("#body").closest("table");
@@ -26,11 +26,14 @@ function render() {
         (row.name.toLowerCase().includes(q) ||
           row.code.toLowerCase().includes(q)),
     );
+  const directoryTitle = $("#academicDirectoryTitle");
+  if (directoryTitle)
+    directoryTitle.textContent = `${showInactive ? "All" : "Active"} ${label.toLowerCase()}`;
   $("#body").innerHTML =
     rows
       .map(
         (row) =>
-          `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.code)}</td>${parentEntity ? `<td>${escapeHtml(parentName(row))}</td>` : ""}<td><span class="status-pill ${!row.isActive ? "time-out" : ""}">${row.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${row.id}" aria-label="Edit ${escapeHtml(row.name)}" title="Edit"></button></td></tr>`,
+          `<tr><td>${escapeHtml(row.code)}</td><td><strong>${escapeHtml(row.name)}</strong></td>${parentEntity ? `<td>${escapeHtml(parentCode(row))}</td>` : ""}<td><span class="status-pill ${!row.isActive ? "time-out" : ""}">${row.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${row.id}" aria-label="Edit ${escapeHtml(row.name)}" title="Edit"></button></td></tr>`,
       )
       .join("") ||
     emptyRow(parentEntity ? 5 : 4, `No ${label.toLowerCase()} records.`);
@@ -95,6 +98,7 @@ $("#form").addEventListener("submit", async (event) => {
         (row) => String(row.id) === $("#parent").value,
       );
       record[`${parentEntity}Name`] = parent.name;
+      record[`${parentEntity}Code`] = parent.code;
     }
     record.isActive = $("#isActive").checked;
     if (id)

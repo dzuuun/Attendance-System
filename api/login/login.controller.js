@@ -36,7 +36,6 @@ const sessionFor = (user) => ({
   libraryAccess: Boolean(user.libraryAccess),
   maintenanceAccess: Boolean(user.maintenanceAccess),
   usersAccess: Boolean(user.usersAccess),
-  peopleAccess: user.peopleAccess || "Both",
 });
 const logAuth = async (req, user, action, description) => {
   try {
@@ -81,7 +80,6 @@ exports.login = async (req, res) => {
     libraryAccess: Boolean(user.libraryAccess),
     maintenanceAccess: Boolean(user.maintenanceAccess),
     usersAccess: Boolean(user.usersAccess),
-    peopleAccess: user.peopleAccess || "Both",
   };
   await logAuth(req, user, "LOGGED_IN", "Signed in to the system.");
   res.json({ ...session, token: createToken(session) });

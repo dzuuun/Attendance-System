@@ -1,8 +1,5 @@
 const model = require("./event.model");
-const canAccessAudience = (user, audience) =>
-  ["Superadmin", "Administrator"].includes(user?.role) ||
-  user?.peopleAccess === "Both" ||
-  user?.peopleAccess === audience;
+const canAccessAudience = () => true;
 const canAccessEvent = (user, event) =>
   Boolean(event) &&
   Number(event.createdBy) === Number(user?.id) &&

@@ -1,4 +1,5 @@
 const pool = require("../../../db/db");
+const schema = require("../../../db/schema");
 
 let schemaReady;
 async function ensureSchema() {
@@ -21,31 +22,12 @@ async function ensureSchema() {
       CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE SET NULL
     )`,
       )
-      .then(() =>
-        pool.query(
-          "ALTER TABLE activity_logs DROP COLUMN IF EXISTS ip_address",
-        ),
-      );
+      .then(() => schema.dropColumn("activity_logs", "ip_address"));
   return schemaReady;
 }
 
-exports.getPage = async ({
-  start = 0,
-  length = 25,
-  search = "",
-  orderColumn = 0,
-  orderDir = "desc",
-}) => {
+exports.getPage = async ({ start = 0, length = 25, search = "" }) => {
   await ensureSchema();
-  const columns = [
-    "created_at",
-    "actor_name",
-    "action",
-    "module",
-    "description",
-  ];
-  const sort = columns[Number(orderColumn)] || "created_at";
-  const direction = String(orderDir).toLowerCase() === "asc" ? "ASC" : "DESC";
   const term = String(search || "").trim();
   const where = term
     ? "WHERE actor_name LIKE ? OR actor_username LIKE ? OR action LIKE ? OR module LIKE ? OR description LIKE ?"
@@ -65,7 +47,7 @@ exports.getPage = async ({
   const [rows] = await pool.query(
     `SELECT id,user_id userId,actor_name actorName,actor_username actorUsername,action,module,description,method,path,created_at createdAt
      FROM activity_logs ${where}
-     ORDER BY ${sort} ${direction},id ${direction}
+     ORDER BY created_at DESC,id DESC
      LIMIT ? OFFSET ?`,
     [...searchParams, safeLength, safeStart],
   );

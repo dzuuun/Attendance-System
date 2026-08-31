@@ -1,63 +1,243 @@
-# TapTrack Attendance
+# TapTrack Attendance System
 
-Express + Node.js + MySQL attendance for keyboard/HID NFC and barcode readers.
+TapTrack is a Node.js, Express, and MySQL attendance system for Notre Dame of
+Marbel University. It records university entrance attendance, event attendance,
+library visits, and Internet Section visits through typed IDs, keyboard-wedge
+RFID/barcode scanners, cameras, or supported NFC writers.
 
-## Production database
+## Features
 
-TapTrack uses **MySQL 8.0 or newer** in production through the `mysql2` Node.js driver. The installation script creates the `attendance_system` database with the `utf8` character set and `utf8_general_ci` collation. MariaDB is not the production target.
+- Daily university entrance Time In and Time Out records
+- Events with configurable audiences and scan limits
+- Multiple scanning stations sharing live event attendance
+- Library and Internet Section entrance kiosks
+- Student and employee directories with Excel import/export and photo uploads
+- NFC card enrollment that writes only the person's ID number
+- Academic hierarchy and academic-period maintenance
+- Role-based module permissions and activity auditing
+- Excel exports for entrance logs, events, corrections, and person logs
+- Optional institutional Google sign-in
 
-Configure the production connection through `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `.env`. Use a dedicated MySQL account with access only to the TapTrack database.
+## Requirements
+
+- Node.js 20 or newer
+- npm
+- MySQL 8.0 or newer
+- A modern browser such as Chrome or Edge
+
+TapTrack targets MySQL in production through the `mysql2` driver. The supplied
+schema creates `attendance_system` using `utf8` and `utf8_general_ci`.
+
+## Installation
 
 ```bash
+npm ci
 mysql -u root -p < database.sql
 cp .env.example .env
-npm install
 npm run dev
 ```
 
-For phpMyAdmin or a hosting control panel, select an empty database and import `database.sql`. Open `http://localhost:4000/setup` after import to create the first administrator. Configure each reader to send Enter after the scanned value. Student and employee directories, university entrance logs, event attendance, library entrance logs, and Internet Section logs are stored separately.
+Then open `http://localhost:4000/setup` and create the first administrator.
+Setup disables itself after the first account is created. The database script
+does not contain a default user or password.
 
-## NFC card enrollment
+For phpMyAdmin or a hosting control panel, import `database.sql`. The script
+creates and selects the `attendance_system` database.
 
-The Students and Employees pages can send only a person's identifier to a locally installed NFC writer and require the writer to read the value back before enrollment succeeds. College IDs use a four-digit year followed by three or four digits, such as `2026123` or `20261234`. Elementary, junior high, and senior high students use their 12-digit LRN. Employee IDs use a `P` prefix followed by the same year-and-sequence format, such as `P2026123` or `P20261234`. No name or other personal information is written. This is designed for PC/SC devices such as the ACR122U on Windows or Raspberry Pi, but the writer command must match the exact card technology used by the school.
-
-Configure the adapter in `.env`:
+For production, use:
 
 ```bash
-NFC_WRITER_COMMAND=/path/to/the/writer-program
-NFC_WRITER_ARGS=[]
+npm start
 ```
 
-TapTrack starts the configured command without a shell. Before writing, it calls the command with `--read`; the helper must read the card and return a final JSON line such as `{"read":true,"value":""}` for a blank card or `{"read":true,"value":"20261234"}` for an existing value. The interface enables writing only after this read succeeds.
+Run the application behind an HTTPS reverse proxy and a process manager.
 
-For writing, TapTrack calls the command with `--write` and sends only the exact identifier as a plain-text line to its standard input:
+## Environment variables
 
-```text
-20261234
+| Variable                  | Purpose                                    |
+| ------------------------- | ------------------------------------------ |
+| `PORT`                    | HTTP port; defaults to `4000`              |
+| `DB_HOST`                 | MySQL server hostname                      |
+| `DB_PORT`                 | MySQL port; defaults to `3306`             |
+| `DB_USER`                 | MySQL account                              |
+| `DB_PASSWORD`             | MySQL password                             |
+| `DB_NAME`                 | Database; defaults to `attendance_system`  |
+| `JWT_SECRET`              | Secret used to sign authenticated sessions |
+| `GOOGLE_CLIENT_ID`        | Optional Google OAuth client ID            |
+| `GOOGLE_CLIENT_SECRET`    | Optional Google OAuth client secret        |
+| `GOOGLE_WORKSPACE_DOMAIN` | Allowed institutional Google domain        |
+| `GOOGLE_REDIRECT_URI`     | Google OAuth callback URL                  |
+| `NFC_WRITER_COMMAND`      | Executable for NFC read/write operations   |
+| `NFC_WRITER_ARGS`         | JSON array of fixed executable arguments   |
+
+Minimal local configuration:
+
+```dotenv
+PORT=4000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=attendance_system
+JWT_SECRET=replace-with-a-long-random-secret
 ```
 
-The writer must store only that text value on the card—without a name, JSON wrapper, prefix added by TapTrack, or other metadata—then read it back and return a final JSON line such as `{"verified":true,"value":"20261234"}`. TapTrack accepts success only when the read-back value exactly matches the database identifier. The writer must exit with a nonzero status when writing or verification fails. Do not configure a card block, sector, or authentication key until the card model and its existing memory layout have been confirmed.
+## Main pages
 
-## Two-scanner kiosk
+| Path                        | Purpose                                       |
+| --------------------------- | --------------------------------------------- |
+| `/`                         | Public landing page                           |
+| `/login`                    | Staff sign-in                                 |
+| `/setup`                    | One-time administrator setup                  |
+| `/app`                      | Current-day university entrance overview      |
+| `/attendance`               | University entrance logs and previous periods |
+| `/events`                   | Events in the current academic period         |
+| `/events/past`              | Past events by selected academic period       |
+| `/library/entrance`         | Library entrance logs                         |
+| `/library/internet-section` | Internet Section entrance logs                |
+| `/maintenance/student`      | Student directory and card enrollment         |
+| `/maintenance/employee`     | Employee directory and card enrollment        |
+| `/user/permissions`         | Permission management                         |
+| `/user/activity-log`        | Newest-first activity log                     |
 
-The public kiosk supports two ordinary keyboard-wedge scanners without requiring prefixes. A local reader identifies which physical scanner supplied each ID:
+Public kiosks:
 
-- **Windows:** uses the Windows Raw Input API through the included PowerShell helper.
-- **Raspberry Pi OS/Linux:** reads each scanner separately through `/dev/input/event*`.
+- `/kiosk/entrance`
+- `/kiosk/library`
+- `/kiosk/internet-section`
 
-On `/kiosk/entrance`, select **Assign** beside Time In and scan a card with the Time In device. Repeat for Time Out. Hardware mappings are stored locally in that kiosk terminal's browser and load without a user session.
+## Permissions
 
-On Raspberry Pi OS, give the account running Node access to input devices, then restart the session:
+User roles can receive access to these modules:
+
+- Overview
+- Attendance
+- Events
+- Library
+- Maintenance
+- User & Access
+
+Student and Employee pages are both controlled by **Maintenance** access. There
+is no separate directory-access permission. Maintenance users can access both
+directories and their supporting academic records.
+
+Events are tied to the account that created them. Event users see their own
+current and past events. Administrator and Superadmin can see all events. NFC
+card enrollment controls are added to the page only for Administrator and
+Superadmin users.
+
+## Attendance behavior
+
+### University entrance
+
+University entrance attendance is separate from event attendance. Automatic
+Time In/Time Out state starts fresh each calendar day. The Attendance page can
+load earlier academic periods. Its Excel filename includes the export date.
+
+### Events
+
+Each event defines its schedule, accepted audience, maximum Time In scans, and
+optional Time Out limit. Several terminals can scan the same event and recent
+attendees refresh across stations.
+
+Event owners can rectify a scan by updating its action/time or deleting it with
+a required reason. Corrections remain in the audit history.
+
+Event exports include attendance and corrections. Student rows use program,
+department, and college codes. Employee rows use the department code. If both
+students and employees attended, they receive separate workbook sheets;
+otherwise, the workbook contains one `Attendance` sheet.
+
+## Scanner setup
+
+### Keyboard-wedge readers
+
+A keyboard-wedge RFID or barcode scanner can type into the focused ID field.
+Configure it to append Enter after every scanned value.
+
+### Two-scanner university kiosk
+
+The university kiosk supports one Time In scanner and one Time Out scanner on
+the same terminal:
+
+- Windows uses the included Raw Input PowerShell helper.
+- Raspberry Pi OS/Linux uses the included evdev reader.
+
+Assign the devices from `/kiosk/entrance`. The mapping is stored in that
+terminal's browser and remains available without a signed-in user. Keep
+identical scanners connected to the same USB ports.
+
+On Raspberry Pi OS/Linux, grant the service account input-device access, then
+restart its session:
 
 ```bash
 sudo usermod -aG input "$USER"
 ```
 
-Identical scanners without serial numbers are identified by their physical USB paths. Keep each scanner connected to the same USB port.
+Without the helper, a focused keyboard-wedge reader or camera can still scan,
+but the browser cannot distinguish two identical keyboard devices.
 
-## Attendance modes
+## NFC card enrollment
 
-- **University entrance** — everyday attendance. The assigned physical scanner records Time In or Time Out, and each person's state starts fresh each day.
-- **Special event** — an administrator defines the event duration and the maximum Time In/Time Out scans allowed per attendee. Operators select the event at the scanner; records are isolated from daily entrance attendance and other events.
+TapTrack writes only the exact database identifier as plain text:
 
-Open `/setup` after the first database import to create the initial administrator. Setup disables itself once an account exists.
+- College student: `2026123` or `20261234`
+- Elementary/JHS/SHS student: 12-digit LRN
+- Employee: `P2026123` or `P20261234`
+
+No name, course, department, or JSON metadata is stored. TapTrack requires a
+card read before writing and verifies the value after writing.
+
+The included ACR122U helper assumes blank, initialized NTAG213-compatible Type
+2 cards and requires Python with `pyscard`. Confirm the exact card technology
+before deployment; 13.56 MHz is a frequency, not a memory format.
+
+Raspberry Pi OS/Linux example:
+
+```dotenv
+NFC_WRITER_COMMAND=/usr/bin/python3
+NFC_WRITER_ARGS=["/absolute/path/to/Attendance System/scanner/acr122u-ntag213.py"]
+```
+
+Windows example:
+
+```dotenv
+NFC_WRITER_COMMAND=C:\Python312\python.exe
+NFC_WRITER_ARGS=["C:\\TapTrack\\scanner\\acr122u-ntag213.py"]
+```
+
+`NFC_WRITER_ARGS` must be valid JSON. TapTrack starts the command without a
+shell, invokes it with `--read` or `--write`, sends the identifier through
+standard input while writing, and expects a final JSON response line. See
+`scanner/nfc-writer.js` and `scanner/acr122u-ntag213.py` for the protocol.
+
+Do not permanently lock cards until the card model, layout, recovery process,
+and replacement workflow have been tested.
+
+## Imports, photos, and backups
+
+Student and employee records can be imported from Excel. Download the template
+from the appropriate directory so its codes match the academic hierarchy.
+
+Profile photos accept JPEG, PNG, and WebP. For bulk upload, name each image with
+the corresponding ID number. Uploaded images are stored under
+`uploads/profile-photos`.
+
+Back up both MySQL and `uploads/profile-photos` regularly.
+
+## Production checklist
+
+- Use MySQL 8.0+ and a dedicated database account.
+- Replace the development JWT secret with a long random value.
+- Serve TapTrack through HTTPS.
+- Protect `.env` and uploaded profile photos.
+- Confirm the current academic period before opening kiosks.
+- Test scanners and NFC cards on the production Windows or Raspberry Pi host.
+- Verify the Google OAuth callback before enabling institutional sign-in.
+
+## npm commands
+
+```bash
+npm run dev   # development server using Node watch mode
+npm start     # production server
+```

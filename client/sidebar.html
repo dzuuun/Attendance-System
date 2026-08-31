@@ -90,7 +90,11 @@
           >
         </div>
       </div>
-      <div class="nav-group" id="maintenanceGroup">
+      <div
+        class="nav-group"
+        data-access="maintenanceAccess"
+        id="maintenanceGroup"
+      >
         <button
           class="nav-item nav-group-toggle"
           id="maintenanceToggle"
@@ -104,14 +108,14 @@
         <div class="nav-submenu" id="maintenanceSubmenu">
           <a
             class="nav-subitem"
-            data-people="Students"
+            data-access="maintenanceAccess"
             data-nav="students"
             href="/maintenance/student"
             >Students</a
           >
           <a
             class="nav-subitem"
-            data-people="Employees"
+            data-access="maintenanceAccess"
             data-nav="employees"
             href="/maintenance/employee"
             >Employees</a
@@ -140,7 +144,6 @@
           <a
             class="nav-subitem"
             data-access="maintenanceAccess"
-            data-people="Employees"
             data-nav="employee_department"
             href="/maintenance/employee-department"
             >Employee departments</a

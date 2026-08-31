@@ -4,13 +4,14 @@
 
   document.body.insertAdjacentHTML(
     "beforeend",
-    `<dialog id="profilePhotoDialog" class="satp-modal">
+    `<dialog id="profilePhotoDialog" class="attendance-system-modal">
       <form id="profilePhotoForm">
-        <div class="modal-head"><div><span class="section-kicker">PROFILE IMAGE</span><h2 id="profilePhotoTitle">Upload photos</h2></div><button type="button" class="close-button" id="profilePhotoClose" aria-label="Close"></button></div>
-        <div class="profile-photo-picker">
-          <strong id="profilePhotoPrompt">Choose image files</strong>
-          <p id="profilePhotoHelp">For bulk upload, each filename must be the person's ID number.</p>
-          <input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" required>
+        <div class="modal-head"><div><span class="section-kicker">PROFILE IMAGE</span><h2 id="profilePhotoTitle">Upload photos</h2></div><button type="button" class="close-button" id="profilePhotoClose" aria-label="Close">×</button></div>
+        <div class="form-grid">
+          <div class="full record-photo-field">
+            <span><strong id="profilePhotoPrompt">Choose image files</strong><small id="profilePhotoHelp">For bulk upload, each filename must be the person's ID number.</small></span>
+            <input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" required>
+          </div>
         </div>
         <p class="form-error" id="profilePhotoError"></p>
         <div class="modal-actions"><button type="button" class="secondary-button" id="profilePhotoCancel">Cancel</button><button type="submit" class="primary-button" id="profilePhotoSubmit">Upload</button></div>

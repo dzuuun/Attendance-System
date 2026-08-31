@@ -35,7 +35,7 @@ exports.getAll = async (entity) => {
       )
     )[0];
   const [rows] = await pool.query(
-    `SELECT child.id,child.name,child.code,child.is_active isActive,child.${item.parent.column} parentId,parent.name ${item.parent.label} FROM ${item.table} child INNER JOIN ${item.parent.table} parent ON parent.id=child.${item.parent.column} ORDER BY parent.name,child.name`,
+    `SELECT child.id,child.name,child.code,child.is_active isActive,child.${item.parent.column} parentId,parent.name ${item.parent.label},parent.code ${item.parent.label.replace(/Name$/, "Code")} FROM ${item.table} child INNER JOIN ${item.parent.table} parent ON parent.id=child.${item.parent.column} ORDER BY parent.code,child.code`,
   );
   return rows;
 };

@@ -70,8 +70,12 @@ async function exportEvent(item) {
         idNumber: scan.idNumber,
         name: scan.name,
         type: scan.type,
-        course: scan.course || "",
-        department: scan.department || "",
+        programCode: scan.programCode || "",
+        departmentCode:
+          scan.type === "Student"
+            ? scan.departmentCode || ""
+            : scan.employeeDepartmentCode || "",
+        collegeCode: scan.collegeCode || "",
         ins: [],
         outs: [],
       });
@@ -79,20 +83,21 @@ async function exportEvent(item) {
       .get(key)
       [scan.action === "Time In" ? "ins" : "outs"].push(scan.timestamp);
   });
-  const headers = ["ID Number", "Full Name", "Type", "Course", "Department"];
+  const timeHeaders = [];
   for (let index = 1; index <= Number(item.maxTimeIns); index += 1)
-    headers.push(`Time In ${index}`);
+    timeHeaders.push(`Time In ${index}`);
   for (let index = 1; index <= Number(item.maxTimeOuts); index += 1)
-    headers.push(`Time Out ${index}`);
-  const rows = [...attendees.values()]
+    timeHeaders.push(`Time Out ${index}`);
+  const people = [...attendees.values()]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((attendee) => {
       const row = {
+        _type: attendee.type,
         "ID Number": attendee.idNumber,
         "Full Name": attendee.name,
-        Type: attendee.type,
-        Course: attendee.course,
-        Department: attendee.department,
+        "Program Code": attendee.programCode,
+        "Department Code": attendee.departmentCode,
+        "College Code": attendee.collegeCode,
       };
       attendee.ins.sort((a, b) => new Date(a) - new Date(b));
       attendee.outs.sort((a, b) => new Date(a) - new Date(b));
@@ -106,17 +111,42 @@ async function exportEvent(item) {
           : "";
       return row;
     });
-  const sheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-  sheet["!cols"] = headers.map((header) => ({
-    wch:
-      header === "Full Name"
-        ? 28
-        : header === "Course" || header === "Department"
-          ? 24
-          : 20,
-  }));
+  const studentHeaders = [
+    "ID Number",
+    "Full Name",
+    "Program Code",
+    "Department Code",
+    "College Code",
+    ...timeHeaders,
+  ];
+  const employeeHeaders = [
+    "ID Number",
+    "Full Name",
+    "Department Code",
+    ...timeHeaders,
+  ];
+  const studentRows = people
+    .filter((row) => row._type === "Student")
+    .map(({ _type, ...row }) => row);
+  const employeeRows = people
+    .filter((row) => row._type === "Employee")
+    .map(({ _type, ...row }) => row);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, "Attendance");
+  const appendAttendanceSheet = (rows, headers, name) => {
+    const sheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+    sheet["!cols"] = headers.map((header) => ({
+      wch: header === "Full Name" ? 28 : 20,
+    }));
+    XLSX.utils.book_append_sheet(workbook, sheet, name);
+  };
+  if (studentRows.length && employeeRows.length) {
+    appendAttendanceSheet(studentRows, studentHeaders, "Students");
+    appendAttendanceSheet(employeeRows, employeeHeaders, "Employees");
+  } else if (employeeRows.length) {
+    appendAttendanceSheet(employeeRows, employeeHeaders, "Attendance");
+  } else {
+    appendAttendanceSheet(studentRows, studentHeaders, "Attendance");
+  }
   const correctionHeaders = [
     "ID Number",
     "Full Name",
@@ -175,7 +205,7 @@ function render() {
           Number(event.maxTimeOuts) === 0
             ? `${event.maxTimeIns} Time In · No Time Out`
             : `${event.maxTimeIns} in · ${event.maxTimeOuts} out`;
-        return `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td><td><span class="type-pill Employee">${escapeHtml(event.targetAudience || "Both")}</span></td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${limits}</td><td><span class="status-pill ${["Ended", "Disabled"].includes(status) ? "time-out" : ""}">${status}</span></td><td><button class="event-action-trigger" data-id="${event.id}" data-active="${event.isActive ? "1" : "0"}" aria-expanded="false">Actions <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></td></tr>`;
+        return `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td><td><span class="type-pill Employee">${escapeHtml(event.targetAudience || "Both")}</span></td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${limits}</td><td><span class="status-pill ${["Ended", "Disabled"].includes(status) ? "time-out" : ""}">${status}</span></td><td><button class="event-action-trigger" data-id="${event.id}" data-active="${event.isActive ? "1" : "0"}" aria-expanded="false">Manage <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></td></tr>`;
       })
       .join("") || emptyRow(6, "No Events.");
   TapTrack.initDataTable(table);
@@ -266,16 +296,7 @@ $("#form").addEventListener("submit", async (event) => {
   }
 });
 (async () => {
-  const { user } = await init("events");
-  if (
-    !["Superadmin", "Administrator"].includes(user.role) &&
-    user.peopleAccess !== "Both"
-  ) {
-    const allowed = user.peopleAccess;
-    [...$("#audience").options].forEach((option) => {
-      if (option.value && option.value !== allowed) option.remove();
-    });
-  }
+  await init("events");
   events = await api("/api/events");
   render();
 })();

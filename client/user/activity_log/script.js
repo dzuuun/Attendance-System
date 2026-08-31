@@ -12,7 +12,7 @@ function displayDate(value) {
     processing: true,
     serverSide: true,
     pageLength: 25,
-    order: [[0, "desc"]],
+    ordering: false,
     columnDefs: [],
     ajax: async (request, callback) => {
       try {
@@ -21,8 +21,6 @@ function displayDate(value) {
           start: request.start,
           length: request.length,
           search: request.search.value,
-          orderColumn: request.order?.[0]?.column ?? 0,
-          orderDir: request.order?.[0]?.dir || "desc",
         });
         callback(await api(`/api/activity-log?${query}`));
       } catch (error) {

@@ -99,8 +99,12 @@ async function exportEvent(
         id: scan.idNumber,
         name: scan.name,
         type: scan.type,
-        course: scan.course || "",
-        department: scan.department || "",
+        programCode: scan.programCode || "",
+        departmentCode:
+          scan.type === "Student"
+            ? scan.departmentCode || ""
+            : scan.employeeDepartmentCode || "",
+        collegeCode: scan.collegeCode || "",
         ins: [],
         outs: [],
       });
@@ -108,12 +112,7 @@ async function exportEvent(
       .get(key)
       [scan.action === "Time In" ? "ins" : "outs"].push(scan.timestamp);
   });
-  const headers = [
-    "ID Number",
-    "Full Name",
-    "Type",
-    "Course",
-    "Department",
+  const timeHeaders = [
     ...Array.from(
       { length: Number(eventRecord.maxTimeIns) },
       (_, i) => `Time In ${i + 1}`,
@@ -125,11 +124,12 @@ async function exportEvent(
   ];
   const rows = [...grouped.values()].map((person) => {
     const row = {
+      _type: person.type,
       "ID Number": person.id,
       "Full Name": person.name,
-      Type: person.type,
-      Course: person.course,
-      Department: person.department,
+      "Program Code": person.programCode,
+      "Department Code": person.departmentCode,
+      "College Code": person.collegeCode,
     };
     person.ins.sort((a, b) => new Date(a) - new Date(b));
     person.outs.sort((a, b) => new Date(a) - new Date(b));
@@ -143,12 +143,42 @@ async function exportEvent(
     );
     return row;
   });
-  const sheet = XLSX.utils.json_to_sheet(rows, { header: headers }),
-    book = XLSX.utils.book_new();
-  sheet["!cols"] = headers.map((header) => ({
-    wch: header === "Full Name" ? 28 : 20,
-  }));
-  XLSX.utils.book_append_sheet(book, sheet, "Attendance");
+  const studentHeaders = [
+    "ID Number",
+    "Full Name",
+    "Program Code",
+    "Department Code",
+    "College Code",
+    ...timeHeaders,
+  ];
+  const employeeHeaders = [
+    "ID Number",
+    "Full Name",
+    "Department Code",
+    ...timeHeaders,
+  ];
+  const studentRows = rows
+    .filter((row) => row._type === "Student")
+    .map(({ _type, ...row }) => row);
+  const employeeRows = rows
+    .filter((row) => row._type === "Employee")
+    .map(({ _type, ...row }) => row);
+  const book = XLSX.utils.book_new();
+  const appendAttendanceSheet = (sheetRows, headers, name) => {
+    const sheet = XLSX.utils.json_to_sheet(sheetRows, { header: headers });
+    sheet["!cols"] = headers.map((header) => ({
+      wch: header === "Full Name" ? 28 : 20,
+    }));
+    XLSX.utils.book_append_sheet(book, sheet, name);
+  };
+  if (studentRows.length && employeeRows.length) {
+    appendAttendanceSheet(studentRows, studentHeaders, "Students");
+    appendAttendanceSheet(employeeRows, employeeHeaders, "Employees");
+  } else if (employeeRows.length) {
+    appendAttendanceSheet(employeeRows, employeeHeaders, "Attendance");
+  } else {
+    appendAttendanceSheet(studentRows, studentHeaders, "Attendance");
+  }
   const correctionHeaders = [
     "ID Number",
     "Full Name",
@@ -214,6 +244,12 @@ $("#exportBtn").onclick = async () => {
 (async () => {
   ({ user: currentUser } = await init("history"));
   periods = await api("/api/history/periods");
+  periods.sort((left, right) =>
+    String(right.schoolYear).localeCompare(String(left.schoolYear), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
   $("#period").innerHTML =
     '<option value="" disabled selected>Select academic period</option>' +
     periods

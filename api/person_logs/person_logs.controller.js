@@ -26,23 +26,10 @@ exports.get = async (req, res) => {
     !sources.has(req.query.source) ||
     (req.query.source === "university" && !validRange)
   )
-    return res
-      .status(400)
-      .json({
-        message:
-          "Choose a valid person, academic period, log type, and date range.",
-      });
-  const requiredScope = type === "Student" ? "Students" : "Employees";
-  if (
-    req.user.role !== "Superadmin" &&
-    req.user.peopleAccess !== "Both" &&
-    req.user.peopleAccess !== requiredScope
-  )
-    return res
-      .status(403)
-      .json({
-        message: `Your permission does not include ${requiredScope.toLowerCase()}.`,
-      });
+    return res.status(400).json({
+      message:
+        "Choose a valid person, academic period, log type, and date range.",
+    });
   const person = await model.getPerson(type, req.params.id);
   if (!person) return res.status(404).json({ message: `${type} not found.` });
   const academicPeriod = await model.getAcademicPeriod(academicPeriodId);

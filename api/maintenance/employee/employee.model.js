@@ -1,10 +1,15 @@
 const pool = require("../../../db/db");
+const schema = require("../../../db/schema");
 let schemaReady;
 const ensureSchema = () =>
   (schemaReady ||= (async () => {
-    await pool.query(
-      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE AFTER contact,ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name,ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500) NULL AFTER contact",
-    );
+    await schema.addColumns("employees", [
+      ["is_active", "BOOLEAN NOT NULL DEFAULT TRUE AFTER contact"],
+      ["first_name", "VARCHAR(80) NULL"],
+      ["middle_name", "VARCHAR(80) NULL AFTER first_name"],
+      ["last_name", "VARCHAR(80) NULL AFTER middle_name"],
+      ["photo_url", "VARCHAR(500) NULL AFTER contact"],
+    ]);
     await pool.query(
       `CREATE TABLE IF NOT EXISTS employee_departments (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(180) NOT NULL UNIQUE,code VARCHAR(40) NOT NULL UNIQUE,is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,INDEX idx_employee_departments_active_name (is_active,name))`,
     );
@@ -15,8 +20,10 @@ const ensureSchema = () =>
       await pool.query(
         `INSERT IGNORE INTO employee_departments (name,code) SELECT DISTINCT TRIM(SUBSTRING_INDEX(department_role,'·',1)),CONCAT('LEG-',LEFT(SHA1(TRIM(SUBSTRING_INDEX(department_role,'·',1))),12)) FROM employees WHERE department_role IS NOT NULL AND TRIM(SUBSTRING_INDEX(department_role,'·',1))<>''`,
       );
-    await pool.query(
-      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS emp_dept_id INT UNSIGNED NULL AFTER last_name",
+    await schema.addColumn(
+      "employees",
+      "emp_dept_id",
+      "INT UNSIGNED NULL AFTER last_name",
     );
     const [oldDepartmentId] = await pool.query(
       "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='employees' AND COLUMN_NAME='employee_department_id'",
@@ -71,7 +78,7 @@ exports.getAll = async () => {
   await ensureSchema();
   return (
     await pool.query(
-      "SELECT e.id,e.id_number idNumber,TRIM(CONCAT_WS(' ',e.first_name,NULLIF(e.middle_name,''),e.last_name)) name,e.first_name firstName,e.middle_name middleName,e.last_name lastName,e.emp_dept_id departmentId,d.name departmentName,d.name groupName,e.contact,e.photo_url photoUrl,e.is_active isActive,'Employee' type FROM employees e LEFT JOIN employee_departments d ON d.id=e.emp_dept_id ORDER BY e.last_name,e.first_name",
+      "SELECT e.id,e.id_number idNumber,TRIM(CONCAT_WS(' ',e.first_name,NULLIF(e.middle_name,''),e.last_name)) name,e.first_name firstName,e.middle_name middleName,e.last_name lastName,e.emp_dept_id departmentId,d.name departmentName,d.code departmentCode,d.name groupName,e.contact,e.photo_url photoUrl,e.is_active isActive,'Employee' type FROM employees e LEFT JOIN employee_departments d ON d.id=e.emp_dept_id ORDER BY e.last_name,e.first_name",
     )
   )[0];
 };

@@ -10,10 +10,7 @@
     if (user.attendanceAccess) return "/attendance";
     if (user.specialEventsAccess) return "/events";
     if (user.libraryAccess) return "/library/entrance";
-    if (user.maintenanceAccess || user.peopleAccess)
-      return user.peopleAccess === "Employees"
-        ? "/maintenance/employee"
-        : "/maintenance/student";
+    if (user.maintenanceAccess) return "/maintenance/student";
     if (user.usersAccess) return "/user/permissions";
     return null;
   };

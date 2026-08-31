@@ -37,7 +37,7 @@
       document.body.appendChild(container);
     }
     const item = document.createElement("div");
-    item.className = `satp-toast ${type}`;
+    item.className = `attendance-system-toast ${type}`;
     item.setAttribute("role", type === "error" ? "alert" : "status");
     item.innerHTML = `<span class="toast-mark material-symbols-rounded" aria-hidden="true">${type === "error" ? "error" : "check_circle"}</span><div><strong>${type === "error" ? "Action failed" : "Success"}</strong><p></p></div><button type="button" aria-label="Dismiss notification"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>`;
     item.querySelector("p").textContent = message;
@@ -76,8 +76,8 @@
       new window.DataTable(table).destroy();
   }
   function initDataTable(table, options = {}) {
-    if (!table || table.querySelector("tbody .empty-row"))
-      return Promise.resolve(null);
+    if (!table) return Promise.resolve(null);
+    const hasEmptyRow = Boolean(table.querySelector("tbody .empty-row"));
     const headings = [...table.querySelectorAll("thead th")];
     const idIndex = headings.findIndex((cell) =>
       /^(ID NUMBER|ID NO\.?|STUDENT ID|EMPLOYEE ID)$/.test(
@@ -85,7 +85,7 @@
       ),
     );
     const isNameHeading = (cell) =>
-      /^(PERSON|NAME|FULL NAME|STUDENT|EMPLOYEE|ATTENDEE|USER)$/.test(
+      /^(PERSON|NAME|FULL NAME|STUDENT|EMPLOYEE|ATTENDEE|USER|SCHOOL|COLLEGE|DEPARTMENT|EMPLOYEE DEPARTMENT|PROGRAM)$/.test(
         cell.textContent.trim().toUpperCase(),
       );
     if (idIndex > 0 && !options.data) {
@@ -94,9 +94,21 @@
         if (cells[idIndex]) row.insertBefore(cells[idIndex], cells[0]);
       });
     }
-    const nameIndex = [...table.querySelectorAll("thead th")].findIndex(
-      isNameHeading,
-    );
+    let currentHeadings = [...table.querySelectorAll("thead th")];
+    const codeIndex = currentHeadings.findIndex(
+        (cell) => cell.textContent.trim().toUpperCase() === "CODE",
+      ),
+      entityNameIndex = currentHeadings.findIndex(isNameHeading);
+    if (codeIndex > entityNameIndex && entityNameIndex >= 0 && !options.data) {
+      table.querySelectorAll("tr").forEach((row) => {
+        const cells = row.children;
+        if (cells[codeIndex] && cells[entityNameIndex])
+          row.insertBefore(cells[codeIndex], cells[entityNameIndex]);
+      });
+    }
+    currentHeadings = [...table.querySelectorAll("thead th")];
+    const nameIndex = currentHeadings.findIndex(isNameHeading);
+    if (hasEmptyRow) return Promise.resolve(null);
     const generation = table.dataset.dtGeneration || "0";
     const hasCustomSearch = Boolean(
       table
@@ -134,7 +146,6 @@
         },
         columnDefs: [{ targets: -1, orderable: false, searchable: false }],
         ...options,
-        ...(nameIndex >= 0 ? { order: [[nameIndex, "asc"]] } : {}),
       });
     });
   }
@@ -199,6 +210,48 @@
     node.textContent = value;
     return node.innerHTML;
   };
+  const dropdownCollator = new Intl.Collator(undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+  function sortSelectOptions(select) {
+    if (
+      !(select instanceof HTMLSelectElement) ||
+      select.dataset.sortOptions === "false"
+    )
+      return;
+    const sortContainer = (container) => {
+      const options = [...container.children].filter(
+        (child) => child instanceof HTMLOptionElement,
+      );
+      if (options.length < 2) return;
+      const placeholders = options.filter((option) => option.value === "");
+      const choices = options
+        .filter((option) => option.value !== "")
+        .map((option, index) => ({ option, index }))
+        .sort(
+          (left, right) =>
+            dropdownCollator.compare(
+              left.option.textContent.trim(),
+              right.option.textContent.trim(),
+            ) || left.index - right.index,
+        )
+        .map(({ option }) => option);
+      const sorted = [...placeholders, ...choices];
+      if (sorted.every((option, index) => option === options[index])) return;
+      sorted.forEach((option) => container.appendChild(option));
+    };
+    sortContainer(select);
+    select.querySelectorAll(":scope > optgroup").forEach(sortContainer);
+  }
+  function sortDropdowns(root = document) {
+    const selects = new Set();
+    if (root.matches?.("select")) selects.add(root);
+    const parentSelect = root.closest?.("select");
+    if (parentSelect) selects.add(parentSelect);
+    root.querySelectorAll?.("select").forEach((select) => selects.add(select));
+    selects.forEach(sortSelectOptions);
+  }
   function enhanceSearchableSelect(select) {
     if (
       !select ||
@@ -320,6 +373,7 @@
     return select;
   }
   function enhanceSearchableSelects(root = document) {
+    sortDropdowns(root);
     if (root.matches?.("select")) enhanceSearchableSelect(root);
     root.querySelectorAll?.("select").forEach(enhanceSearchableSelect);
   }
@@ -383,8 +437,8 @@
         library: "libraryAccess",
         libraryEntrance: "libraryAccess",
         internetEntrance: "libraryAccess",
-        students: null,
-        employees: null,
+        students: "maintenanceAccess",
+        employees: "maintenanceAccess",
         school: "maintenanceAccess",
         college: "maintenanceAccess",
         department: "maintenanceAccess",
@@ -406,10 +460,8 @@
             ? "/events"
             : user.libraryAccess
               ? "/library/entrance"
-              : user.maintenanceAccess || user.peopleAccess
-                ? user.peopleAccess === "Employees"
-                  ? "/maintenance/employee"
-                  : "/maintenance/student"
+              : user.maintenanceAccess
+                ? "/maintenance/student"
                 : user.usersAccess
                   ? "/user/permissions"
                   : null;
@@ -418,25 +470,6 @@
         location.href = "/login?error=no_access";
       } else location.href = landing;
       throw new Error("Administrator access is required.");
-    }
-    const peoplePage =
-      page === "students"
-        ? "Students"
-        : page === "employees"
-          ? "Employees"
-          : page === "employee_department"
-            ? "Employees"
-            : null;
-    if (
-      peoplePage &&
-      user.role !== "Superadmin" &&
-      user.peopleAccess !== "Both" &&
-      user.peopleAccess !== peoplePage
-    ) {
-      location.href = "/app";
-      throw new Error(
-        `Your permission does not include ${peoplePage.toLowerCase()}.`,
-      );
     }
     const sidebar = await fetch("/sidebar.html", {
       headers: {
@@ -451,7 +484,9 @@
     $("#signedInRole").textContent = user.role;
     api("/api/current-academic-period")
       .then((period) => {
-        const context = document.querySelector(".satp-header-context span");
+        const context = document.querySelector(
+          ".attendance-system-header-context span",
+        );
         if (context && period)
           context.textContent = `${period.schoolYear} · ${period.term}`;
       })
@@ -467,14 +502,6 @@
     sidebarMount.querySelectorAll("[data-access-any]").forEach((element) => {
       const accessKeys = element.dataset.accessAny.split(/\s+/).filter(Boolean);
       if (user.role !== "Superadmin" && !accessKeys.some((key) => user[key]))
-        element.remove();
-    });
-    sidebarMount.querySelectorAll("[data-people]").forEach((element) => {
-      if (
-        user.role !== "Superadmin" &&
-        user.peopleAccess !== "Both" &&
-        user.peopleAccess !== element.dataset.people
-      )
         element.remove();
     });
     sidebarMount.querySelectorAll(".nav-group").forEach((group) => {
@@ -608,11 +635,11 @@
     if (dialog) return dialog;
     document.body.insertAdjacentHTML(
       "beforeend",
-      `<dialog id="recordConfirmationDialog" class="satp-modal confirmation-modal">
+      `<dialog id="recordConfirmationDialog" class="attendance-system-modal confirmation-modal">
         <form id="recordConfirmationForm">
           <div class="modal-head"><div><span class="modal-kicker">CONFIRM ACTION</span><h2 id="recordConfirmationTitle">Confirm changes</h2></div></div>
           <div class="confirmation-body"><p id="recordConfirmationMessage">Are you sure you want to save this record?</p></div>
-          <div class="modal-actions"><button type="button" class="secondary-button" id="recordConfirmationCancel">Cancel</button><button type="submit" class="primary-button" id="recordConfirmationSubmit">Confirm</button></div>
+          <div class="modal-actions"><button type="button" class="secondary-button" id="recordConfirmationCancel">Cancel</button><button type="submit" class="primary-button" id="recordConfirmationSubmit" autofocus>Confirm</button></div>
         </form>
       </dialog>`,
     );
@@ -642,6 +669,13 @@
       });
     dialog.addEventListener("cancel", () => {
       pendingModalSubmission = null;
+    });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.isComposing) return;
+      event.preventDefault();
+      document
+        .querySelector("#recordConfirmationForm")
+        .requestSubmit(document.querySelector("#recordConfirmationSubmit"));
     });
     return dialog;
   }
@@ -678,6 +712,7 @@
         ? "Save changes"
         : "Create record";
       dialog.showModal();
+      document.querySelector("#recordConfirmationSubmit").focus();
     },
     true,
   );

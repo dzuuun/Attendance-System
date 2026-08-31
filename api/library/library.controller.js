@@ -24,9 +24,7 @@ exports.scan = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const scope =
-      req.user.role === "Superadmin" ? "Both" : req.user.peopleAccess;
-    res.json(await model.getAll(req.query.location, scope));
+    res.json(await model.getAll(req.query.location));
   } catch (error) {
     if (error.code === "INVALID_LOCATION")
       return res.status(400).json({ message: error.message });

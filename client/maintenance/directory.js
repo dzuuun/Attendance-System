@@ -38,7 +38,12 @@ function render() {
       (showInactive || Boolean(person.isActive)) &&
       (person.name.toLowerCase().includes(query) ||
         person.idNumber.toLowerCase().includes(query) ||
-        person.departmentName.toLowerCase().includes(query)),
+        String(person.departmentName || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(person.departmentCode || "")
+          .toLowerCase()
+          .includes(query)),
   );
   $("#body").innerHTML = "";
   if (!rows.length) {
@@ -60,7 +65,7 @@ function render() {
           mode === "display" ? personCell(person) : personName(person),
       },
       {
-        data: "departmentName",
+        data: "departmentCode",
         render: (value, mode) =>
           mode === "display" ? escapeHtml(value) : value,
       },

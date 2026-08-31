@@ -5,14 +5,24 @@ const isInternetSection = location.pathname.includes("/internet-section");
 const locationKey = isInternetSection ? "internet" : "library";
 const pageKey = isInternetSection ? "internetEntrance" : "libraryEntrance";
 const label = () => (isInternetSection ? "Internet Section" : "Library");
+function filtered() {
+  const query = $("#search").value.trim().toLowerCase();
+  const type = $("#type").value;
+  return records.filter(
+    (record) =>
+      (type === "all" || record.type === type) &&
+      (!query ||
+        record.name?.toLowerCase().includes(query) ||
+        record.idNumber?.toLowerCase().includes(query)),
+  );
+}
 function render() {
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
-  $("#tableTitle").textContent = `${label()} entrance`;
   $("#kioskLink").href =
     `/kiosk/${isInternetSection ? "internet-section" : "library"}`;
   $("#body").innerHTML =
-    records
+    filtered()
       .map(
         (record) =>
           `<tr><td data-order="${escapeHtml(record.timestamp)}">${formatDate(record.timestamp)} ${formatTime(record.timestamp)}</td><td>${escapeHtml(record.idNumber)}</td><td><strong>${escapeHtml(record.name || "Unknown")}</strong></td><td><span class="type-pill ${escapeHtml(record.type)}">${escapeHtml(record.type)}</span></td><td>${escapeHtml(record.course || "—")}</td><td>${escapeHtml(record.department || "—")}</td></tr>`,
@@ -24,6 +34,8 @@ function render() {
     columnDefs: [],
   });
 }
+$("#search").addEventListener("input", render);
+$("#type").addEventListener("change", render);
 async function load() {
   records = await api(`/api/library?location=${locationKey}`);
   render();
@@ -31,7 +43,7 @@ async function load() {
 $("#exportBtn").addEventListener("click", async () => {
   try {
     await loadXlsx();
-    const rows = records.map((record) => ({
+    const rows = filtered().map((record) => ({
       Date: formatDate(record.timestamp),
       "Time In": formatTime(record.timestamp),
       "ID Number": record.idNumber,

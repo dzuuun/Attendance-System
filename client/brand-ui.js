@@ -24,7 +24,7 @@
   collapseFix.id = "taptrack-collapse-fix";
   collapseFix.textContent = `
     .ndmu-brand-seal{width:44px!important;height:44px!important;max-width:44px!important;object-fit:contain!important;border-radius:9999px!important;background:#fff!important;padding:2px!important}
-    .satp-header-identity img{width:44px!important;height:44px!important;max-width:44px!important;object-fit:contain!important}
+    .attendance-system-header-identity img{width:44px!important;height:44px!important;max-width:44px!important;object-fit:contain!important}
     dialog[open]{position:fixed!important;inset:0!important;margin:auto!important;max-width:calc(100vw - 32px)!important;max-height:calc(100vh - 40px)!important}
     body.sidebar-collapsed .app-shell{grid-template-columns:0 minmax(0,1fr)!important}
     body.sidebar-collapsed .sidebar{width:0!important;min-width:0!important;padding:0!important;border:0!important;overflow:hidden!important}
@@ -36,7 +36,7 @@
     .btn-icon.material-symbols-rounded,.input-icon.material-symbols-rounded,.submit-btn .material-symbols-rounded,.kiosk-camera-button .material-symbols-rounded{font-size:19px!important}
     .result-icon-badge.material-symbols-rounded{display:grid!important;place-items:center!important;font-size:30px!important;font-variation-settings:"FILL" 0,"wght" 500,"GRAD" 0,"opsz" 32!important}
     .feed-empty-state>.material-symbols-rounded{font-size:38px!important}
-    .satp-menu-button>.material-symbols-rounded{font-size:24px!important}
+    .attendance-system-menu-button>.material-symbols-rounded{font-size:24px!important}
     .search-box>.material-symbols-rounded{font-size:19px!important;color:#71847a!important}
     .logout-button>.material-symbols-rounded{font-size:17px!important;vertical-align:middle!important}
     .close-button,.modal-close-btn{font-size:0!important}
@@ -187,27 +187,29 @@
     ".feature-strip": "!bg-[#f4f7f5]",
     ".feature":
       "!rounded-2xl !border !border-[#d8e3dd] !bg-white !p-6 !shadow-sm",
-    ".satp-site-header":
+    ".attendance-system-site-header":
       "sticky top-0 z-30 flex min-h-[80px] items-center justify-between gap-5 border-b border-white/10 !bg-[#043b2a] px-5 py-3 text-white shadow-sm md:px-8 xl:px-10",
-    ".satp-header-brand": "flex min-w-0 items-center gap-3",
-    ".satp-menu-button":
+    ".attendance-system-header-brand": "flex min-w-0 items-center gap-3",
+    ".attendance-system-menu-button":
       "grid h-10 w-10 flex-none place-items-center rounded-[10px] border border-[#d8e3dd] bg-white text-[#075c3b] transition hover:bg-[#edf5f1] focus:outline-none focus:ring-2 focus:ring-[#f3c94d]",
-    ".satp-menu-button svg": "h-5 w-5 fill-none stroke-current stroke-2",
-    ".satp-header-identity": "flex min-w-0 items-center gap-3 no-underline",
-    ".satp-header-identity img":
+    ".attendance-system-menu-button svg":
+      "h-5 w-5 fill-none stroke-current stroke-2",
+    ".attendance-system-header-identity":
+      "flex min-w-0 items-center gap-3 no-underline",
+    ".attendance-system-header-identity img":
       "h-11 w-11 flex-none rounded-full object-contain",
-    ".satp-header-identity span": "hidden min-w-0 sm:grid",
-    ".satp-header-identity strong":
+    ".attendance-system-header-identity span": "hidden min-w-0 sm:grid",
+    ".attendance-system-header-identity strong":
       "truncate [font-family:Georgia,serif] text-base font-medium !text-white md:text-lg",
-    ".satp-header-identity small":
+    ".attendance-system-header-identity small":
       "truncate text-[9px] font-extrabold uppercase tracking-[.1em] !text-white/55",
-    ".satp-header-context": "hidden text-right sm:grid",
-    ".satp-header-context span":
+    ".attendance-system-header-context": "hidden text-right sm:grid",
+    ".attendance-system-header-context span":
       "text-[9px] font-extrabold uppercase tracking-[.14em] !text-white/55",
-    ".satp-header-context strong": "text-sm font-bold !text-white",
-    ".satp-site-footer":
+    ".attendance-system-header-context strong": "text-sm font-bold !text-white",
+    ".attendance-system-site-footer":
       "mt-auto flex flex-wrap items-center justify-center gap-2 border-t border-[#d8e3dd] bg-white px-5 py-4 text-center text-[11px] font-medium text-[#65736c] md:justify-between md:px-8 xl:px-10",
-    ".satp-site-footer>span":
+    ".attendance-system-site-footer>span":
       "hidden h-1 w-1 rounded-full bg-[#f3c94d] md:block",
   };
 
@@ -249,19 +251,47 @@
       wrapper.append(kicker, heading);
     });
     root.querySelectorAll?.("table thead th:last-child").forEach((heading) => {
-      if (!heading.textContent.trim()) heading.textContent = "ACTIONS";
+      if (!heading.textContent.trim()) heading.textContent = "MANAGE";
+    });
+    document.querySelectorAll("table").forEach((table) => {
+      const headings = [...table.querySelectorAll("thead th")];
+      const statusIndex = headings.findIndex(
+        (heading) => heading.textContent.trim().toUpperCase() === "STATUS",
+      );
+      const actionIndex = headings.findIndex(
+        (heading) =>
+          ["ACTIONS", "MANAGE"].includes(
+            heading.textContent.trim().toUpperCase(),
+          ),
+      );
+      table.querySelectorAll("tr").forEach((row) => {
+        if (statusIndex >= 0)
+          row.children[statusIndex]?.classList.add(
+            "attendance-system-status-column",
+          );
+        if (actionIndex >= 0)
+          row.children[actionIndex]?.classList.add(
+            "attendance-system-actions-column",
+          );
+      });
     });
   }
 
   function installAppShell() {
     const main = document.querySelector(".app-shell > .main");
-    if (!main || main.dataset.satpShell === "true") return;
-    main.dataset.satpShell = "true";
+    if (!main || main.dataset.attendanceSystemShell === "true") return;
+    main.dataset.attendanceSystemShell = "true";
     const pageTitle =
       main.querySelector(".topbar h1")?.textContent?.trim() || "Attendance";
     const pageArea =
       main.querySelector(".topbar .eyebrow")?.textContent?.trim() ||
       "Workspace";
+    const defaultDescriptions = {
+      Overview: "Monitor today's university entrance activity.",
+      "Attendance scanner":
+        "Record attendee Time In and Time Out for this event.",
+      Maintenance: "Manage system settings and attendance data.",
+    };
     const breadcrumbLabel = (value) => {
       const acronyms = new Set(["ID", "MIS", "NDMU", "NFC", "RFID"]);
       return String(value)
@@ -276,10 +306,10 @@
         .join(" ");
     };
     const header = document.createElement("header");
-    header.className = "satp-site-header";
-    header.innerHTML = `<div class="satp-header-brand"><button type="button" class="satp-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="satp-header-identity" href="/app"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="satp-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
+    header.className = "attendance-system-site-header";
+    header.innerHTML = `<div class="attendance-system-header-brand"><button type="button" class="attendance-system-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="attendance-system-header-identity" href="/app"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="attendance-system-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
     header
-      .querySelector(".satp-menu-button")
+      .querySelector(".attendance-system-menu-button")
       .addEventListener("click", () =>
         document.getElementById("sidebarToggle")?.click(),
       );
@@ -288,45 +318,113 @@
     while (main.firstChild) workspace.appendChild(main.firstChild);
     const topbar = workspace.querySelector(".topbar");
     if (topbar) {
-      const description = workspace
-        .querySelector(".section-header p")
-        ?.textContent?.trim();
-      if (description && !topbar.querySelector(".satp-page-description")) {
+      const sourceTitle = topbar.querySelector("h1");
+      const sourceArea = topbar.querySelector(".eyebrow");
+      const description =
+        topbar
+          .querySelector(".attendance-system-page-description")
+          ?.textContent?.trim() ||
+        workspace.querySelector(".section-header > p")?.textContent?.trim() ||
+        workspace
+          .querySelector(".directory-card-header > div:first-child > p")
+          ?.textContent?.trim() ||
+        defaultDescriptions[pageTitle];
+      if (
+        description &&
+        !topbar.querySelector(".attendance-system-page-description")
+      ) {
         const paragraph = document.createElement("p");
-        paragraph.className = "satp-page-description";
+        paragraph.className = "attendance-system-page-description";
         paragraph.textContent = description;
         topbar.firstElementChild?.appendChild(paragraph);
       }
-      topbar.querySelector(".live-time")?.classList.add("satp-topbar-utility");
+      if (description) {
+        const normalizedDescription = description.replace(/\s+/g, " ").trim();
+        workspace.querySelectorAll("p").forEach((paragraph) => {
+          if (topbar.contains(paragraph)) return;
+          const text = paragraph.textContent.replace(/\s+/g, " ").trim();
+          if (text === normalizedDescription) paragraph.remove();
+        });
+      }
+      topbar
+        .querySelector(".live-time")
+        ?.classList.add("attendance-system-topbar-utility");
       const breadcrumb = document.createElement("nav");
-      breadcrumb.className = "satp-breadcrumb";
+      breadcrumb.className = "attendance-system-breadcrumb";
       breadcrumb.setAttribute("aria-label", "Breadcrumb");
-      breadcrumb.innerHTML = `<span>TapTrack</span><b>›</b><span>${breadcrumbLabel(pageArea)}</span><b>›</b><strong>${breadcrumbLabel(pageTitle)}</strong>`;
+      breadcrumb.innerHTML = `<span>TapTrack</span><b aria-hidden="true">-</b><span>${breadcrumbLabel(pageArea)}</span><b aria-hidden="true">-</b><strong>${breadcrumbLabel(pageTitle)}</strong>`;
       topbar.appendChild(breadcrumb);
+      const contextArea = header.querySelector(
+        ".attendance-system-header-context span",
+      );
+      const contextTitle = header.querySelector(
+        ".attendance-system-header-context strong",
+      );
+      const breadcrumbArea = breadcrumb.querySelector("span:nth-of-type(2)");
+      const breadcrumbTitle = breadcrumb.querySelector("strong");
+      const syncHeaderText = () => {
+        const currentArea = sourceArea?.textContent?.trim() || pageArea;
+        const currentTitle = sourceTitle?.textContent?.trim() || pageTitle;
+        contextArea.textContent = currentArea;
+        contextTitle.textContent = currentTitle;
+        breadcrumbArea.textContent = breadcrumbLabel(currentArea);
+        breadcrumbTitle.textContent = breadcrumbLabel(currentTitle);
+      };
+      const headerObserver = new MutationObserver(syncHeaderText);
+      if (sourceArea)
+        headerObserver.observe(sourceArea, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        });
+      if (sourceTitle)
+        headerObserver.observe(sourceTitle, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        });
     }
     const recordsHeading = workspace.querySelector(".section-header");
     if (
       recordsHeading &&
-      !recordsHeading.querySelector(".satp-records-heading")
+      !recordsHeading.querySelector(".attendance-system-records-heading")
     ) {
       const copy = recordsHeading.querySelector("p");
       const heading = document.createElement("div");
-      heading.className = "satp-records-heading";
-      heading.innerHTML = `<span>RECORD DIRECTORY</span><h2>${pageTitle}</h2>`;
+      const hasInactiveDirectory = Boolean(
+        recordsHeading.querySelector("#showInactive"),
+      );
+      const directoryName = pageTitle.replace(/s$/i, "");
+      heading.className = hasInactiveDirectory
+        ? ""
+        : "attendance-system-records-heading";
+      heading.innerHTML = hasInactiveDirectory
+        ? `<span class="section-kicker">${directoryName.toUpperCase()} DIRECTORY</span><h2 id="academicDirectoryTitle">Active ${pageTitle.toLowerCase()}</h2>`
+        : `<span>RECORD DIRECTORY</span><h2>${pageTitle}</h2>`;
       copy?.remove();
       recordsHeading.prepend(heading);
+      if (hasInactiveDirectory) {
+        const tableCard = recordsHeading.nextElementSibling;
+        recordsHeading.className = "directory-card-header";
+        const directoryActions = recordsHeading.querySelector(".event-actions");
+        if (directoryActions) directoryActions.className = "directory-actions";
+        if (tableCard?.matches(".table-card"))
+          tableCard.prepend(recordsHeading);
+      }
     }
     const footer = document.createElement("footer");
-    footer.className = "satp-site-footer";
-    footer.innerHTML = `<p>&copy; <span class="satp-year"></span> Notre Dame of Marbel University</p><span></span><p>Developed by the MIS Department</p>`;
-    footer.querySelector(".satp-year").textContent = new Date().getFullYear();
+    footer.className = "attendance-system-site-footer";
+    footer.innerHTML = `<p>&copy; <span class="attendance-system-year"></span> Notre Dame of Marbel University</p><span></span><p>Developed by the MIS Department</p>`;
+    footer.querySelector(".attendance-system-year").textContent =
+      new Date().getFullYear();
     main.append(header, workspace, footer);
     main.classList.add("flex", "min-h-screen", "flex-col");
     installBrand(main);
   }
 
   function installPublicFooter() {
-    if (document.querySelector(".app-shell,.satp-site-footer")) return;
+    if (document.querySelector(".app-shell,.attendance-system-site-footer"))
+      return;
     const target =
       document.querySelector(".kiosk") ||
       (document.body.matches(".auth-page")
@@ -334,7 +432,7 @@
         : document.body);
     if (!target) return;
     const footer = document.createElement("footer");
-    footer.className = "satp-site-footer";
+    footer.className = "attendance-system-site-footer";
     footer.innerHTML = `<p>&copy; <span>${new Date().getFullYear()}</span> Notre Dame of Marbel University</p><span></span><p>Developed by the MIS Department</p>`;
     target.appendChild(footer);
     installBrand(footer);

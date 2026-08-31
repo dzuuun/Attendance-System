@@ -1,4 +1,5 @@
 const pool = require("../../db/db");
+const schema = require("../../db/schema");
 const attendance = require("../attendance/attendance.model");
 const periods = require("../maintenance/academic_period/academic_period.model");
 
@@ -25,9 +26,7 @@ async function ensureSchema() {
         "library_entrance_logs",
         "internet_section_entrance_logs",
       ]) {
-        await pool.query(
-          `ALTER TABLE ${table} DROP COLUMN IF EXISTS id_number,DROP COLUMN IF EXISTS person_type`,
-        );
+        await schema.dropColumns(table, ["id_number", "person_type"]);
         const [indexRows] = await pool.query(
           "SELECT DISTINCT INDEX_NAME indexName FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?",
           [table],
@@ -106,17 +105,11 @@ exports.scan = async (locationKey, idNumber) => {
   };
 };
 
-exports.getAll = async (locationKey, peopleAccess = "Both") => {
+exports.getAll = async (locationKey) => {
   await ensureSchema();
   const location = locationFor(locationKey);
-  const scopeWhere =
-    peopleAccess === "Students"
-      ? "AND l.student_id IS NOT NULL"
-      : peopleAccess === "Employees"
-        ? "AND l.employee_id IS NOT NULL"
-        : "";
   const [rows] = await pool.query(
-    `SELECT l.id,COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name,CASE WHEN l.student_id IS NOT NULL THEN p.name ELSE NULL END course,CASE WHEN l.employee_id IS NOT NULL THEN ed.name ELSE NULL END department,l.checked_in_at timestamp FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ap.is_current=TRUE LEFT JOIN students s ON s.id=l.student_id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE (l.student_id IS NOT NULL OR l.employee_id IS NOT NULL) ${scopeWhere} ORDER BY l.checked_in_at DESC,l.id DESC`,
+    `SELECT l.id,COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name,CASE WHEN l.student_id IS NOT NULL THEN p.name ELSE NULL END course,CASE WHEN l.employee_id IS NOT NULL THEN ed.name ELSE NULL END department,l.checked_in_at timestamp FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ap.is_current=TRUE LEFT JOIN students s ON s.id=l.student_id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE l.student_id IS NOT NULL OR l.employee_id IS NOT NULL ORDER BY l.checked_in_at DESC,l.id DESC`,
   );
   return rows;
 };

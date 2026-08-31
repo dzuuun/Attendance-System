@@ -1,4 +1,5 @@
 const pool = require("../../../db/db");
+const schema = require("../../../db/schema");
 let ready;
 async function ensureSchema() {
   if (!ready)
@@ -31,8 +32,10 @@ async function ensureSchema() {
           [currentRows[0].id],
         );
       for (const table of ["events"])
-        await pool.query(
-          `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS academic_period_id INT UNSIGNED NULL`,
+        await schema.addColumn(
+          table,
+          "academic_period_id",
+          "INT UNSIGNED NULL",
         );
       const [[current]] = await pool.query(
         "SELECT id FROM academic_periods WHERE is_current=TRUE ORDER BY id DESC LIMIT 1",

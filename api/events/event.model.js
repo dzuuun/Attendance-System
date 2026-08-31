@@ -1,11 +1,14 @@
 const pool = require("../../db/db");
+const schema = require("../../db/schema");
 const periods = require("../maintenance/academic_period/academic_period.model");
 let ownershipSchemaReady;
 async function ensureOwnershipSchema() {
   if (!ownershipSchemaReady)
     ownershipSchemaReady = (async () => {
-      await pool.query(
-        "ALTER TABLE events ADD COLUMN IF NOT EXISTS created_by INT UNSIGNED NULL AFTER is_active",
+      await schema.addColumn(
+        "events",
+        "created_by",
+        "INT UNSIGNED NULL AFTER is_active",
       );
       const [indexes] = await pool.query(
         "SELECT COUNT(*) count FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='events' AND INDEX_NAME='idx_events_creator_period'",

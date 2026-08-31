@@ -5,15 +5,7 @@ const periods = require("../maintenance/academic_period/academic_period.model"),
     canAccessAudience,
     canAccessPastEvent,
   } = require("../events/event.controller");
-const visible = (rows, user) => {
-  const scope = ["Superadmin", "Administrator"].includes(user.role)
-    ? "Both"
-    : user.peopleAccess || "Both";
-  if (scope === "Both") return rows;
-  return rows.filter(
-    (row) => row.type === (scope === "Students" ? "Student" : "Employee"),
-  );
-};
+const visible = (rows) => rows;
 exports.periods = async (_req, res) => res.json(await periods.getAll());
 exports.events = async (req, res) => {
   const periodId = Number(req.query.periodId);

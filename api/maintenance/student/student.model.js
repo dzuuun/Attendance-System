@@ -1,11 +1,15 @@
 const pool = require("../../../db/db");
+const schema = require("../../../db/schema");
 let schemaReady;
 async function ensureSchema() {
   if (!schemaReady)
     schemaReady = (async () => {
-      await pool.query(
-        "ALTER TABLE students ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NULL,ADD COLUMN IF NOT EXISTS middle_name VARCHAR(80) NULL AFTER first_name,ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NULL AFTER middle_name,ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500) NULL AFTER institutional_email",
-      );
+      await schema.addColumns("students", [
+        ["first_name", "VARCHAR(80) NULL"],
+        ["middle_name", "VARCHAR(80) NULL AFTER first_name"],
+        ["last_name", "VARCHAR(80) NULL AFTER middle_name"],
+        ["photo_url", "VARCHAR(500) NULL AFTER institutional_email"],
+      ]);
       const [legacy] = await pool.query(
         "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='students' AND COLUMN_NAME='full_name'",
       );
