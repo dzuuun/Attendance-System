@@ -61,6 +61,10 @@ app.post(
   "/api/library-kiosk/:location/scan",
   asyncHandler(require("./api/library/library.controller").scan),
 );
+app.get(
+  "/api/library-kiosk/:location/scans",
+  asyncHandler(require("./api/library/library.controller").recent),
+);
 app.post("/api/kiosk/scanners/pair", (req, res) => {
   res.status(410).json({
     message:
@@ -91,6 +95,11 @@ app.get("/api/kiosk/scanners/events", (req, res) => {
 });
 app.use("/api", checkSession);
 app.use("/api", require("./api/middleware/activity_log"));
+app.post(
+  "/api/bulk-import-summary",
+  requireAccess("maintenanceAccess"),
+  asyncHandler(require("./api/maintenance/import-summary.controller").create),
+);
 app.get(
   "/api/current-academic-period",
   asyncHandler(async (_req, res) =>
@@ -364,7 +373,10 @@ require("./api/maintenance/employee/employee.model")
     const details =
       error?.message ||
       error?.code ||
-      error?.errors?.map((item) => item.message).filter(Boolean).join("; ") ||
+      error?.errors
+        ?.map((item) => item.message)
+        .filter(Boolean)
+        .join("; ") ||
       String(error);
     console.error("Database initialization failed:", details);
     process.exitCode = 1;

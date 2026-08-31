@@ -86,11 +86,6 @@ exports.scan = async (locationKey, idNumber) => {
   }
   const studentId = person.type === "Student" ? person.id : null;
   const employeeId = person.type === "Employee" ? person.id : null;
-  const personColumn = person.type === "Student" ? "student_id" : "employee_id";
-  const [previousRows] = await pool.query(
-    `SELECT checked_in_at timestamp FROM ${location.table} WHERE ${personColumn}=? ORDER BY checked_in_at DESC,id DESC LIMIT 1`,
-    [person.id],
-  );
   const [result] = await pool.query(
     `INSERT INTO ${location.table} (student_id,employee_id,academic_period_id) VALUES (?,?,?)`,
     [studentId, employeeId, current.id],
@@ -101,17 +96,40 @@ exports.scan = async (locationKey, idNumber) => {
     location: location.label,
     action: "Time In",
     timestamp: new Date().toISOString(),
-    previousTimestamp: previousRows[0]?.timestamp || null,
   };
 };
 
-exports.getAll = async (locationKey) => {
+exports.getAll = async (locationKey, periodId = null) => {
   await ensureSchema();
   const location = locationFor(locationKey);
+  const periodClause = periodId ? "ap.id=?" : "ap.is_current=TRUE";
+  const params = periodId ? [periodId] : [];
   const [rows] = await pool.query(
-    `SELECT l.id,COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name,CASE WHEN l.student_id IS NOT NULL THEN p.name ELSE NULL END course,CASE WHEN l.employee_id IS NOT NULL THEN ed.name ELSE NULL END department,l.checked_in_at timestamp FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ap.is_current=TRUE LEFT JOIN students s ON s.id=l.student_id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE l.student_id IS NOT NULL OR l.employee_id IS NOT NULL ORDER BY l.checked_in_at DESC,l.id DESC`,
+    `SELECT l.id,COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name,CASE WHEN l.student_id IS NOT NULL THEN p.code ELSE NULL END courseCode,CASE WHEN l.student_id IS NOT NULL THEN d.code ELSE ed.code END department,l.checked_in_at timestamp FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ${periodClause} LEFT JOIN students s ON s.id=l.student_id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE l.student_id IS NOT NULL OR l.employee_id IS NOT NULL ORDER BY l.checked_in_at DESC,l.id DESC`,
+    params,
   );
   return rows;
+};
+
+exports.getToday = async (locationKey, limit = 10) => {
+  await ensureSchema();
+  const location = locationFor(locationKey);
+  const safeLimit = Math.max(1, Math.min(50, Number(limit) || 10));
+  const [scans] = await pool.query(
+    `SELECT l.id,COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name,p.name program,s.year_level yearLevel,ed.name department,COALESCE(s.photo_url,e.photo_url) photoUrl,l.checked_in_at timestamp,'Time In' action,? location FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ap.is_current=TRUE LEFT JOIN students s ON s.id=l.student_id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE (l.student_id IS NOT NULL OR l.employee_id IS NOT NULL) AND l.checked_in_at>=CURDATE() AND l.checked_in_at<CURDATE()+INTERVAL 1 DAY ORDER BY l.checked_in_at DESC,l.id DESC LIMIT ${safeLimit}`,
+    [location.label],
+  );
+  const [[stats]] = await pool.query(
+    `SELECT COUNT(*) total,SUM(l.student_id IS NOT NULL) students,SUM(l.employee_id IS NOT NULL) employees FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ap.is_current=TRUE WHERE (l.student_id IS NOT NULL OR l.employee_id IS NOT NULL) AND l.checked_in_at>=CURDATE() AND l.checked_in_at<CURDATE()+INTERVAL 1 DAY`,
+  );
+  return {
+    scans,
+    stats: {
+      total: Number(stats.total || 0),
+      students: Number(stats.students || 0),
+      employees: Number(stats.employees || 0),
+    },
+  };
 };
 
 exports.ensureSchema = ensureSchema;

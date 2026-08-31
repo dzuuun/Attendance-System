@@ -24,7 +24,17 @@ exports.scan = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
-    res.json(await model.getAll(req.query.location));
+    res.json(await model.getAll(req.query.location, req.query.periodId));
+  } catch (error) {
+    if (error.code === "INVALID_LOCATION")
+      return res.status(400).json({ message: error.message });
+    throw error;
+  }
+};
+
+exports.recent = async (req, res) => {
+  try {
+    res.json(await model.getToday(req.params.location, 10));
   } catch (error) {
     if (error.code === "INVALID_LOCATION")
       return res.status(400).json({ message: error.message });

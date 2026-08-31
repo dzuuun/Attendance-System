@@ -45,6 +45,7 @@ exports.create = async (req, res) => {
       permissionId: permission.id,
       isActive: Boolean(req.body.isActive ?? true),
     });
+    req.activityDescription = `Created user ${username.trim()} — ${fullName.trim()}.`;
     res.status(201).json({
       id: result.insertId,
       fullName: fullName.trim(),
@@ -70,7 +71,11 @@ exports.setStatus = async (req, res) => {
     return res
       .status(400)
       .json({ message: "You cannot deactivate your account." });
-  await model.setStatus(req.params.id, Boolean(req.body.isActive));
+  const user = await model.getById(req.params.id);
+  if (!user) return res.status(404).json({ message: "User not found." });
+  const isActive = Boolean(req.body.isActive);
+  await model.setStatus(req.params.id, isActive);
+  req.activityDescription = `${isActive ? "Enabled" : "Disabled"} user ${user.username} — ${user.fullName}.`;
   res.status(204).end();
 };
 exports.update = async (req, res) => {
@@ -120,6 +125,7 @@ exports.update = async (req, res) => {
     });
     if (!result.affectedRows)
       return res.status(404).json({ message: "User not found." });
+    req.activityDescription = `Updated user ${username} — ${fullName}.`;
     res.json({
       id: Number(req.params.id),
       fullName,

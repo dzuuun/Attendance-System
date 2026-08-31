@@ -109,7 +109,7 @@ exports.create = async (req, res) => {
       .status(409)
       .json({ message: "That ID number is already registered." });
   const result = await model.create(data);
-  req.activityDescription = `Added student ${data.fullName}.`;
+  req.activityDescription = `Added student ${data.idNumber} — ${data.fullName}.`;
   res.status(201).json({
     id: result.insertId,
     ...data,
@@ -117,15 +117,6 @@ exports.create = async (req, res) => {
     isActive: 1,
     type: "Student",
   });
-};
-exports.importSummary = async (req, res) => {
-  const added = Math.max(0, Number(req.body.added) || 0);
-  const updated = Math.max(0, Number(req.body.updated) || 0);
-  req.activityAction = "CREATED";
-  req.activityDescription =
-    `Bulk imported students: ${added} new row${added === 1 ? "" : "s"} added` +
-    ` and ${updated} row${updated === 1 ? "" : "s"} updated.`;
-  res.json({ added, updated });
 };
 exports.update = async (req, res) => {
   const data = payload(req.body);
@@ -140,6 +131,7 @@ exports.update = async (req, res) => {
   const result = await model.update(req.params.id, data);
   if (!result.affectedRows)
     return res.status(404).json({ message: "Student not found." });
+  req.activityDescription = `Updated student ${data.idNumber} — ${data.fullName}.`;
   res.json({
     id: Number(req.params.id),
     ...data,
@@ -148,12 +140,13 @@ exports.update = async (req, res) => {
   });
 };
 exports.setStatus = async (req, res) => {
-  const result = await model.setStatus(
-    req.params.id,
-    Boolean(req.body.isActive),
-  );
+  const student = await model.getById(req.params.id);
+  if (!student) return res.status(404).json({ message: "Student not found." });
+  const isActive = Boolean(req.body.isActive);
+  const result = await model.setStatus(req.params.id, isActive);
   if (!result.affectedRows)
     return res.status(404).json({ message: "Student not found." });
+  req.activityDescription = `${isActive ? "Enabled" : "Disabled"} student ${student.idNumber} — ${student.name}.`;
   res.status(204).end();
 };
 exports.deactivateMissing = async (req, res) => {

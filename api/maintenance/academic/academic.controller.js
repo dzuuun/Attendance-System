@@ -19,6 +19,7 @@ exports.forEntity = (entity) => ({
         parentId,
         isActive,
       });
+      req.activityLabel = `${code} — ${name}`;
       res
         .status(201)
         .json({ id: result.insertId, name, code, parentId, isActive });
@@ -54,6 +55,7 @@ exports.forEntity = (entity) => ({
       });
       if (!result.affectedRows)
         return res.status(404).json({ message: `${entity} not found.` });
+      req.activityLabel = `${code} — ${name}`;
       res.json({ id: Number(req.params.id), name, code, parentId, isActive });
     } catch (error) {
       if (error.code === "ER_DUP_ENTRY")
@@ -65,9 +67,13 @@ exports.forEntity = (entity) => ({
   },
   remove: async (req, res) => {
     try {
+      const record = await model.getById(entity, req.params.id);
+      if (!record)
+        return res.status(404).json({ message: `${entity} not found.` });
       const result = await model.remove(entity, req.params.id);
       if (!result.affectedRows)
         return res.status(404).json({ message: `${entity} not found.` });
+      req.activityLabel = `${record.code} — ${record.name}`;
       res.status(204).end();
     } catch (error) {
       if (error.code === "ER_ROW_IS_REFERENCED_2")

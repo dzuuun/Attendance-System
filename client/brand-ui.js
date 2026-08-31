@@ -251,23 +251,29 @@
       wrapper.append(kicker, heading);
     });
     root.querySelectorAll?.("table thead th:last-child").forEach((heading) => {
-      if (!heading.textContent.trim()) heading.textContent = "MANAGE";
+      if (!heading.textContent.trim()) heading.textContent = "ACTION";
     });
     document.querySelectorAll("table").forEach((table) => {
       const headings = [...table.querySelectorAll("thead th")];
       const statusIndex = headings.findIndex(
         (heading) => heading.textContent.trim().toUpperCase() === "STATUS",
       );
-      const actionIndex = headings.findIndex(
-        (heading) =>
-          ["ACTIONS", "MANAGE"].includes(
-            heading.textContent.trim().toUpperCase(),
-          ),
+      const typeIndex = headings.findIndex(
+        (heading) => heading.textContent.trim().toUpperCase() === "TYPE",
+      );
+      const actionIndex = headings.findLastIndex((heading) =>
+        ["ACTION", "ACTIONS", "MANAGE"].includes(
+          heading.textContent.trim().toUpperCase(),
+        ),
       );
       table.querySelectorAll("tr").forEach((row) => {
         if (statusIndex >= 0)
           row.children[statusIndex]?.classList.add(
             "attendance-system-status-column",
+          );
+        if (typeIndex >= 0)
+          row.children[typeIndex]?.classList.add(
+            "attendance-system-type-column",
           );
         if (actionIndex >= 0)
           row.children[actionIndex]?.classList.add(

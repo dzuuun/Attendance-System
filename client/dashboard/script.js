@@ -5,7 +5,7 @@ function row(record) {
   const person = people.find(
     (item) => item.id === record.personId && item.type === record.type,
   ) || { name: record.name };
-  return `<tr><td>${personCell(person)}</td><td>${escapeHtml(record.idNumber)}</td><td><span class="type-pill ${record.type}">${record.type}</span></td><td>${formatTime(record.timestamp)}</td><td><span class="status-pill ${record.action === "Time Out" ? "time-out" : ""}">${record.action}</span></td></tr>`;
+  return `<tr><td>${personCell(person)}</td><td>${escapeHtml(record.idNumber)}</td><td><span class="type-pill ${record.type}">${record.type}</span></td><td>${escapeHtml(record.location || "—")}</td><td data-order="${escapeHtml(record.timestamp)}">${formatTime(record.timestamp)}</td><td><span class="status-pill ${record.action === "Time Out" ? "time-out" : ""}">${record.action}</span></td></tr>`;
 }
 function render() {
   const recentTable = $("#recentBody").closest("table");
@@ -36,13 +36,15 @@ function render() {
     ? `${Math.round((inside.size / people.length) * 100)}%`
     : "0%";
   $("#recentBody").innerHTML =
-    records.slice(0, 5).map(row).join("") ||
-    emptyRow(5, "No entrance attendance records today.");
+    records.map(row).join("") ||
+    emptyRow(6, "No entrance attendance records today.");
   TapTrack.initDataTable(recentTable, {
-    paging: false,
+    paging: true,
+    pageLength: 10,
     searching: false,
     info: false,
-    lengthChange: false,
+    lengthChange: true,
+    order: [[4, "desc"]],
   });
 }
 (async () => {

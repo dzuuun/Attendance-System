@@ -12,15 +12,42 @@ const {
 let records = [],
   people = [],
   periods = [];
+function localDateValue(timestamp) {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 function filtered() {
   const q = $("#search").value.toLowerCase(),
-    type = $("#type").value;
-  return records.filter(
-    (a) =>
+    type = $("#type").value,
+    dateMode = $("#dateMode").value,
+    selectedFrom = $("#dateFrom").value,
+    selectedTo = dateMode === "range" ? $("#dateTo").value : selectedFrom,
+    rangeStart =
+      selectedFrom && selectedTo
+        ? selectedFrom <= selectedTo
+          ? selectedFrom
+          : selectedTo
+        : selectedFrom || selectedTo,
+    rangeEnd =
+      selectedFrom && selectedTo
+        ? selectedFrom <= selectedTo
+          ? selectedTo
+          : selectedFrom
+        : selectedFrom || selectedTo;
+  return records.filter((a) => {
+    const scanDate = localDateValue(a.timestamp);
+    return (
       (type === "all" || a.type === type) &&
-      (a.name.toLowerCase().includes(q) ||
-        a.idNumber.toLowerCase().includes(q)),
-  );
+      (dateMode === "period" ||
+        (dateMode === "month"
+          ? !$("#month").value || scanDate.startsWith($("#month").value)
+          : !rangeStart || (scanDate >= rangeStart && scanDate <= rangeEnd))) &&
+      (a.name.toLowerCase().includes(q) || a.idNumber.toLowerCase().includes(q))
+    );
+  });
 }
 function exportDate() {
   const now = new Date();
@@ -28,6 +55,19 @@ function exportDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+function exportScope() {
+  const mode = $("#dateMode").value;
+  if (mode === "day") return `One Day ${$("#dateFrom").value || "unspecified"}`;
+  if (mode === "month") return `Month ${$("#month").value || "unspecified"}`;
+  if (mode === "range") {
+    const first = $("#dateFrom").value || "unspecified";
+    const second = $("#dateTo").value || "unspecified";
+    const from = first <= second ? first : second;
+    const to = first <= second ? second : first;
+    return `Date Range ${from} to ${to}`;
+  }
+  return "Entire Academic Period";
 }
 function render() {
   const table = $("#body").closest("table");
@@ -37,13 +77,34 @@ function render() {
     rows
       .map(
         (a) =>
-          `<tr><td>${personCell(people.find((p) => p.id === a.personId && p.type === a.type) || { name: a.name })}</td><td>${escapeHtml(a.idNumber)}</td><td><span class="type-pill ${a.type}">${a.type}</span></td><td>${escapeHtml(a.location || "—")}</td><td>${formatDate(a.timestamp)}</td><td>${formatTime(a.timestamp)}</td><td><span class="status-pill ${a.action === "Time Out" ? "time-out" : ""}">${a.action}</span></td></tr>`,
+          `<tr><td>${personCell(people.find((p) => p.id === a.personId && p.type === a.type) || { name: a.name })}</td><td>${escapeHtml(a.idNumber)}</td><td><span class="type-pill ${a.type}">${a.type}</span></td><td>${escapeHtml(a.location || "—")}</td><td data-order="${escapeHtml(a.timestamp)}">${formatDate(a.timestamp)}</td><td data-order="${escapeHtml(a.timestamp)}">${formatTime(a.timestamp)}</td><td><span class="status-pill ${a.action === "Time Out" ? "time-out" : ""}">${a.action}</span></td></tr>`,
       )
       .join("") || emptyRow(7, "No matching university entrance records.");
-  TapTrack.initDataTable(table, { pageLength: 25 });
+  TapTrack.initDataTable(table, {
+    pageLength: 25,
+    order: [
+      [4, "desc"],
+      [5, "desc"],
+    ],
+  });
 }
 $("#search").addEventListener("input", render);
 $("#type").addEventListener("change", render);
+$("#dateMode").addEventListener("change", () => {
+  const mode = $("#dateMode").value,
+    isRange = mode === "range",
+    isMonth = mode === "month",
+    isPeriod = mode === "period";
+  $("#dateFromField").hidden = isMonth || isPeriod;
+  $("#dateToField").hidden = !isRange;
+  $("#monthField").hidden = !isMonth;
+  $("#dateFromLabel").textContent = isRange ? "From" : "Date";
+  if (isRange && !$("#dateTo").value) $("#dateTo").value = $("#dateFrom").value;
+  render();
+});
+$("#dateFrom").addEventListener("change", render);
+$("#dateTo").addEventListener("change", render);
+$("#month").addEventListener("change", render);
 $("#period").addEventListener("change", async () => {
   records = await api(
     `/api/attendance?periodId=${encodeURIComponent($("#period").value)}`,
@@ -79,15 +140,19 @@ $("#exportBtn").addEventListener("click", async () => {
     (item) => String(item.id) === String($("#period").value),
   );
   const suffix = period
-    ? `${period.schoolYear}_${period.term}`.replace(/[^a-z0-9]+/gi, "_")
-    : "current_period";
+    ? `${period.schoolYear} ${period.term}`.replace(/[\\/:*?"<>|]+/g, "-")
+    : "Current Period";
   XLSX.writeFile(
     workbook,
-    `university_entrance_${suffix}_as_of_${exportDate()}.xlsx`,
+    `University Entrance Logs ${suffix} ${exportScope()} as of ${exportDate()}.xlsx`,
   );
 });
 (async () => {
   await init("attendance");
+  const today = localDateValue(new Date());
+  $("#dateFrom").value = today;
+  $("#dateTo").value = today;
+  $("#month").value = today.slice(0, 7);
   [periods, people] = await Promise.all([
     api("/api/attendance/periods"),
     api("/api/people"),

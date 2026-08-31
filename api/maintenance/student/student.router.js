@@ -8,7 +8,6 @@ router.get("/card-writer/status", requireAdmin, controller.cardWriterStatus);
 router.post("/card-writer/read", requireAdmin, controller.readCard);
 router.post("/:id/card-enrollment", requireAdmin, controller.enrollCard);
 router.post("/", controller.create);
-router.post("/import-summary", controller.importSummary);
 router.post("/photos/bulk", photos.bulkUpload, photos.bulk);
 router.post("/:id/photo", photos.singleUpload, photos.single);
 router.post("/deactivate-missing", controller.deactivateMissing);

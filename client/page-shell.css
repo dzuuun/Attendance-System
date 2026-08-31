@@ -183,6 +183,7 @@
   width: 280px !important;
   min-width: 280px !important;
   height: 100vh !important;
+  z-index: 10001 !important;
   padding: 0 !important;
   display: block !important;
   overflow: hidden !important;
@@ -1677,6 +1678,11 @@ body[data-type="Employee"] .table-wrap table td:last-child {
   box-shadow: -10px 0 16px -16px rgba(24, 49, 40, 0.35);
 }
 
+body[data-type="Student"] .table-wrap table tbody td:first-child,
+body[data-type="Employee"] .table-wrap table tbody td:first-child {
+  text-align: left !important;
+}
+
 body[data-type="Student"] .table-wrap table td:last-child .event-actions,
 body[data-type="Employee"] .table-wrap table td:last-child .event-actions {
   justify-content: flex-end;
@@ -2112,7 +2118,8 @@ select option {
 .attendance-system-actions-column {
   text-align: right !important;
 }
-.attendance-system-status-column {
+.attendance-system-status-column,
+.attendance-system-type-column {
   text-align: center !important;
 }
 .attendance-system-actions-column .event-actions {
@@ -2542,4 +2549,41 @@ table.dataTable tbody td {
 }
 .attendance-system-site-footer {
   font-size: 0.72rem !important;
+}
+
+body[data-type="Student"] table.dataTable thead th:first-child,
+body[data-type="Student"] table.dataTable tbody td:first-child,
+body[data-type="Employee"] table.dataTable thead th:first-child,
+body[data-type="Employee"] table.dataTable tbody td:first-child {
+  text-align: left !important;
+}
+
+body[data-type="Student"]
+  table.dataTable
+  thead
+  th:first-child
+  .dt-column-header,
+body[data-type="Employee"]
+  table.dataTable
+  thead
+  th:first-child
+  .dt-column-header {
+  justify-content: flex-start !important;
+}
+
+table tbody td,
+table.dataTable tbody td {
+  text-align: left !important;
+}
+
+table tbody td.attendance-system-status-column,
+table tbody td.attendance-system-type-column,
+table.dataTable tbody td.attendance-system-status-column,
+table.dataTable tbody td.attendance-system-type-column {
+  text-align: center !important;
+}
+
+table tbody td.attendance-system-actions-column,
+table.dataTable tbody td.attendance-system-actions-column {
+  text-align: right !important;
 }

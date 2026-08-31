@@ -102,7 +102,7 @@ exports.getAll = async (periodId = null) => {
   const params = periodId ? [periodId] : [];
   return (
     await pool.query(
-      `SELECT a.id,${personSelect},NULL eventId,NULL eventName,a.scan_location location,a.attendance_action action,a.checked_in_at timestamp FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ${periodClause} ${personJoins} WHERE a.student_id IS NOT NULL OR a.employee_id IS NOT NULL ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 1000`,
+      `SELECT a.id,${personSelect},NULL eventId,NULL eventName,a.scan_location location,a.attendance_action action,a.checked_in_at timestamp FROM university_entrance_logs a INNER JOIN academic_periods ap ON ap.id=a.academic_period_id AND ${periodClause} ${personJoins} WHERE a.student_id IS NOT NULL OR a.employee_id IS NOT NULL ORDER BY a.checked_in_at DESC,a.id DESC`,
       params,
     )
   )[0];
@@ -269,7 +269,7 @@ exports.correctEventScan = async (eventId, scanId, data, user) => {
       [data.action, data.timestamp, scanId, eventId],
     );
     await connection.commit();
-    return true;
+    return original;
   } catch (error) {
     await connection.rollback();
     throw error;
@@ -312,7 +312,7 @@ exports.deleteEventScan = async (eventId, scanId, reason, user) => {
       [scanId, eventId],
     );
     await connection.commit();
-    return true;
+    return original;
   } catch (error) {
     await connection.rollback();
     throw error;

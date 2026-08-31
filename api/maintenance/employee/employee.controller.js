@@ -62,6 +62,7 @@ exports.create = async (req, res) => {
   data.departmentCode = department.code;
   data.groupName = department.name;
   const result = await model.create(data);
+  req.activityDescription = `Added employee ${data.idNumber} — ${data.name}.`;
   res.status(201).json({ id: result.insertId, ...data, type: "Employee" });
 };
 exports.update = async (req, res) => {
@@ -97,11 +98,16 @@ exports.update = async (req, res) => {
   const result = await model.update(req.params.id, data);
   if (!result.affectedRows)
     return res.status(404).json({ message: "Employee not found." });
+  req.activityDescription = `Updated employee ${data.idNumber} — ${data.name}.`;
   res.json({ id: Number(req.params.id), ...data, type: "Employee" });
 };
 exports.remove = async (req, res) => {
+  const employee = await model.getById(req.params.id);
+  if (!employee)
+    return res.status(404).json({ message: "Employee not found." });
   const result = await model.remove(req.params.id);
   if (!result.affectedRows)
     return res.status(404).json({ message: "Employee not found." });
+  req.activityDescription = `Deleted employee ${employee.idNumber} — ${employee.name}.`;
   res.status(204).end();
 };

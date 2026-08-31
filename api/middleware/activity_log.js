@@ -18,13 +18,18 @@ const labels = {
 function activityLog(req, res, next) {
   const method = req.method.toUpperCase();
   const path = req.originalUrl.split("?")[0];
+  const bulkImportType = String(req.get("X-Bulk-Import") || "")
+    .trim()
+    .toLowerCase();
+  const bulkImportRequest =
+    bulkImportType && path.startsWith(`/api/${bulkImportType}`);
   const excluded =
     /\/scan$/.test(path) ||
     path === "/api/attendance/scan" ||
     path.startsWith("/api/kiosk/") ||
     path.startsWith("/api/activity-log") ||
     path.startsWith("/api/users") ||
-    (req.get("X-Bulk-Import") === "student" && path.startsWith("/api/student"));
+    bulkImportRequest;
   if (
     !req.user ||
     !["POST", "PUT", "PATCH", "DELETE"].includes(method) ||
@@ -37,10 +42,6 @@ function activityLog(req, res, next) {
     const parts = path.split("/").filter(Boolean);
     const key = parts[1] || "system";
     const module = labels[key] || key.replaceAll("-", " ");
-    const targetId = parts.find(
-      (part, index) => index > 1 && /^\d+$/.test(part),
-    );
-    const target = targetId && !req.activityLabel ? ` #${targetId}` : "";
     const action =
       req.activityAction ||
       (path.endsWith("/status")
@@ -70,7 +71,7 @@ function activityLog(req, res, next) {
     ).trim();
     const description =
       req.activityDescription ||
-      `${verb} ${module.toLowerCase()}${target}${label ? ` (${label})` : ""}.`;
+      `${verb} ${module.toLowerCase()}${label ? ` (${label})` : ""}.`;
     model
       .record({
         userId: req.user.id,

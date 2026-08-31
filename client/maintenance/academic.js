@@ -37,7 +37,10 @@ function render() {
       )
       .join("") ||
     emptyRow(parentEntity ? 5 : 4, `No ${label.toLowerCase()} records.`);
-  TapTrack.initDataTable(table);
+  TapTrack.initDataTable(
+    table,
+    entity === "department" ? { order: [[0, "asc"]] } : {},
+  );
 }
 function renderParents() {
   $("#parent").innerHTML =

@@ -2,7 +2,8 @@ const model = require("./event.model");
 const canAccessAudience = () => true;
 const canAccessEvent = (user, event) =>
   Boolean(event) &&
-  Number(event.createdBy) === Number(user?.id) &&
+  (["Superadmin", "Administrator"].includes(user?.role) ||
+    Number(event.createdBy) === Number(user?.id)) &&
   canAccessAudience(user, event.targetAudience);
 const canAccessPastEvent = (user, event) =>
   Boolean(event) &&
@@ -50,6 +51,7 @@ exports.create = async (req, res) => {
     createdBy: req.user.id,
   };
   const result = await model.create(data);
+  req.activityLabel = data.name;
   res.status(201).json(await model.getById(result.insertId));
 };
 exports.update = async (req, res) => {
@@ -58,7 +60,7 @@ exports.update = async (req, res) => {
     return res.status(404).json({ message: "This event was not found." });
   if (!canAccessEvent(req.user, event))
     return res.status(403).json({
-      message: "You can manage only events you created.",
+      message: "You do not have permission to manage this event.",
     });
   const name = String(req.body.name || "").trim();
   const description = String(req.body.description || "").trim();
@@ -105,7 +107,7 @@ exports.setActive = async (req, res) => {
     return res.status(404).json({ message: "This event was not found." });
   if (!canAccessEvent(req.user, event))
     return res.status(403).json({
-      message: "You can manage only events you created.",
+      message: "You do not have permission to manage this event.",
     });
   req.activityLabel = event.name;
   await model.setActive(req.params.id, Boolean(req.body.isActive));

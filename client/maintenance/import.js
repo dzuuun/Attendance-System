@@ -496,7 +496,7 @@
           `/api/${type}${item.method === "PUT" ? `/${item.existing.id}` : ""}`,
           {
             method: item.method,
-            headers: type === "student" ? { "X-Bulk-Import": "student" } : {},
+            headers: { "X-Bulk-Import": type },
             body: JSON.stringify(body),
           },
         );
@@ -506,10 +506,8 @@
             headers: { "X-Bulk-Import": "student" },
             body: JSON.stringify({ isActive: true }),
           });
-        if (type === "student") {
-          if (item.method === "POST") addedCount++;
-          else updatedCount++;
-        }
+        if (item.method === "POST") addedCount++;
+        else updatedCount++;
       } catch (e) {
         failures.push({
           Row: item.row,
@@ -545,11 +543,14 @@
       resultMessage = `${items.length - failures.length} imported; ${failures.length} failed. An error workbook was downloaded.`;
       resultType = "error";
     } else resultMessage = `${items.length} ${plural} imported successfully.`;
-    if (type === "student")
-      await api("/api/student/import-summary", {
-        method: "POST",
-        body: JSON.stringify({ added: addedCount, updated: updatedCount }),
-      });
+    await api("/api/bulk-import-summary", {
+      method: "POST",
+      body: JSON.stringify({
+        type,
+        added: addedCount,
+        updated: updatedCount,
+      }),
+    });
     progressDialog.close();
     TapTrack.toastAfterReload(resultMessage, resultType);
     location.reload();

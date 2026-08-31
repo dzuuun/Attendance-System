@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/client/dashboard/style.css" />
     <link rel="stylesheet" href="/client/page-shell.css" />
   </head>
-  <body>
+  <body class="attendance-page">
     <div class="app-shell">
       <div id="sidebarMount"></div>
       <main class="main">
@@ -27,16 +27,41 @@
           </div>
           <article class="table-card">
             <div class="filter-row">
-              <div class="search-box">
-                <span class="material-symbols-rounded" aria-hidden="true"
-                  >search</span
-                ><input id="search" placeholder="Search name or ID" />
+              <div class="attendance-filter-fields">
+                <div class="attendance-date-filter">
+                  <select id="dateMode" aria-label="Date filter mode">
+                    <option value="day">One day</option>
+                    <option value="range">Date range</option>
+                    <option value="month">Month</option>
+                    <option value="period" selected>
+                      Entire academic period
+                    </option>
+                  </select>
+                  <label id="dateFromField" hidden>
+                    <span id="dateFromLabel">Date</span>
+                    <input type="date" id="dateFrom" />
+                  </label>
+                  <label id="monthField" hidden>
+                    <span>Month</span>
+                    <input type="month" id="month" />
+                  </label>
+                  <label id="dateToField" hidden>
+                    <span>To</span>
+                    <input type="date" id="dateTo" />
+                  </label>
+                </div>
+                <div class="search-box">
+                  <span class="material-symbols-rounded" aria-hidden="true"
+                    >search</span
+                  ><input id="search" placeholder="Search name or ID" />
+                </div>
+                <select id="type" aria-label="Person type">
+                  <option value="all">All people</option>
+                  <option>Student</option>
+                  <option>Employee</option>
+                </select>
               </div>
-              <select id="type">
-                <option value="all">All people</option>
-                <option>Student</option>
-                <option>Employee</option></select
-              ><button class="primary-button" id="exportBtn">Export</button>
+              <button class="primary-button" id="exportBtn">Export</button>
             </div>
             <div class="table-wrap">
               <table>

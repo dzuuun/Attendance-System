@@ -17,6 +17,7 @@ exports.create = async (req, res) => {
     return res.status(400).json({ message: "Permission name is required." });
   try {
     const result = await model.create(data);
+    req.activityLabel = data.name;
     res.status(201).json({ id: result.insertId, ...data });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY")
@@ -50,6 +51,7 @@ exports.update = async (req, res) => {
     const result = await model.update(req.params.id, data);
     if (!result.affectedRows)
       return res.status(404).json({ message: "Permission not found." });
+    req.activityLabel = data.name;
     res.json({ id: Number(req.params.id), ...data });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY")

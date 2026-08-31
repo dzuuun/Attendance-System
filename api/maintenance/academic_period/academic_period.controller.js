@@ -19,6 +19,7 @@ exports.create = async (req, res) => {
       .json({ message: "Enter a valid school year and term." });
   try {
     const result = await model.save(null, data);
+    req.activityLabel = `${data.schoolYear} — ${data.term}`;
     res.status(201).json({ id: result.insertId, ...data });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY")
@@ -38,6 +39,7 @@ exports.update = async (req, res) => {
     const result = await model.save(req.params.id, data);
     if (!result.affectedRows)
       return res.status(404).json({ message: "Academic period not found." });
+    req.activityLabel = `${data.schoolYear} — ${data.term}`;
     res.json({ id: Number(req.params.id), ...data });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY")

@@ -30,10 +30,10 @@ exports.getEventScans = async (req, res) => {
   const event = await eventModel.getById(req.params.id);
   if (!event)
     return res.status(404).json({ message: "This event was not found." });
-  if (Number(event.createdBy) !== Number(req.user?.id))
+  if (!canCorrectEvent(req.user, event))
     return res
       .status(403)
-      .json({ message: "You can view only events you created." });
+      .json({ message: "You do not have permission to view this event." });
   res.json(visible(await model.getByEvent(req.params.id), req.user));
 };
 
@@ -95,7 +95,7 @@ exports.correctEventScan = async (req, res) => {
   if (!corrected)
     return res.status(404).json({ message: "This scan was not found." });
   req.activityLabel = event.name;
-  req.activityDescription = `Corrected an attendance scan for ${event.name}. Reason: ${reason}`;
+  req.activityDescription = `Corrected the attendance scan for ${corrected.idNumber} — ${corrected.name} in ${event.name}. Reason: ${reason}`;
   res.json({ message: "Attendance scan corrected." });
 };
 
@@ -121,7 +121,7 @@ exports.deleteEventScan = async (req, res) => {
   if (!deleted)
     return res.status(404).json({ message: "This scan was not found." });
   req.activityLabel = event.name;
-  req.activityDescription = `Deleted an attendance scan from ${event.name}. Reason: ${reason}`;
+  req.activityDescription = `Deleted the attendance scan for ${deleted.idNumber} — ${deleted.name} from ${event.name}. Reason: ${reason}`;
   res.status(204).end();
 };
 
@@ -151,9 +151,9 @@ exports.scan = async (req, res) => {
     event = await eventModel.getById(eventId);
     if (!event)
       return res.status(404).json({ message: "This event was not found." });
-    if (req.user && Number(event.createdBy) !== Number(req.user.id))
+    if (req.user && !canCorrectEvent(req.user, event))
       return res.status(403).json({
-        message: "You can scan attendance only for events you created.",
+        message: "You do not have permission to manage this event.",
       });
     if (!event.isActive)
       return res.status(409).json({

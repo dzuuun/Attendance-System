@@ -375,7 +375,7 @@ function showResult(type, title, detail, previous = "", data = null) {
               <span>ATTENDEE TYPE</span>
               <b>Student</b>
             </div>
-            <div>
+            <div class="program-detail">
               <span>PROGRAM / STRAND</span>
               <b title="${escapeHtml(data.program || "N/A")}">${escapeHtml(data.program || "Not specified")}</b>
             </div>

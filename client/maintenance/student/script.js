@@ -2,6 +2,35 @@ const { $, api, escapeHtml, personCell, emptyRow, init, loadXlsx } = TapTrack;
 let students = [],
   programs = [],
   currentUser = null;
+let managePopup = null;
+let manageTrigger = null;
+
+function closeManagePopup() {
+  if (manageTrigger) manageTrigger.setAttribute("aria-expanded", "false");
+  managePopup?.remove();
+  managePopup = null;
+  manageTrigger = null;
+}
+
+function openManagePopup(trigger) {
+  closeManagePopup();
+  const student = students.find(
+    (item) => String(item.id) === String(trigger.dataset.id),
+  );
+  if (!student) return;
+  const popup = document.createElement("div");
+  popup.className = "event-action-options event-action-popup";
+  popup.innerHTML = `<button class="edit" data-id="${student.id}">Edit</button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button>` : ""}<button class="person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button>`;
+  document.body.appendChild(popup);
+  const rect = trigger.getBoundingClientRect();
+  const width = 172;
+  const height = popup.offsetHeight;
+  popup.style.left = `${Math.max(8, Math.min(rect.right - width, innerWidth - width - 8))}px`;
+  popup.style.top = `${rect.bottom + height + 8 <= innerHeight ? rect.bottom + 6 : Math.max(8, rect.top - height - 6)}px`;
+  trigger.setAttribute("aria-expanded", "true");
+  managePopup = popup;
+  manageTrigger = trigger;
+}
 
 function enhanceSearchableSelect(select) {
   const wrapper = document.createElement("div");
@@ -103,6 +132,7 @@ document.addEventListener("click", (event) => {
   });
 });
 function render() {
+  closeManagePopup();
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
   const q = $("#search").value.toLowerCase(),
@@ -174,7 +204,7 @@ function render() {
         searchable: false,
         render: (_value, type, student) =>
           type === "display"
-            ? `<div class="event-actions"><button class="secondary-button edit" data-id="${student.id}" title="Edit" aria-label="Edit student"></button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="secondary-button card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button>` : ""}<button class="secondary-button person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button></div>`
+            ? `<button class="event-action-trigger person-manage-trigger" data-id="${student.id}" aria-expanded="false">Manage <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button>`
             : "",
       },
     ],
@@ -359,6 +389,16 @@ document.addEventListener("taptrack:photo-updated", (event) => {
 });
 $("#addBtn").addEventListener("click", () => open());
 document.addEventListener("click", async (event) => {
+  const manageButton = event.target.closest(".person-manage-trigger");
+  if (manageButton) {
+    if (manageButton === manageTrigger) closeManagePopup();
+    else openManagePopup(manageButton);
+    return;
+  }
+  if (managePopup) {
+    if (!managePopup.contains(event.target)) closeManagePopup();
+    else if (event.target.closest("button")) closeManagePopup();
+  }
   if (event.target.matches('.close-button,button[value="cancel"]')) {
     event.preventDefault();
     event.target.closest("dialog").close();

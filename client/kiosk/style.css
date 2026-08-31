@@ -1111,7 +1111,7 @@ body.kiosk-body {
 /* Attendee Details Grid */
 .identity-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.8fr) minmax(0, 0.8fr);
   gap: 10px;
   margin-top: 4px;
   animation: fade-up 0.3s ease;
@@ -1147,6 +1147,13 @@ body.kiosk-body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.identity-grid .program-detail b {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 /* Previous Log Notice */

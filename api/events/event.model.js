@@ -30,17 +30,19 @@ async function ensureOwnershipSchema() {
     })();
   return ownershipSchemaReady;
 }
-const eventSelect = `e.id,e.name,e.description,e.starts_at startsAt,e.ends_at endsAt,e.max_time_ins maxTimeIns,e.max_time_outs maxTimeOuts,e.target_audience targetAudience,e.is_active isActive,e.created_by createdBy,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) creatorName,e.academic_period_id academicPeriodId,e.created_at createdAt`;
+const eventSelect = `e.id,e.name,e.description,e.starts_at startsAt,e.ends_at endsAt,e.max_time_ins maxTimeIns,e.max_time_outs maxTimeOuts,e.target_audience targetAudience,e.is_active isActive,e.created_by createdBy,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) creatorName,u.username creatorUsername,e.academic_period_id academicPeriodId,e.created_at createdAt`;
 const creatorJoin = "LEFT JOIN users u ON u.id=e.created_by";
 const canSeeAllCreators = (user) =>
   ["Superadmin", "Administrator"].includes(user?.role);
 exports.getAll = async (user) => {
   await periods.ensureSchema();
   await ensureOwnershipSchema();
+  const ownerClause = canSeeAllCreators(user) ? "" : "WHERE e.created_by=?";
+  const params = canSeeAllCreators(user) ? [] : [user?.id];
   return (
     await pool.query(
-      `SELECT ${eventSelect} FROM events e INNER JOIN academic_periods ap ON ap.id=e.academic_period_id AND ap.is_current=TRUE ${creatorJoin} WHERE e.created_by=? ORDER BY e.starts_at DESC`,
-      [user?.id],
+      `SELECT ${eventSelect} FROM events e INNER JOIN academic_periods ap ON ap.id=e.academic_period_id AND ap.is_current=TRUE ${creatorJoin} ${ownerClause} ORDER BY e.starts_at DESC`,
+      params,
     )
   )[0];
 };

@@ -39,6 +39,16 @@ exports.getAll = async (entity) => {
   );
   return rows;
 };
+exports.getById = async (entity, id) => {
+  await ensureEntity(entity);
+  const item = config[entity];
+  return (
+    await pool.query(
+      `SELECT id,name,code,is_active isActive FROM ${item.table} WHERE id=? LIMIT 1`,
+      [id],
+    )
+  )[0][0];
+};
 exports.create = async (entity, data) => {
   await ensureEntity(entity);
   const item = config[entity];

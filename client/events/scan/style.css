@@ -121,6 +121,9 @@
 .event-scan-input input {
   min-height: 54px;
   flex: 1;
+  box-sizing: border-box;
+  padding-inline: 16px;
+  caret-color: #075f3d;
   font-size: 16px !important;
 }
 .event-scan-result {

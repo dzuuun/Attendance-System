@@ -18,13 +18,16 @@ let periods = [],
 function renderEvents() {
   const table = $("#eventBody").closest("table");
   TapTrack.destroyDataTable(table);
+  const showOwner = ["Superadmin", "Administrator"].includes(currentUser?.role);
+  $("#ownerHeader").hidden = !showOwner;
   $("#eventBody").innerHTML =
     events
       .map(
         (event) =>
-          `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<br><small>Created by ${escapeHtml(event.creatorName || "Unknown user")}</small>` : ""}</td><td>${escapeHtml(event.targetAudience)}</td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${event.maxTimeIns} in · ${event.maxTimeOuts} out</td><td><span class="status-pill ${event.isActive ? "" : "time-out"}">${event.isActive ? "Active" : "Disabled"}</span></td><td><div class="event-actions"><button class="secondary-button view" data-id="${event.id}">View</button><button class="secondary-button export-event" data-id="${event.id}">Export</button></div></td></tr>`,
+          `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td>${showOwner ? `<td><strong>${escapeHtml(event.creatorName || "Unassigned")}</strong>${event.creatorUsername ? `<br><small>${escapeHtml(event.creatorUsername)}</small>` : ""}</td>` : ""}<td>${escapeHtml(event.targetAudience)}</td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${event.maxTimeIns} in · ${event.maxTimeOuts} out</td><td><span class="status-pill ${event.isActive ? "" : "time-out"}">${event.isActive ? "Active" : "Disabled"}</span></td><td><div class="event-actions"><button class="secondary-button view" data-id="${event.id}">View</button><button class="secondary-button export-event" data-id="${event.id}">Export</button></div></td></tr>`,
       )
-      .join("") || emptyRow(6, "No past events in this academic period.");
+      .join("") ||
+    emptyRow(showOwner ? 7 : 6, "No past events in this academic period.");
   TapTrack.initDataTable(table);
 }
 function renderScans() {

@@ -1,6 +1,7 @@
 const { $, api, escapeHtml, formatDate, formatTime, emptyRow, loadXlsx, init } =
   TapTrack;
 let events = [];
+let currentUser = null;
 let actionPopup = null;
 let actionTrigger = null;
 function closeActionPopup() {
@@ -191,6 +192,8 @@ function render() {
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
   const now = new Date();
+  const showOwner = ["Superadmin", "Administrator"].includes(currentUser?.role);
+  $("#ownerHeader").hidden = !showOwner;
   $("#body").innerHTML =
     events
       .map((event) => {
@@ -205,9 +208,12 @@ function render() {
           Number(event.maxTimeOuts) === 0
             ? `${event.maxTimeIns} Time In · No Time Out`
             : `${event.maxTimeIns} in · ${event.maxTimeOuts} out`;
-        return `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td><td><span class="type-pill Employee">${escapeHtml(event.targetAudience || "Both")}</span></td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${limits}</td><td><span class="status-pill ${["Ended", "Disabled"].includes(status) ? "time-out" : ""}">${status}</span></td><td><button class="event-action-trigger" data-id="${event.id}" data-active="${event.isActive ? "1" : "0"}" aria-expanded="false">Manage <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></td></tr>`;
+        const owner = showOwner
+          ? `<td><strong>${escapeHtml(event.creatorName || "Unassigned")}</strong>${event.creatorUsername ? `<br><small>${escapeHtml(event.creatorUsername)}</small>` : ""}</td>`
+          : "";
+        return `<tr><td><strong>${escapeHtml(event.name)}</strong><br><small>${escapeHtml(event.description || "Special event")}</small></td>${owner}<td><span class="type-pill Employee">${escapeHtml(event.targetAudience || "Both")}</span></td><td>${formatDate(event.startsAt)} ${formatTime(event.startsAt)}<br>to ${formatDate(event.endsAt)} ${formatTime(event.endsAt)}</td><td>${limits}</td><td><span class="status-pill ${["Ended", "Disabled"].includes(status) ? "time-out" : ""}">${status}</span></td><td><button class="event-action-trigger" data-id="${event.id}" data-active="${event.isActive ? "1" : "0"}" aria-expanded="false">Manage <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></td></tr>`;
       })
-      .join("") || emptyRow(6, "No Events.");
+      .join("") || emptyRow(showOwner ? 7 : 6, "No Events.");
   TapTrack.initDataTable(table);
 }
 $("#addBtn").addEventListener("click", () => openEvent());
@@ -296,7 +302,7 @@ $("#form").addEventListener("submit", async (event) => {
   }
 });
 (async () => {
-  await init("events");
+  ({ user: currentUser } = await init("events"));
   events = await api("/api/events");
   render();
 })();

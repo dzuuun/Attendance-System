@@ -51,7 +51,7 @@ function handlers(type, model) {
         return res.status(404).json({ message: `${type} record not found.` });
       const photoUrl = await save(type, person.idNumber, req.file);
       await model.updatePhoto(person.id, photoUrl);
-      req.activityDescription = `Updated the profile photo for ${person.name}.`;
+      req.activityDescription = `Updated the profile photo for ${person.idNumber} — ${person.name}.`;
       res.json({ id: person.id, idNumber: person.idNumber, photoUrl });
     },
     bulk: async (req, res) => {
@@ -75,7 +75,12 @@ function handlers(type, model) {
         }
         const photoUrl = await save(type, person.idNumber, file);
         await model.updatePhoto(person.id, photoUrl);
-        updated.push({ id: person.id, idNumber: person.idNumber, photoUrl });
+        updated.push({
+          id: person.id,
+          idNumber: person.idNumber,
+          name: person.name,
+          photoUrl,
+        });
       }
       req.activityDescription = `Bulk updated ${updated.length} ${type} profile photo${updated.length === 1 ? "" : "s"}.`;
       res.json({ updated, unmatched });

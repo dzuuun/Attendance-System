@@ -82,13 +82,12 @@ function idle() {
   $("#resultTitle").textContent = "Ready to Scan";
   $("#resultDetail").textContent = "The terminal is ready to record Time In.";
   $("#attendeeDetails").innerHTML = "";
-  $("#previousLogNotice").style.display = "none";
   $("#resetProgressTrack").hidden = true;
 }
 
 function personDetails(data) {
   return data.type === "Student"
-    ? `<div class="identity-grid"><div><span>ATTENDEE TYPE</span><b>Student</b></div><div><span>PROGRAM / STRAND</span><b>${escapeHtml(data.program || "Not specified")}</b></div><div><span>YEAR LEVEL</span><b>${escapeHtml(data.yearLevel || "Not specified")}</b></div></div>`
+    ? `<div class="identity-grid"><div><span>ATTENDEE TYPE</span><b>Student</b></div><div class="program-detail"><span>PROGRAM / STRAND</span><b title="${escapeHtml(data.program || "N/A")}">${escapeHtml(data.program || "Not specified")}</b></div><div><span>YEAR LEVEL</span><b>${escapeHtml(data.yearLevel || "Not specified")}</b></div></div>`
     : `<div class="identity-grid employee-details"><div><span>ATTENDEE TYPE</span><b>Employee</b></div><div><span>DEPARTMENT / OFFICE</span><b>${escapeHtml(data.department || "Not specified")}</b></div></div>`;
 }
 
@@ -101,13 +100,6 @@ function showResult(success, title, detail, data = null) {
   $("#resultTitle").textContent = title;
   $("#resultDetail").textContent = detail;
   $("#attendeeDetails").innerHTML = data ? personDetails(data) : "";
-  const previousLogNotice = $("#previousLogNotice");
-  if (data?.previousTimestamp) {
-    previousLogNotice.style.display = "flex";
-    previousLogNotice.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">history</span><span>Last ${escapeHtml(locationName)} entrance: ${escapeHtml(formatTime(data.previousTimestamp))}</span>`;
-  } else {
-    previousLogNotice.style.display = "none";
-  }
   if (data) {
     const photo = $("#resultPersonPhoto");
     photo.onerror = () => {
@@ -132,27 +124,52 @@ function showResult(success, title, detail, data = null) {
   resetTimer = setTimeout(idle, duration);
 }
 
+function renderRecentScans() {
+  $("#statTotal").textContent = sessionTotal;
+  $("#statStudents").textContent = studentTotal;
+  $("#statEmployees").textContent = employeeTotal;
+  $("#feedCountBadge").textContent = `${recentScans.length} RECENT`;
+  $("#recentScansList").innerHTML = recentScans.length
+    ? recentScans
+        .map((item) => {
+          const initials = item.name
+            .split(/\s+/)
+            .map((part) => part[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase();
+          return `<div class="feed-item"><div class="feed-item-person"><div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name)} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div><div class="feed-item-info"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type)}</small></div></div><div class="feed-item-meta"><span class="feed-badge in">TIME IN</span><span class="feed-time">${formatTime(item.timestamp)}</span></div></div>`;
+        })
+        .join("")
+    : `<div class="feed-empty-state"><span class="material-symbols-rounded" aria-hidden="true">schedule</span><span>No scans recorded yet today</span><small>New Time In records will appear here.</small></div>`;
+}
+
 function addRecent(data) {
   sessionTotal += 1;
   if (data.type === "Student") studentTotal += 1;
   else employeeTotal += 1;
-  $("#statTotal").textContent = sessionTotal;
-  $("#statStudents").textContent = studentTotal;
-  $("#statEmployees").textContent = employeeTotal;
   recentScans.unshift(data);
   recentScans = recentScans.slice(0, 10);
-  $("#feedCountBadge").textContent = `${recentScans.length} RECENT`;
-  $("#recentScansList").innerHTML = recentScans
-    .map((item) => {
-      const initials = item.name
-        .split(/\s+/)
-        .map((part) => part[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase();
-      return `<div class="feed-item"><div class="feed-item-person"><div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name)} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div><div class="feed-item-info"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type)}</small></div></div><div class="feed-item-meta"><span class="feed-badge in">TIME IN</span><span class="feed-time">${formatTime(item.timestamp)}</span></div></div>`;
-    })
-    .join("");
+  renderRecentScans();
+}
+
+async function loadRecentScans() {
+  try {
+    const response = await fetch(`/api/library-kiosk/${locationKey}/scans`);
+    if (!response.ok) throw new Error("Unable to load recent scans.");
+    const data = await response.json();
+    recentScans = Array.isArray(data.scans) ? data.scans : [];
+    sessionTotal = Number(data.stats?.total || 0);
+    studentTotal = Number(data.stats?.students || 0);
+    employeeTotal = Number(data.stats?.employees || 0);
+    renderRecentScans();
+  } catch (_error) {
+    recentScans = [];
+    sessionTotal = 0;
+    studentTotal = 0;
+    employeeTotal = 0;
+    renderRecentScans();
+  }
 }
 
 function scan(raw) {
@@ -253,4 +270,5 @@ document.addEventListener("keydown", (event) => {
 idle();
 updateClock();
 setInterval(updateClock, 1000);
+loadRecentScans();
 input.focus();
