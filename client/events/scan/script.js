@@ -16,8 +16,10 @@ let eventRecord,
   bridgeConnected = false,
   scansLoading = false,
   correctionsLoading = false,
+  scansInitialized = false,
   scanFingerprint = "",
   correctionFingerprint = "";
+let currentAttendeeTimer = null;
 const scanControls = () => [
   $("#eventScanInput"),
   ...document.querySelectorAll("#eventScanForm button"),
@@ -62,6 +64,19 @@ function renderScans() {
 function renderCurrentAttendee(record) {
   const panel = $("#currentAttendee");
   const photo = $("#currentAttendeePhoto");
+  if (currentAttendeeTimer) {
+    clearTimeout(currentAttendeeTimer);
+    currentAttendeeTimer = null;
+  }
+  if (record) {
+    const remaining = 30000 - (Date.now() - new Date(record.timestamp).getTime());
+    if (remaining <= 0) record = null;
+    else
+      currentAttendeeTimer = setTimeout(() => {
+        currentAttendeeTimer = null;
+        renderCurrentAttendee(null);
+      }, remaining);
+  }
   if (!record) {
     photo.src = "/client/images/NDMU-Logo.png";
     photo.alt = "Scanned attendee";
@@ -101,12 +116,15 @@ async function loadEventScans(force = false) {
     const nextFingerprint = records
       .map((record) => `${record.id}:${record.action}:${record.timestamp}`)
       .join("|");
-    const changed = force || nextFingerprint !== scanFingerprint;
+    const contentChanged = nextFingerprint !== scanFingerprint;
+    const changed = force || contentChanged;
     if (!changed) return;
     eventScans = records;
     scanFingerprint = nextFingerprint;
     renderScans();
-    renderCurrentAttendee(eventScans[0]);
+    if (scansInitialized && contentChanged)
+      renderCurrentAttendee(eventScans[0]);
+    scansInitialized = true;
   } finally {
     scansLoading = false;
   }

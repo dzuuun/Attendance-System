@@ -238,7 +238,7 @@
       brand.prepend(image);
     });
     root.querySelectorAll?.("dialog .modal-head").forEach((head) => {
-      if (head.querySelector(".modal-kicker,.eyebrow")) return;
+      if (head.querySelector(".modal-kicker,.eyebrow,.section-kicker")) return;
       const heading = head.querySelector("h2");
       if (!heading) return;
       const wrapper = document.createElement("div");
@@ -313,7 +313,7 @@
     };
     const header = document.createElement("header");
     header.className = "attendance-system-site-header";
-    header.innerHTML = `<div class="attendance-system-header-brand"><button type="button" class="attendance-system-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="attendance-system-header-identity" href="/app"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="attendance-system-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
+    header.innerHTML = `<div class="attendance-system-header-brand"><button type="button" class="attendance-system-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="attendance-system-header-identity" href="/overview"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="attendance-system-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
     header
       .querySelector(".attendance-system-menu-button")
       .addEventListener("click", () =>

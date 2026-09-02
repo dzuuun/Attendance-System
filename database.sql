@@ -4616,7 +4616,7 @@ VALUES
 CREATE TABLE IF NOT EXISTS academic_periods (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   school_year VARCHAR(20) NOT NULL,
-  term ENUM('First Semester', 'Second Semester', 'Summer') NOT NULL,
+  term ENUM('First Semester', 'Second Semester', 'Summer', 'First Term', 'Second Term', 'Third Term') NOT NULL,
   is_current BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_academic_period (school_year, term),
@@ -4626,9 +4626,14 @@ CREATE TABLE IF NOT EXISTS academic_periods (
 INSERT INTO
   academic_periods (school_year, term, is_current)
 VALUES
-  ('2026-2027', 'First Semester', TRUE) ON DUPLICATE KEY
+  ('2026-2027', 'First Semester', TRUE),
+  ('2026-2027', 'Second Semester', FALSE),
+  ('2026-2027', 'Summer', FALSE),
+  ('2026-2027', 'First Term', FALSE),
+  ('2026-2027', 'Second Term', FALSE),
+  ('2026-2027', 'Third Term', FALSE) ON DUPLICATE KEY
 UPDATE
-  is_current = TRUE;
+  is_current = VALUES(is_current);
 
 CREATE TABLE IF NOT EXISTS events (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -4674,7 +4679,11 @@ CREATE TABLE IF NOT EXISTS event_attendance_logs (
   INDEX idx_event_attendance_employee_time (employee_id, event_id, checked_in_at, id),
   INDEX idx_event_attendance_period_time (academic_period_id, checked_in_at, id),
   INDEX idx_event_student_period_time (student_id, academic_period_id, checked_in_at, id),
-  INDEX idx_event_employee_period_time (employee_id, academic_period_id, checked_in_at, id)
+  INDEX idx_event_employee_period_time (employee_id, academic_period_id, checked_in_at, id),
+  CONSTRAINT fk_event_attendance_event FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_event_attendance_student FOREIGN KEY (student_id) REFERENCES students(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_event_attendance_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_event_attendance_period FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS event_attendance_corrections (

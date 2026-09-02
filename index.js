@@ -1,5 +1,7 @@
 require("dotenv").config();
 const express = require("express"),
+  fs = require("fs"),
+  https = require("https"),
   path = require("path");
 const {
   checkSession,
@@ -14,7 +16,30 @@ const {
 const morgan = require("morgan");
 const app = express(),
   port = Number(process.env.PORT) || 4000,
+  httpsPort = Number(process.env.HTTPS_PORT) || 4443,
   client = path.join(__dirname, "client");
+function secureWebServer() {
+  const pfxPath = String(process.env.HTTPS_PFX_PATH || "").trim();
+  const certPath = String(process.env.HTTPS_CERT_PATH || "").trim();
+  const keyPath = String(process.env.HTTPS_KEY_PATH || "").trim();
+  if (pfxPath) {
+    const options = {
+      pfx: fs.readFileSync(path.resolve(pfxPath)),
+      passphrase: String(process.env.HTTPS_PFX_PASSPHRASE || ""),
+    };
+    return https.createServer(options, app);
+  }
+  if (Boolean(certPath) !== Boolean(keyPath))
+    throw new Error("Configure both HTTPS_CERT_PATH and HTTPS_KEY_PATH.");
+  if (!certPath) return null;
+  const options = {
+    cert: fs.readFileSync(path.resolve(certPath)),
+    key: fs.readFileSync(path.resolve(keyPath)),
+  };
+  const caPath = String(process.env.HTTPS_CA_PATH || "").trim();
+  if (caPath) options.ca = fs.readFileSync(path.resolve(caPath));
+  return https.createServer(options, app);
+}
 const scannerBridge = require("./scanner/scanner-bridge");
 app.use(morgan("combined"));
 app.use(express.json({ limit: "1mb" }));
@@ -314,7 +339,7 @@ app.get("/sidebar.html", checkSession, (_req, res) =>
 const protectedPage = (file) => (_req, res) =>
   res.sendFile(path.join(client, file));
 const adminPage = protectedPage;
-app.get("/app", protectedPage("dashboard/index.html"));
+app.get("/overview", protectedPage("dashboard/index.html"));
 app.get(
   "/account/change-password",
   protectedPage("account/change-password/index.html"),
@@ -364,11 +389,19 @@ app.use(apiErrorHandler);
 require("./api/maintenance/employee/employee.model")
   .ensureSchema()
   .then(() => require("./db/indexes").ensureIndexes())
-  .then(() =>
+  .then(() => {
     app.listen(port, () =>
-      console.log(`TapTrack running at http://localhost:${port}`),
-    ),
-  )
+      console.log(`TapTrack HTTP running at http://localhost:${port}`),
+    );
+    const secureServer = secureWebServer();
+    if (secureServer) {
+      if (httpsPort === port)
+        throw new Error("HTTPS_PORT must be different from PORT.");
+      secureServer.listen(httpsPort, () =>
+        console.log(`TapTrack HTTPS running at https://localhost:${httpsPort}`),
+      );
+    }
+  })
   .catch((error) => {
     const details =
       error?.message ||

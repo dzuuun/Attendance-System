@@ -13,6 +13,19 @@ function localDateValue(timestamp) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+function searchableDate(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return [
+    localDateValue(timestamp),
+    formatDate(timestamp),
+    formatTime(timestamp),
+    date.toLocaleDateString(),
+    date.toLocaleString(),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
 function exportDate() {
   return localDateValue(new Date());
 }
@@ -59,7 +72,9 @@ function filtered() {
         record.name?.toLowerCase().includes(query) ||
         record.idNumber?.toLowerCase().includes(query) ||
         record.courseCode?.toLowerCase().includes(query) ||
-        record.department?.toLowerCase().includes(query))
+        record.department?.toLowerCase().includes(query) ||
+        label().toLowerCase().includes(query) ||
+        searchableDate(record.timestamp).includes(query))
     );
   });
 }

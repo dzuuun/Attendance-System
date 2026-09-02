@@ -52,11 +52,16 @@ npm start
 
 Run the application behind an HTTPS reverse proxy and a process manager.
 
+When certificate settings are configured directly in TapTrack, the application
+serves HTTP on `PORT` and HTTPS on `HTTPS_PORT` simultaneously. Use HTTPS for
+camera scanning because browsers block camera access from LAN HTTP origins.
+
 ## Environment variables
 
 | Variable                  | Purpose                                    |
 | ------------------------- | ------------------------------------------ |
 | `PORT`                    | HTTP port; defaults to `4000`              |
+| `HTTPS_PORT`              | HTTPS port; defaults to `4443`             |
 | `DB_HOST`                 | MySQL server hostname                      |
 | `DB_PORT`                 | MySQL port; defaults to `3306`             |
 | `DB_USER`                 | MySQL account                              |
@@ -89,7 +94,7 @@ JWT_SECRET=replace-with-a-long-random-secret
 | `/`                         | Public landing page                           |
 | `/login`                    | Staff sign-in                                 |
 | `/setup`                    | One-time administrator setup                  |
-| `/app`                      | Current-day university entrance overview      |
+| `/overview`                      | Current-day university entrance overview      |
 | `/attendance`               | University entrance logs and previous periods |
 | `/events`                   | Events in the current academic period         |
 | `/events/past`              | Past events by selected academic period       |
@@ -213,6 +218,29 @@ standard input while writing, and expects a final JSON response line. See
 
 Do not permanently lock cards until the card model, layout, recovery process,
 and replacement workflow have been tested.
+
+### NFC writer on a client PC
+
+Install this project, Node.js, Python, pyscard, and the NFC reader driver on
+each enrollment PC. Configure that PC's .env with its local Python command,
+the included helper path, and the exact central TapTrack URL:
+
+\`\`\`dotenv
+NFC_WRITER_COMMAND=C:\\Python312\\python.exe
+NFC_WRITER_ARGS=["C:\\\\TapTrack\\\\scanner\\\\acr122u-ntag213.py"]
+NFC_BRIDGE_PORT=47831
+NFC_BRIDGE_ALLOWED_ORIGINS=http://192.168.1.10:4000
+\`\`\`
+
+Start the local bridge on that client PC before opening card enrollment:
+
+\`\`\`powershell
+npm run nfc-bridge
+\`\`\`
+
+The bridge listens only on 127.0.0.1; it is not exposed to other network
+devices. Add every exact server URL users may open (comma-separated) to
+NFC_BRIDGE_ALLOWED_ORIGINS.
 
 ## Imports, photos, and backups
 

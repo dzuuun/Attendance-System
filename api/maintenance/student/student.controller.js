@@ -88,7 +88,12 @@ exports.enrollCard = async (req, res) => {
       message:
         "The student identifier must use YYYYXXX, YYYYXXXX, or the 12-digit LRN format before it can be written to a card.",
     });
-  await nfcWriter.writeAndVerify(student.idNumber);
+  if (req.body?.validateOnly) {
+    req.skipActivityLog = true;
+    return res.json({ authorized: true, idNumber: student.idNumber });
+  }
+  if (!req.body?.localVerified)
+    await nfcWriter.writeAndVerify(student.idNumber);
   req.activityAction = "CARD_ENROLLED";
   req.activityDescription = `Wrote and verified student ID ${student.idNumber} on an NFC card for ${student.name}.`;
   res.json({

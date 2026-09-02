@@ -19,6 +19,19 @@ function localDateValue(timestamp) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+function searchableDate(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return [
+    localDateValue(timestamp),
+    formatDate(timestamp),
+    formatTime(timestamp),
+    date.toLocaleDateString(),
+    date.toLocaleString(),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
 function filtered() {
   const q = $("#search").value.toLowerCase(),
     type = $("#type").value,
@@ -45,7 +58,11 @@ function filtered() {
         (dateMode === "month"
           ? !$("#month").value || scanDate.startsWith($("#month").value)
           : !rangeStart || (scanDate >= rangeStart && scanDate <= rangeEnd))) &&
-      (a.name.toLowerCase().includes(q) || a.idNumber.toLowerCase().includes(q))
+      (!q ||
+        a.name?.toLowerCase().includes(q) ||
+        a.idNumber?.toLowerCase().includes(q) ||
+        a.location?.toLowerCase().includes(q) ||
+        searchableDate(a.timestamp).includes(q))
     );
   });
 }

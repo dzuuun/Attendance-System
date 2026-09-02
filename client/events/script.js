@@ -296,7 +296,6 @@ $("#form").addEventListener("submit", async (event) => {
     } else events.unshift(item);
     render();
     $("#dialog").close();
-    TapTrack.toast(recordId ? "Event updated." : "Event created.", "success");
   } catch (error) {
     $("#error").textContent = error.message;
   }

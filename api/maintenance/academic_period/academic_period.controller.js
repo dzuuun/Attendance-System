@@ -8,7 +8,14 @@ const valid = (data) =>
   /^\d{4}-\d{4}$/.test(data.schoolYear) &&
   Number(data.schoolYear.slice(5)) ===
     Number(data.schoolYear.slice(0, 4)) + 1 &&
-  ["First Semester", "Second Semester", "Summer"].includes(data.term);
+  [
+    "First Semester",
+    "Second Semester",
+    "Summer",
+    "First Term",
+    "Second Term",
+    "Third Term",
+  ].includes(data.term);
 exports.getAll = async (_req, res) => res.json(await model.getAll());
 exports.getCurrent = async (_req, res) => res.json(await model.getCurrent());
 exports.create = async (req, res) => {

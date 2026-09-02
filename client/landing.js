@@ -6,7 +6,7 @@
   if (!token || !staffLink) return;
 
   const firstAvailablePage = (user) => {
-    if (user.overviewAccess) return "/app";
+    if (user.overviewAccess) return "/overview";
     if (user.attendanceAccess) return "/attendance";
     if (user.specialEventsAccess) return "/events";
     if (user.libraryAccess) return "/library/entrance";

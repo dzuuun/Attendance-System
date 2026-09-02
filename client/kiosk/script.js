@@ -814,12 +814,9 @@ try {
   scannerEvents.addEventListener("scan", (event) => {
     try {
       const data = JSON.parse(event.data);
-      // Keyboard-wedge scanners emit through the bridge and also type into the
-      // focused input. Mark every bridge scan immediately so pairing scans (and
-      // rejected pairing attempts) cannot be replayed as attendance records by
-      // the delayed manual-input fallback.
-      rememberBridgeScan(data.idNumber);
       if (pendingScannerAction) {
+        // Pairing input must not also be submitted by the focused form.
+        rememberBridgeScan(data.idNumber);
         const action = pendingScannerAction;
         const target = localScannerAssignments[action] || [];
         const alreadyAssigned = target.some(
@@ -862,14 +859,13 @@ try {
           devices.some((device) => device.deviceId === data.deviceId),
       );
       if (!assignment) {
-        SoundFX.error();
-        showResult(
-          "error",
-          "Scanner Not Assigned",
-          `${data.name || "This scanner"} must be assigned on this terminal before use.`,
-        );
+        // Do not suppress the keyboard echo. The focused form will submit it
+        // as manual input using automatic Time In/Time Out selection.
         return;
       }
+      // Assigned devices are handled here with their directional action, so
+      // suppress the duplicate value typed into the focused input.
+      rememberBridgeScan(data.idNumber);
       scan(data.idNumber, assignment[0]);
     } catch (_e) {}
   });

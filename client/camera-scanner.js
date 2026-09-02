@@ -215,7 +215,10 @@
     dialog.showModal();
     setStatus("Starting camera...");
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      setStatus("Camera scanning requires HTTPS or localhost.", true);
+      setStatus(
+        "Camera scanning requires HTTPS. Open TapTrack using its secure university server URL.",
+        true,
+      );
       return;
     }
     try {

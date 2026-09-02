@@ -30,9 +30,9 @@ exports.getPage = async ({ start = 0, length = 25, search = "" }) => {
   await ensureSchema();
   const term = String(search || "").trim();
   const where = term
-    ? "WHERE actor_name LIKE ? OR actor_username LIKE ? OR action LIKE ? OR module LIKE ? OR description LIKE ?"
+    ? "WHERE actor_name LIKE ? OR actor_username LIKE ? OR action LIKE ? OR module LIKE ? OR description LIKE ? OR CAST(created_at AS CHAR) LIKE ? OR DATE_FORMAT(created_at,'%M %e, %Y %h:%i %p') LIKE ?"
     : "";
-  const searchParams = term ? Array(5).fill(`%${term}%`) : [];
+  const searchParams = term ? Array(7).fill(`%${term}%`) : [];
   const safeStart = Math.max(0, Number(start) || 0);
   const safeLength = Math.min(100, Math.max(10, Number(length) || 25));
   const [totalRows] = await pool.query(

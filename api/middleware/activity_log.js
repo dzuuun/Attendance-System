@@ -38,7 +38,7 @@ function activityLog(req, res, next) {
     return next();
 
   res.once("finish", () => {
-    if (res.statusCode >= 400) return;
+    if (res.statusCode >= 400 || req.skipActivityLog) return;
     const parts = path.split("/").filter(Boolean);
     const key = parts[1] || "system";
     const module = labels[key] || key.replaceAll("-", " ");

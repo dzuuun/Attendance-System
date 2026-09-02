@@ -21,7 +21,12 @@ exports.enrollCard = async (req, res) => {
       message:
         "The employee ID must use the PYYYYXXX or PYYYYXXXX format before it can be written to a card.",
     });
-  await nfcWriter.writeAndVerify(employee.idNumber);
+  if (req.body?.validateOnly) {
+    req.skipActivityLog = true;
+    return res.json({ authorized: true, idNumber: employee.idNumber });
+  }
+  if (!req.body?.localVerified)
+    await nfcWriter.writeAndVerify(employee.idNumber);
   req.activityAction = "CARD_ENROLLED";
   req.activityDescription = `Wrote and verified employee ID ${employee.idNumber} on an NFC card for ${employee.name}.`;
   res.json({

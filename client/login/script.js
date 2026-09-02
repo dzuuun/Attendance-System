@@ -14,7 +14,7 @@ const hashToken = new URLSearchParams(location.hash.slice(1)).get("sso_token");
 if (hashToken) {
   localStorage.setItem(TOKEN_KEY, hashToken);
   history.replaceState(null, "", "/login");
-  location.replace("/app");
+  location.replace("/overview");
 }
 const googleError = new URLSearchParams(location.search).get("google_error");
 if (googleError) {
@@ -52,7 +52,7 @@ document
         password: document.querySelector("#password").value,
       });
       localStorage.setItem(TOKEN_KEY, session.token);
-      location.href = "/app";
+      location.href = "/overview";
     } catch (failure) {
       error.textContent = failure.message;
     }
@@ -71,7 +71,7 @@ document
         password: document.querySelector("#password").value,
       });
       localStorage.setItem(TOKEN_KEY, session.token);
-      location.href = "/app";
+      location.href = "/overview";
     } catch (failure) {
       error.textContent = failure.message;
     }

@@ -453,7 +453,7 @@
     const hasPageAccess = !pageAccess || user[pageAccess];
     if (!hasPageAccess && user.role !== "Superadmin") {
       const landing = user.overviewAccess
-        ? "/app"
+        ? "/overview"
         : user.attendanceAccess
           ? "/attendance"
           : user.specialEventsAccess

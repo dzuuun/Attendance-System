@@ -88,6 +88,10 @@ async function ensureSchema() {
           [current.id],
         );
       }
+      await schema.addForeignKey("event_attendance_logs", "fk_event_attendance_event", ["event_id"], "events", ["id"]);
+      await schema.addForeignKey("event_attendance_logs", "fk_event_attendance_student", ["student_id"], "students", ["id"]);
+      await schema.addForeignKey("event_attendance_logs", "fk_event_attendance_employee", ["employee_id"], "employees", ["id"]);
+      await schema.addForeignKey("event_attendance_logs", "fk_event_attendance_period", ["academic_period_id"], "academic_periods", ["id"]);
     })();
   return schemaReady;
 }

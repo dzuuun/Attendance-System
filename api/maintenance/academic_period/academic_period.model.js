@@ -5,7 +5,10 @@ async function ensureSchema() {
   if (!ready)
     ready = (async () => {
       await pool.query(
-        `CREATE TABLE IF NOT EXISTS academic_periods (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,school_year VARCHAR(20) NOT NULL,term ENUM('First Semester','Second Semester','Summer') NOT NULL,is_current BOOLEAN NOT NULL DEFAULT FALSE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_academic_period (school_year,term),INDEX idx_academic_current (is_current))`,
+        `CREATE TABLE IF NOT EXISTS academic_periods (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,school_year VARCHAR(20) NOT NULL,term ENUM('First Semester','Second Semester','Summer','First Term','Second Term','Third Term') NOT NULL,is_current BOOLEAN NOT NULL DEFAULT FALSE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY uq_academic_period (school_year,term),INDEX idx_academic_current (is_current))`,
+      );
+      await pool.query(
+        "ALTER TABLE academic_periods MODIFY COLUMN term ENUM('First Semester','Second Semester','Summer','First Term','Second Term','Third Term') NOT NULL",
       );
       const [count] = await pool.query(
         "SELECT COUNT(*) count FROM academic_periods",
@@ -54,7 +57,7 @@ exports.getAll = async () => {
   await ensureSchema();
   return (
     await pool.query(
-      "SELECT id,school_year schoolYear,term,is_current isCurrent,created_at createdAt FROM academic_periods ORDER BY school_year DESC,FIELD(term,'First Semester','Second Semester','Summer')",
+      "SELECT id,school_year schoolYear,term,is_current isCurrent,created_at createdAt FROM academic_periods ORDER BY school_year DESC,FIELD(term,'First Semester','Second Semester','Summer','First Term','Second Term','Third Term')",
     )
   )[0];
 };

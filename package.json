@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --watch index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "nfc-bridge": "node scanner/nfc-client-bridge.js"
   },
   "dependencies": {
     "@zxing/browser": "0.1.5",

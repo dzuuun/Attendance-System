@@ -2238,6 +2238,10 @@ body:not(.sidebar-ready) .main {
 }
 .card-enrollment-modal {
   width: min(560px, calc(100vw - 32px)) !important;
+  border: 0 !important;
+  outline: 0 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 28px 80px rgba(4, 35, 26, 0.3) !important;
 }
 .card-enrollment-body {
   display: grid;
@@ -2247,14 +2251,18 @@ body:not(.sidebar-ready) .main {
   text-align: center;
 }
 .card-enrollment-icon {
-  display: grid;
+  display: inline-flex !important;
   width: 64px;
   height: 64px;
-  place-items: center;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
   border-radius: 18px;
   background: #e8f4ee;
   color: #087247;
-  font-size: 34px !important;
+  font-size: 32px !important;
+  line-height: 1 !important;
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 32 !important;
 }
 .card-enrollment-body strong {
   color: #183128;

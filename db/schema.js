@@ -37,10 +37,32 @@ async function dropColumns(table, columns) {
   for (const column of columns) await dropColumn(table, column);
 }
 
+async function addForeignKey(
+  table,
+  name,
+  columns,
+  referencedTable,
+  referencedColumns,
+  { onUpdate = "CASCADE", onDelete = "RESTRICT" } = {},
+) {
+  const [rows] = await pool.query(
+    "SELECT COUNT(*) count FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME=? AND CONSTRAINT_NAME=? AND CONSTRAINT_TYPE='FOREIGN KEY'",
+    [table, name],
+  );
+  if (rows[0].count) return;
+  const actions = new Set(["CASCADE", "RESTRICT", "SET NULL", "NO ACTION"]);
+  if (!actions.has(onUpdate) || !actions.has(onDelete))
+    throw new Error("Invalid foreign key action.");
+  await pool.query(
+    `ALTER TABLE ${identifier(table)} ADD CONSTRAINT ${identifier(name)} FOREIGN KEY (${columns.map(identifier).join(",")}) REFERENCES ${identifier(referencedTable)} (${referencedColumns.map(identifier).join(",")}) ON UPDATE ${onUpdate} ON DELETE ${onDelete}`,
+  );
+}
+
 module.exports = {
   columnExists,
   addColumn,
   addColumns,
   dropColumn,
   dropColumns,
+  addForeignKey,
 };

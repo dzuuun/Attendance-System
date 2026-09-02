@@ -282,7 +282,7 @@ async function openCardEnrollment(student) {
   $("#writeCardBtn").disabled = true;
   $("#cardEnrollmentDialog").showModal();
   try {
-    const status = await api("/api/student/card-writer/status");
+    const status = await TapTrackNfc.status();
     $("#cardEnrollmentStatus").textContent = status.message;
     $("#readCardBtn").disabled = !status.available || status.busy;
   } catch (error) {
@@ -297,9 +297,7 @@ $("#readCardBtn").addEventListener("click", async () => {
   $("#writeCardBtn").disabled = true;
   $("#cardEnrollmentError").textContent = "";
   try {
-    const result = await api("/api/student/card-writer/read", {
-      method: "POST",
-    });
+    const result = await TapTrackNfc.read();
     enrollmentCardRead = true;
     $("#cardCurrentValue").textContent =
       `Current card text: ${result.value || "Blank card"}`;
@@ -322,8 +320,14 @@ $("#cardEnrollmentForm").addEventListener("submit", async (event) => {
   button.textContent = "Writing… keep card in place";
   $("#cardEnrollmentError").textContent = "";
   try {
+    const authorization = await api(`/api/student/${cardEnrollmentStudent.id}/card-enrollment`, {
+      method: "POST",
+      body: JSON.stringify({ validateOnly: true }),
+    });
+    await TapTrackNfc.write(authorization.idNumber);
     await api(`/api/student/${cardEnrollmentStudent.id}/card-enrollment`, {
       method: "POST",
+      body: JSON.stringify({ localVerified: true }),
     });
     $("#cardEnrollmentDialog").close();
     TapTrack.toast(
