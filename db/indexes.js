@@ -13,6 +13,9 @@ const indexes = {
   employee_departments: {
     idx_employee_departments_active_name: ["is_active", "name"],
   },
+  gates: {
+    idx_gates_active_campus_name: ["is_active", "campus", "name"],
+  },
   schools: { idx_schools_active_name: ["is_active", "name"] },
   colleges: { idx_colleges_school_name: ["school_id", "name"] },
   departments: { idx_departments_college_name: ["college_id", "name"] },

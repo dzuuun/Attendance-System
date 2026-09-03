@@ -51,8 +51,10 @@ let soundEnabled = localStorage.getItem("taptrack_kiosk_sound") !== "false";
 const fallbackPhotoUrl = "/client/images/NDMU-Logo.png";
 const scannerAssignmentKey = "taptrack_kiosk_scanner_assignments";
 const terminalLocationKey = "taptrack_kiosk_terminal_location";
+const terminalGateKey = "taptrack_kiosk_terminal_gate_id";
 let terminalLocation =
   localStorage.getItem(terminalLocationKey)?.trim() || "Main Entrance";
+let terminalGateId = localStorage.getItem(terminalGateKey) || "";
 let pendingScannerAction = null;
 let localScannerAssignments = loadScannerAssignments();
 
@@ -81,15 +83,61 @@ function saveScannerAssignments() {
   );
 }
 
-function updateTerminalLocation(value) {
+function updateTerminalLocation(value, gateId = terminalGateId) {
   terminalLocation = String(value || "").trim() || "Main Entrance";
+  terminalGateId = String(gateId || "");
   localStorage.setItem(terminalLocationKey, terminalLocation);
-  if (terminalLocationInput) terminalLocationInput.value = terminalLocation;
+  if (terminalGateId) localStorage.setItem(terminalGateKey, terminalGateId);
+  else localStorage.removeItem(terminalGateKey);
+  if (terminalLocationInput && terminalGateId)
+    terminalLocationInput.value = terminalGateId;
   if (terminalLocationBadge)
     terminalLocationBadge.textContent = terminalLocation.toUpperCase();
 }
 
 updateTerminalLocation(terminalLocation);
+
+async function loadGateOptions() {
+  if (!terminalLocationInput) return;
+  try {
+    const response = await fetch("/api/kiosk/gates");
+    const gates = await response.json().catch(() => []);
+    if (!response.ok) throw new Error("Unable to load gates.");
+    terminalLocationInput.innerHTML = "";
+    if (!gates.length) {
+      const option = new Option("No active gates — add one in Maintenance", "");
+      terminalLocationInput.add(option);
+      terminalLocationInput.disabled = true;
+      return;
+    }
+    terminalLocationInput.disabled = false;
+    const groups = new Map();
+    gates.forEach((gate) => {
+      let group = groups.get(gate.campus);
+      if (!group) {
+        group = document.createElement("optgroup");
+        group.label = gate.campus;
+        groups.set(gate.campus, group);
+        terminalLocationInput.appendChild(group);
+      }
+      const option = new Option(gate.name, String(gate.id));
+      option.dataset.location = `${gate.name} — ${gate.campus}`;
+      group.appendChild(option);
+    });
+    const savedOption = Array.from(terminalLocationInput.options).find(
+      (option) =>
+        option.value === terminalGateId ||
+        option.dataset.location === terminalLocation,
+    );
+    const selected = savedOption || terminalLocationInput.options[0];
+    terminalLocationInput.value = selected.value;
+    updateTerminalLocation(selected.dataset.location, selected.value);
+    loadRecentScans();
+  } catch (_error) {
+    terminalLocationInput.innerHTML = '<option value="">Gates unavailable</option>';
+    terminalLocationInput.disabled = true;
+  }
+}
 
 async function loadRecentScans() {
   const requestNumber = ++recentScansRequest;
@@ -221,6 +269,32 @@ if (soundToggleBtn) {
   });
 }
 updateSoundUI();
+
+// A locally connected ACR122U can read either TapTrack NTAG cards or MIFARE
+// Classic cards. Keep one long-polling read active and submit only valid IDs.
+let localNfcPolling = false;
+async function pollLocalNfcReader() {
+  if (localNfcPolling || !window.TapTrackNfc) return;
+  localNfcPolling = true;
+  try {
+    const status = await window.TapTrackNfc.status();
+    if (!status.available) return;
+    while (true) {
+      try {
+        const result = await window.TapTrackNfc.read();
+        const value = String(result.value || "").trim().toUpperCase();
+        if (/^(?:\d{7,8}|\d{12}|P\d{7,8})$/.test(value)) scan(value);
+      } catch (_error) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+  } catch (_error) {
+    // The local NFC bridge is optional; manual and hardware-wedge input remain.
+  } finally {
+    localNfcPolling = false;
+  }
+}
+pollLocalNfcReader();
 
 // --- Formatting Helpers ---
 const escapeHtml = (value) => {
@@ -511,6 +585,8 @@ let scanQueue = Promise.resolve();
 let pendingScans = 0;
 const recentBridgeScans = new Map();
 const pendingManualScans = new Set();
+const recentSuccessfulScans = new Map();
+const duplicateScanWindowMs = 5000;
 
 function rememberBridgeScan(raw) {
   const idNumber = String(raw || "")
@@ -574,6 +650,14 @@ function scan(raw, actionOverride) {
 
 async function performScan(idNumber, actionOverride) {
   const action = actionOverride || "Auto";
+  const previousSuccess = recentSuccessfulScans.get(idNumber) || 0;
+  if (Date.now() - previousSuccess < duplicateScanWindowMs)
+    return {
+      success: false,
+      duplicate: true,
+      title: "Duplicate scan ignored",
+      detail: "Please wait a few seconds before scanning this ID again.",
+    };
 
   // Visual processing state
   if (scannerVisual) scannerVisual.className = "scanner-hero processing";
@@ -621,6 +705,11 @@ async function performScan(idNumber, actionOverride) {
 
     // Add to live recent scans ticker
     addRecentScan(data);
+    const now = Date.now();
+    recentSuccessfulScans.set(idNumber, now);
+    for (const [value, timestamp] of recentSuccessfulScans)
+      if (now - timestamp >= duplicateScanWindowMs)
+        recentSuccessfulScans.delete(value);
 
     return {
       success: true,
@@ -899,64 +988,45 @@ try {
   // EventSource unavailable
 }
 
-// --- Hardware Keyboard Wedge Buffer ---
-let keyBuffer = "";
-let keyTimer = null;
-
+// Route keyboard and keyboard-wedge input back to the manual field whenever
+// the kiosk background or a non-editable control has focus.
 document.addEventListener("keydown", (event) => {
   SoundFX.init();
 
-  // If focus is inside input, let standard typing work
   if (document.activeElement === input) {
     return;
   }
 
-  // Hotkeys
+  const activeElement = document.activeElement;
+  const isEditingAnotherControl = activeElement?.matches?.(
+    "input, textarea, select, [contenteditable='true']",
+  );
+  const hasOpenOverlay = document.querySelector(
+    "dialog[open], .scanner-modal-backdrop.open",
+  );
   if (
-    (event.key === "m" || event.key === "M") &&
-    !event.ctrlKey &&
-    !event.metaKey
+    !input ||
+    isEditingAnotherControl ||
+    hasOpenOverlay ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey
   ) {
-    soundEnabled = !soundEnabled;
-    localStorage.setItem(
-      "taptrack_kiosk_sound",
-      soundEnabled ? "true" : "false",
-    );
-    updateSoundUI();
-    if (soundEnabled) SoundFX.beep();
-    return;
-  }
-  if (
-    (event.key === "f" || event.key === "F") &&
-    !event.ctrlKey &&
-    !event.metaKey
-  ) {
-    toggleFullscreen();
-    return;
-  }
-  if (
-    (event.key === "s" || event.key === "S") &&
-    !event.ctrlKey &&
-    !event.metaKey
-  ) {
-    toggleScannerModal();
     return;
   }
 
-  // Enter triggers buffer submission
-  if (event.key === "Enter" && keyBuffer) {
-    submitManualScan(keyBuffer);
-    keyBuffer = "";
+  if (event.key === "Enter") {
+    event.preventDefault();
+    input.focus();
+    if (input.value.trim()) form?.requestSubmit();
     return;
   }
 
-  // Fast typing accumulation (typical barcode / RFID reader)
   if (event.key.length === 1) {
-    keyBuffer += event.key;
-    clearTimeout(keyTimer);
-    keyTimer = setTimeout(() => {
-      keyBuffer = "";
-    }, 120);
+    event.preventDefault();
+    input.focus();
+    input.value += event.key;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
   }
 });
 
@@ -1007,6 +1077,7 @@ function toggleScannerModal(open) {
       : !scannerModalBackdrop.classList.contains("open");
   if (shouldOpen) {
     scannerModalBackdrop.classList.add("open");
+    loadGateOptions();
     fetch("/api/kiosk/scanners")
       .then((res) => res.json())
       .then(renderScannerStatus)
@@ -1025,13 +1096,16 @@ if (closeScannerModal) {
 }
 if (terminalLocationInput) {
   terminalLocationInput.addEventListener("change", () => {
-    updateTerminalLocation(terminalLocationInput.value);
+    const selected = terminalLocationInput.selectedOptions[0];
+    updateTerminalLocation(selected?.dataset.location, selected?.value);
     loadRecentScans();
   });
 }
 if (doneScannerModal) {
   doneScannerModal.addEventListener("click", () => {
-    updateTerminalLocation(terminalLocationInput?.value);
+    const selected = terminalLocationInput?.selectedOptions[0];
+    if (selected?.value)
+      updateTerminalLocation(selected.dataset.location, selected.value);
     loadRecentScans();
     toggleScannerModal(false);
   });
@@ -1044,5 +1118,6 @@ if (scannerModalBackdrop) {
 
 // Initial setup
 renderIdleState();
+loadGateOptions();
 loadRecentScans();
 input?.focus();

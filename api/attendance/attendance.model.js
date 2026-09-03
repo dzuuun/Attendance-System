@@ -153,7 +153,7 @@ exports.findPerson = async (idNumber, audience = "Both") => {
   await ensureSchema();
   const findStudent = () =>
     pool.query(
-      "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name program,c.name college,s.year_level yearLevel,s.photo_url photoUrl,'Student' type FROM students s LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id WHERE s.id_number=? AND s.is_active=TRUE",
+      "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name program,p.code programCode,c.name college,s.year_level yearLevel,s.photo_url photoUrl,'Student' type FROM students s LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id WHERE s.id_number=? AND s.is_active=TRUE",
       [idNumber],
     );
   const findEmployee = () =>
@@ -190,7 +190,7 @@ exports.findLatest = async (person, eventId) => {
   const params = eventId ? [person.id, eventId] : [person.id];
   return (
     await pool.query(
-      `SELECT attendance_action action,checked_in_at timestamp FROM ${table} WHERE ${column}=? AND ${clause} ORDER BY checked_in_at DESC,id DESC LIMIT 1`,
+      `SELECT attendance_action action,checked_in_at timestamp,TIMESTAMPDIFF(SECOND,checked_in_at,CURRENT_TIMESTAMP) secondsAgo FROM ${table} WHERE ${column}=? AND ${clause} ORDER BY checked_in_at DESC,id DESC LIMIT 1`,
       params,
     )
   )[0][0];

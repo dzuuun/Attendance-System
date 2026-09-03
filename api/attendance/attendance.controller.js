@@ -1,6 +1,8 @@
 const model = require("./attendance.model");
 const eventModel = require("../events/event.model");
 const periodModel = require("../maintenance/academic_period/academic_period.model");
+const ENTRANCE_DUPLICATE_WINDOW_SECONDS = 5;
+const entranceScansInProgress = new Set();
 
 const isToday = (timestamp, now = new Date()) => {
   const date = new Date(timestamp);
@@ -13,6 +15,22 @@ const isToday = (timestamp, now = new Date()) => {
 };
 
 const visible = (rows) => rows;
+
+const absoluteAssetUrl = (req, value) => {
+  const assetUrl = String(value || "").trim();
+  if (!assetUrl) return null;
+  if (/^https?:\/\//i.test(assetUrl)) {
+    try {
+      const parsed = new URL(assetUrl);
+      if (!["localhost", "127.0.0.1", "::1"].includes(parsed.hostname))
+        return assetUrl;
+      return `${req.protocol}://${req.get("host")}${parsed.pathname}${parsed.search}`;
+    } catch {
+      return null;
+    }
+  }
+  return `${req.protocol}://${req.get("host")}${assetUrl.startsWith("/") ? "" : "/"}${assetUrl}`;
+};
 
 exports.getAll = async (req, res) => {
   const periodId = req.query.periodId ? Number(req.query.periodId) : null;
@@ -182,6 +200,23 @@ exports.scan = async (req, res) => {
     });
   }
 
+  // Serialize entrance scans for the same person. This prevents simultaneous
+  // requests from both seeing the same latest action and creating two rows.
+  let entranceScanKey = null;
+  if (!eventId) {
+    entranceScanKey = `${person.type}:${person.id}`;
+    if (entranceScansInProgress.has(entranceScanKey))
+      return res.status(409).json({
+        message: "Duplicate scan ignored. Please wait a few seconds.",
+        duplicate: true,
+      });
+    entranceScansInProgress.add(entranceScanKey);
+    const releaseEntranceScan = () =>
+      entranceScansInProgress.delete(entranceScanKey);
+    res.once("finish", releaseEntranceScan);
+    res.once("close", releaseEntranceScan);
+  }
+
   if (event) {
     const now = new Date();
     if (now < new Date(event.startsAt))
@@ -208,6 +243,17 @@ exports.scan = async (req, res) => {
   // differences causing yesterday's final Time In to be returned after midnight.
   const previous =
     !eventId && latest && !isToday(latest.timestamp) ? null : latest;
+
+  if (
+    !eventId &&
+    previous &&
+    Number(previous.secondsAgo) >= 0 &&
+    Number(previous.secondsAgo) < ENTRANCE_DUPLICATE_WINDOW_SECONDS
+  )
+    return res.status(409).json({
+      message: "Duplicate scan ignored. Please wait a few seconds.",
+      duplicate: true,
+    });
 
   // The university entrance kiosk has one manual/camera input. Alternate the
   // action from today's latest record while dedicated scanner lanes continue
@@ -245,10 +291,11 @@ exports.scan = async (req, res) => {
     name: person.name,
     type: person.type,
     program: person.type === "Student" ? person.program : null,
+    programCode: person.type === "Student" ? person.programCode : null,
     college: person.type === "Student" ? person.college : null,
     yearLevel: person.type === "Student" ? person.yearLevel : null,
     department: person.type === "Employee" ? person.department : null,
-    photoUrl: person.photoUrl || null,
+    photoUrl: absoluteAssetUrl(req, person.photoUrl),
     eventId,
     eventName: event?.name || null,
     action,

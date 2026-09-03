@@ -155,7 +155,7 @@
         <section class="kiosk-feed-panel">
           <!-- Active Result / Feedback Card -->
           <div
-            class="result-hero-card"
+            class="result-hero-card idle"
             id="kioskResult"
             role="status"
             aria-live="polite"
@@ -187,6 +187,15 @@
                   The terminal is ready to record attendance.
                 </p>
               </div>
+            </div>
+
+            <div class="idle-scan-visual" aria-hidden="true">
+              <div class="idle-scan-ring">
+                <span class="material-symbols-rounded">contactless</span>
+                <i></i>
+              </div>
+              <strong>Present ID to scan</strong>
+              <span>RFID&nbsp;&nbsp;&bull;&nbsp;&nbsp;BARCODE&nbsp;&nbsp;&bull;&nbsp;&nbsp;MANUAL</span>
             </div>
 
             <!-- Dynamic Attendee Info (Populated on scan) -->
@@ -299,13 +308,12 @@
               <span class="input-icon material-symbols-rounded"
                 >location_on</span
               >
-              <input
+              <select
                 id="terminalLocationInput"
-                type="text"
-                maxlength="120"
-                autocomplete="off"
-                placeholder="Example: Main Gate"
-              />
+                aria-label="Terminal gate"
+              >
+                <option value="">Loading gates...</option>
+              </select>
             </div>
           </div>
 
@@ -372,6 +380,7 @@
 
     <!-- Scripts -->
     <script src="/client/camera-scanner.js"></script>
+    <script src="/client/nfc-client-bridge.js"></script>
     <script src="/client/kiosk/script.js"></script>
     <script src="/client/brand-ui.js?v=20260830-1" data-brand-ui></script>
   </body>

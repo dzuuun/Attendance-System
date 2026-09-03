@@ -15,6 +15,8 @@ except ImportError:
 USER_START_PAGE = 4
 USER_PAGE_COUNT = 4
 USER_BYTES = USER_PAGE_COUNT * 4
+MIFARE_CLASSIC_BLOCK = 4
+MIFARE_DEFAULT_KEY = [0xFF] * 6
 IDENTIFIER = re.compile(r"^(?:\d{7,8}|\d{12}|P\d{7,8})$")
 
 
@@ -30,21 +32,43 @@ def transmit(connection, command, label):
     return bytes(data)
 
 
+def try_transmit(connection, command):
+    data, sw1, sw2 = connection.transmit(command)
+    return bytes(data) if (sw1, sw2) == (0x90, 0x00) else None
+
+
 def read_bytes(connection, page=USER_START_PAGE, length=USER_BYTES):
     return transmit(connection, [0xFF, 0xB0, 0x00, page, length], "Card read")
 
 
-def verify_type2_card(connection):
-    capability = transmit(
-        connection,
-        [0xFF, 0xB0, 0x00, 0x03, 0x04],
-        "Capability-container read",
+def is_type2_card(connection):
+    capability = try_transmit(connection, [0xFF, 0xB0, 0x00, 0x03, 0x04])
+    return bool(
+        capability
+        and len(capability) == 4
+        and capability[0] == 0xE1
+        and capability[2] >= 0x12
     )
-    if len(capability) != 4 or capability[0] != 0xE1 or capability[2] < 0x12:
-        fail(
-            "The card is not an initialized NTAG213-compatible Type 2 card "
-            "with at least 144 bytes of user memory."
-        )
+
+
+def read_mifare_classic(connection):
+    if try_transmit(connection, [0xFF, 0x82, 0x00, 0x00, 0x06, *MIFARE_DEFAULT_KEY]) is None:
+        fail("Could not load the default MIFARE Classic key.")
+    authenticate = [
+        0xFF, 0x86, 0x00, 0x00, 0x05,
+        0x01, 0x00, MIFARE_CLASSIC_BLOCK, 0x60, 0x00,
+    ]
+    if try_transmit(connection, authenticate) is None:
+        authenticate[-2] = 0x61
+        if try_transmit(connection, authenticate) is None:
+            fail("This MIFARE card is protected or was not prepared for TapTrack.")
+    raw = try_transmit(
+        connection,
+        [0xFF, 0xB0, 0x00, MIFARE_CLASSIC_BLOCK, USER_BYTES],
+    )
+    if raw is None:
+        fail("Could not read TapTrack data from MIFARE Classic block 4.")
+    return raw
 
 
 def display_value(raw):
@@ -89,12 +113,19 @@ def main():
     args = parser.parse_args()
 
     connection = connect(args.reader)
-    verify_type2_card(connection)
-    previous = display_value(read_bytes(connection))
+    type2 = is_type2_card(connection)
+    previous = display_value(
+        read_bytes(connection) if type2 else read_mifare_classic(connection)
+    )
 
     if args.read:
+        if previous and not IDENTIFIER.fullmatch(previous):
+            fail("This card does not contain a valid TapTrack ID.")
         print(json.dumps({"read": True, "value": previous}))
         return
+
+    if not type2:
+        fail("Card enrollment supports NTAG213-compatible Type 2 cards only.")
 
     value = sys.stdin.readline().strip()
     if not IDENTIFIER.fullmatch(value):

@@ -5,3 +5,20 @@ npm-debug.log*
 scanner/scanner-devices.json
 uploads/profile-photos/
 certificates/
+
+# Android kiosk generated files and local configuration
+android-kiosk/.gradle/
+android-kiosk/.idea/
+android-kiosk/.kotlin/
+android-kiosk/build/
+android-kiosk/app/build/
+android-kiosk/local.properties
+android-kiosk/*.iml
+
+# Workspace-local Android/Gradle caches
+.gradle-user/
+.android-user/
+.kotlin-user/
+
+__pycache__/
+*.py[cod]

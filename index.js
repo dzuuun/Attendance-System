@@ -62,6 +62,7 @@ const schoolRouter = require("./api/maintenance/school/school.router");
 const collegeRouter = require("./api/maintenance/college/college.router");
 const departmentRouter = require("./api/maintenance/department/department.router");
 const employeeDepartmentRouter = require("./api/maintenance/employee_department/employee_department.router");
+const gateRouter = require("./api/maintenance/gate/gate.router");
 const programRouter = require("./api/maintenance/program/program.router");
 const activityLogRouter = require("./api/user/activity_log/activity_log.router");
 const academicPeriodRouter = require("./api/maintenance/academic_period/academic_period.router");
@@ -82,6 +83,16 @@ app.get(
   asyncHandler(require("./api/attendance/attendance.controller").kioskRecent),
 );
 app.get("/api/kiosk/scanners", (_req, res) => res.json(scannerBridge.status()));
+app.get(
+  "/api/kiosk/gates",
+  asyncHandler(async (_req, res) =>
+    res.json(
+      await require("./api/maintenance/gate/gate.model").getAll({
+        activeOnly: true,
+      }),
+    ),
+  ),
+);
 app.post(
   "/api/library-kiosk/:location/scan",
   asyncHandler(require("./api/library/library.controller").scan),
@@ -203,6 +214,11 @@ app.use(
   "/api/employee_department",
   requireAccess("maintenanceAccess"),
   wrapRouter(employeeDepartmentRouter),
+);
+app.use(
+  "/api/gate",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(gateRouter),
 );
 app.use(
   "/api/program",
@@ -371,6 +387,7 @@ app.get(
   "/maintenance/employee-department",
   adminPage("maintenance/employee_department/index.html"),
 );
+app.get("/maintenance/gates", adminPage("maintenance/gate/index.html"));
 app.get("/maintenance/program", adminPage("maintenance/program/index.html"));
 app.get(
   "/maintenance/academic-periods",

@@ -251,19 +251,37 @@ document.addEventListener("fullscreenchange", () =>
   ),
 );
 
-let buffer = "";
-let bufferTimer = null;
 document.addEventListener("keydown", (event) => {
   if (document.activeElement === input) return;
-  if (event.key === "Enter" && buffer) {
-    scan(buffer);
-    buffer = "";
+
+  const activeElement = document.activeElement;
+  const isEditingAnotherControl = activeElement?.matches?.(
+    "input, textarea, select, [contenteditable='true']",
+  );
+  const hasOpenDialog = document.querySelector("dialog[open]");
+  if (
+    !input ||
+    isEditingAnotherControl ||
+    hasOpenDialog ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey
+  ) {
     return;
   }
+
+  if (event.key === "Enter") {
+    event.preventDefault();
+    input.focus();
+    if (input.value.trim()) form.requestSubmit();
+    return;
+  }
+
   if (event.key.length === 1) {
-    buffer += event.key;
-    clearTimeout(bufferTimer);
-    bufferTimer = setTimeout(() => (buffer = ""), 120);
+    event.preventDefault();
+    input.focus();
+    input.value += event.key;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
   }
 });
 

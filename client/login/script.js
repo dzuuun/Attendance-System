@@ -1,4 +1,33 @@
 const TOKEN_KEY = "taptrack_token";
+
+function showAuthToast(message, type = "success") {
+  let container = document.querySelector("#authToastContainer");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "authToastContainer";
+    container.className = "auth-toast-container";
+    container.setAttribute("aria-live", "polite");
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement("div");
+  toast.className = `auth-toast ${type}`;
+  toast.setAttribute("role", type === "error" ? "alert" : "status");
+  toast.innerHTML = `<span class="auth-toast-icon" aria-hidden="true">${type === "error" ? "!" : "✓"}</span><div><strong>${type === "error" ? "Login failed" : "Login successful"}</strong><p></p></div><button type="button" aria-label="Dismiss notification">×</button>`;
+  toast.querySelector("p").textContent = message;
+  const dismiss = () => {
+    toast.classList.add("leaving");
+    setTimeout(() => toast.remove(), 180);
+  };
+  toast.querySelector("button").addEventListener("click", dismiss);
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
+  setTimeout(dismiss, 4000);
+}
+
+function redirectAfterSuccess(path) {
+  setTimeout(() => location.replace(path), 850);
+}
+
 async function request(url, body) {
   const response = await fetch(url, {
     method: body ? "POST" : "GET",
@@ -14,11 +43,13 @@ const hashToken = new URLSearchParams(location.hash.slice(1)).get("sso_token");
 if (hashToken) {
   localStorage.setItem(TOKEN_KEY, hashToken);
   history.replaceState(null, "", "/login");
-  location.replace("/overview");
+  showAuthToast("Welcome back. Redirecting to TapTrack.");
+  redirectAfterSuccess("/overview");
 }
 const googleError = new URLSearchParams(location.search).get("google_error");
 if (googleError) {
   error.textContent = googleError;
+  showAuthToast(googleError, "error");
   history.replaceState(null, "", "/login");
 }
 request("/api/auth/google/status")
@@ -46,15 +77,20 @@ document
   ?.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.textContent = "";
+    const submitButton = event.currentTarget.querySelector('[type="submit"]');
+    submitButton.disabled = true;
     try {
       const session = await request("/api/auth/login", {
         username: document.querySelector("#username").value,
         password: document.querySelector("#password").value,
       });
       localStorage.setItem(TOKEN_KEY, session.token);
-      location.href = "/overview";
+      showAuthToast(`Welcome back, ${session.fullName || session.username}.`);
+      redirectAfterSuccess("/overview");
     } catch (failure) {
       error.textContent = failure.message;
+      showAuthToast(failure.message, "error");
+      submitButton.disabled = false;
     }
   });
 document

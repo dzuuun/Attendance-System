@@ -444,6 +444,7 @@
         department: "maintenanceAccess",
         employee_department: "maintenanceAccess",
         program: "maintenanceAccess",
+        gates: "maintenanceAccess",
         periods: "maintenanceAccess",
         maintenance: "maintenanceAccess",
         users: "usersAccess",
@@ -620,6 +621,26 @@
         .querySelectorAll("input, select, textarea")
         .forEach((field) => field.setCustomValidity(""));
     });
+    dialog
+      .querySelectorAll("input, select, textarea")
+      .forEach((field) => {
+        if (!field.closest("form")) {
+          if (field instanceof HTMLInputElement) {
+            if (["checkbox", "radio"].includes(field.type))
+              field.checked = field.defaultChecked;
+            else if (field.type !== "button" && field.type !== "submit")
+              field.value = "";
+          } else if (field instanceof HTMLSelectElement) {
+            const defaultOption = [...field.options].findIndex(
+              (option) => option.defaultSelected,
+            );
+            field.selectedIndex = defaultOption >= 0 ? defaultOption : 0;
+          } else field.value = "";
+        }
+        field.setCustomValidity("");
+        if (field instanceof HTMLSelectElement)
+          field.searchableSelectSync?.();
+      });
     dialog
       .querySelectorAll(".form-error, .auth-error, [data-modal-error]")
       .forEach((message) => (message.textContent = ""));

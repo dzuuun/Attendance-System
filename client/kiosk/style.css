@@ -154,8 +154,15 @@ body.kiosk-body {
   box-shadow: 0 8px 20px rgba(0, 25, 17, 0.18) !important;
 }
 
-.input-container input {
+.input-container input,
+.input-container select {
   color: var(--kiosk-dark-ink) !important;
+}
+
+.input-container select option,
+.input-container select optgroup {
+  color: #17372b;
+  background: #ffffff;
 }
 
 .input-container input::placeholder {
@@ -868,7 +875,8 @@ body.kiosk-body {
   margin-right: 10px;
 }
 
-.input-container input {
+.input-container input,
+.input-container select {
   flex: 1;
   border: none;
   outline: none;
@@ -877,6 +885,11 @@ body.kiosk-body {
   color: var(--kiosk-ink);
   padding: 10px 0;
   background: transparent;
+}
+
+.input-container select {
+  width: 100%;
+  cursor: pointer;
 }
 
 .input-container input::placeholder {
@@ -1054,6 +1067,166 @@ body.kiosk-body {
   font-size: 13px;
   color: var(--kiosk-muted);
   line-height: 1.4;
+}
+
+/* Idle-state scanner artwork fills the result card without competing with
+   attendee information. It is automatically hidden for every scan result. */
+html body.kiosk-body main.kiosk .result-hero-card.idle {
+  background:
+    radial-gradient(circle at 84% 50%, rgba(17, 133, 86, 0.1), transparent 29%),
+    linear-gradient(135deg, #ffffff 0%, #ffffff 62%, #f5faf7 100%) !important;
+  border-color: #cfe0d7;
+}
+
+.result-hero-card.idle::before {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px solid rgba(7, 92, 59, 0.06);
+  border-radius: 15px;
+  pointer-events: none;
+}
+
+.result-hero-card.idle .result-header {
+  position: relative;
+  z-index: 2;
+  max-width: 58%;
+}
+
+.idle-scan-visual {
+  position: absolute;
+  top: 50%;
+  right: clamp(28px, 4vw, 58px);
+  z-index: 1;
+  width: 190px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.result-hero-card:not(.idle) .idle-scan-visual {
+  display: none;
+}
+
+.idle-scan-ring {
+  position: relative;
+  width: 126px;
+  height: 126px;
+  margin-bottom: 13px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(7, 92, 59, 0.16);
+  border-radius: 50%;
+  color: var(--kiosk-green-primary);
+  background:
+    radial-gradient(circle, #ffffff 0 40%, transparent 41%),
+    repeating-radial-gradient(
+      circle,
+      rgba(13, 130, 84, 0.1) 0 1px,
+      transparent 2px 17px
+    );
+  box-shadow:
+    0 18px 38px rgba(7, 92, 59, 0.12),
+    inset 0 0 0 12px rgba(232, 245, 237, 0.52);
+}
+
+.idle-scan-ring::before,
+.idle-scan-ring::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border: 2px solid transparent;
+  border-top-color: rgba(7, 92, 59, 0.48);
+  border-right-color: rgba(7, 92, 59, 0.16);
+  border-radius: 50%;
+  animation: idle-ring-spin 5s linear infinite;
+}
+
+.idle-scan-ring::after {
+  inset: 10px;
+  border-top-color: rgba(243, 201, 77, 0.8);
+  border-right-color: transparent;
+  animation-direction: reverse;
+  animation-duration: 3.5s;
+}
+
+.idle-scan-ring > span {
+  position: relative;
+  z-index: 2;
+  font-size: 42px;
+  font-variation-settings: "FILL" 0, "wght" 450, "GRAD" 0, "opsz" 40;
+}
+
+.idle-scan-ring i {
+  position: absolute;
+  z-index: 3;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #18a66d, #f3c94d, transparent);
+  box-shadow: 0 0 10px rgba(13, 130, 84, 0.42);
+  animation: idle-scan-beam 2.4s ease-in-out infinite;
+}
+
+.idle-scan-visual strong {
+  color: var(--kiosk-green-dark);
+  font: 600 14px Georgia, serif;
+}
+
+.idle-scan-visual > span {
+  margin-top: 5px;
+  color: #74847b;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+@keyframes idle-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes idle-scan-beam {
+  0%,
+  100% {
+    transform: translateY(-33px);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(33px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-scan-ring::before,
+  .idle-scan-ring::after,
+  .idle-scan-ring i {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .result-hero-card.idle .result-header {
+    max-width: 100%;
+  }
+
+  .idle-scan-visual {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    transform: none;
+  }
+
+  .idle-scan-ring {
+    width: 92px;
+    height: 92px;
+  }
 }
 
 /* Result States */
@@ -2261,7 +2434,8 @@ body.kiosk-body {
     min-width: 0;
     padding-left: 10px;
   }
-  .input-container input {
+  .input-container input,
+  .input-container select {
     min-width: 0;
     font-size: 13px;
   }

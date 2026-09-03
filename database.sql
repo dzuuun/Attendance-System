@@ -62,6 +62,23 @@ ON DUPLICATE KEY UPDATE
   code = VALUES(code),
   is_active = VALUES(is_active);
 
+CREATE TABLE IF NOT EXISTS gates (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  campus VARCHAR(40) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_gates_campus_name (campus, name),
+  INDEX idx_gates_active_campus_name (is_active, campus, name)
+);
+
+INSERT INTO gates (id, name, campus, is_active) VALUES
+(1, 'Gate 1', 'Main Campus', 1),
+(2, 'Gate 2', 'Main Campus', 1),
+(3, 'Gate 3', 'Main Campus', 1),
+(4, 'Gate 4', 'Main Campus', 1);
+
 CREATE TABLE IF NOT EXISTS employees (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,

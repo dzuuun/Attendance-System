@@ -11,6 +11,7 @@ const labels = {
   college: "Colleges",
   department: "Departments",
   program: "Programs",
+  gate: "Gates",
   user: "User management",
   permissions: "Permissions",
 };
