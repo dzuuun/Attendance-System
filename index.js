@@ -69,6 +69,7 @@ const academicPeriodRouter = require("./api/maintenance/academic_period/academic
 const historyRouter = require("./api/history/history.router");
 const libraryRouter = require("./api/library/library.router");
 const personLogsRouter = require("./api/person_logs/person_logs.router");
+const analyticsRouter = require("./api/analytics/analytics.router");
 app.use("/api/auth", asyncHandler(loginRouter));
 // Public kiosk access is intentionally limited to daily entrance scans.
 app.post(
@@ -216,6 +217,23 @@ app.use(
   wrapRouter(employeeDepartmentRouter),
 );
 app.use(
+  "/api/analytics",
+  (req, res, next) => {
+    if (
+      req.user?.role === "Superadmin" ||
+      (req.user?.overviewAccess && req.user?.attendanceAccess) ||
+      req.user?.libraryAccess
+    )
+      return next();
+    return res.status(403).json({
+      success: 0,
+      message:
+        "Analytics requires Overview and Attendance access, or Library access.",
+    });
+  },
+  wrapRouter(analyticsRouter),
+);
+app.use(
   "/api/gate",
   requireAccess("maintenanceAccess"),
   wrapRouter(gateRouter),
@@ -356,6 +374,8 @@ const protectedPage = (file) => (_req, res) =>
   res.sendFile(path.join(client, file));
 const adminPage = protectedPage;
 app.get("/overview", protectedPage("dashboard/index.html"));
+app.get("/analytics", protectedPage("analytics/index.html"));
+app.get("/library/analytics", protectedPage("analytics/index.html"));
 app.get(
   "/account/change-password",
   protectedPage("account/change-password/index.html"),

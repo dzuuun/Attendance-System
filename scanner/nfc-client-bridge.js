@@ -23,7 +23,9 @@ function send(res, status, payload, origin) {
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin || "";
   if (origin && !allowedOrigins.has(origin))
-    return send(res, 403, { message: "This TapTrack origin is not authorized." });
+    return send(res, 403, {
+      message: "This TapTrack origin is not authorized.",
+    });
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
@@ -46,10 +48,17 @@ const server = http.createServer(async (req, res) => {
     }
     send(res, 404, { message: "NFC bridge endpoint not found." }, origin);
   } catch (error) {
-    send(res, 500, { message: error.message || "NFC operation failed." }, origin);
+    send(
+      res,
+      500,
+      { message: error.message || "NFC operation failed." },
+      origin,
+    );
   }
 });
 
 server.listen(port, "127.0.0.1", () =>
-  console.log(`TapTrack NFC client bridge listening at http://127.0.0.1:${port}`),
+  console.log(
+    `TapTrack NFC client bridge listening at http://127.0.0.1:${port}`,
+  ),
 );

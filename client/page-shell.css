@@ -2262,7 +2262,11 @@ body:not(.sidebar-ready) .main {
   color: #087247;
   font-size: 32px !important;
   line-height: 1 !important;
-  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 32 !important;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 500,
+    "GRAD" 0,
+    "opsz" 32 !important;
 }
 .card-enrollment-body strong {
   color: #183128;

@@ -46,8 +46,8 @@ const delay = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function getPageTarget() {
-  const targets = await fetch(`http://127.0.0.1:${debugPort}/json`).then((res) =>
-    res.json(),
+  const targets = await fetch(`http://127.0.0.1:${debugPort}/json`).then(
+    (res) => res.json(),
   );
   return targets.find((target) => target.type === "page");
 }
@@ -67,7 +67,9 @@ async function evaluate(socket, expression) {
     returnByValue: true,
   });
   if (response.exceptionDetails) {
-    throw new Error(response.exceptionDetails.text || "Browser evaluation failed.");
+    throw new Error(
+      response.exceptionDetails.text || "Browser evaluation failed.",
+    );
   }
   return response.result?.value;
 }
@@ -111,7 +113,8 @@ async function screenshot(socket, name) {
 async function main() {
   fs.mkdirSync(outputDir, { recursive: true });
   const target = await getPageTarget();
-  if (!target) throw new Error("No browser page is available on the debug port.");
+  if (!target)
+    throw new Error("No browser page is available on the debug port.");
 
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {

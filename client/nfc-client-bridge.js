@@ -5,14 +5,16 @@
     try {
       response = await fetch(base + path, {
         method: body === undefined ? "GET" : "POST",
-        headers: body === undefined ? {} : { "Content-Type": "application/json" },
+        headers:
+          body === undefined ? {} : { "Content-Type": "application/json" },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (_error) {
       throw new Error("The NFC bridge is not running on this client PC.");
     }
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(result.message || "Local NFC operation failed.");
+    if (!response.ok)
+      throw new Error(result.message || "Local NFC operation failed.");
     return result;
   }
   window.TapTrackNfc = {

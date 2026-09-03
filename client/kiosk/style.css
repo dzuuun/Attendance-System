@@ -1156,7 +1156,11 @@ html body.kiosk-body main.kiosk .result-hero-card.idle {
   position: relative;
   z-index: 2;
   font-size: 42px;
-  font-variation-settings: "FILL" 0, "wght" 450, "GRAD" 0, "opsz" 40;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 450,
+    "GRAD" 0,
+    "opsz" 40;
 }
 
 .idle-scan-ring i {
@@ -1166,14 +1170,22 @@ html body.kiosk-body main.kiosk .result-hero-card.idle {
   right: 18px;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, #18a66d, #f3c94d, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #18a66d,
+    #f3c94d,
+    transparent
+  );
   box-shadow: 0 0 10px rgba(13, 130, 84, 0.42);
   animation: idle-scan-beam 2.4s ease-in-out infinite;
 }
 
 .idle-scan-visual strong {
   color: var(--kiosk-green-dark);
-  font: 600 14px Georgia, serif;
+  font:
+    600 14px Georgia,
+    serif;
 }
 
 .idle-scan-visual > span {

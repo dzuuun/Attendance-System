@@ -238,16 +238,16 @@ Public kiosk paths are provided by MIS for university entrance, library, and Int
 
 ## 14. Troubleshooting
 
-| Problem | What to do |
-| --- | --- |
-| Invalid username/password | Check spelling and Caps Lock. Ask MIS to verify the active account; do not repeatedly guess. |
-| Inactive student/employee | Refer the person to MIS and reactivate only after authorization. |
-| Camera is unavailable | Open the approved HTTPS URL, allow camera permission, close other apps using the camera, and reload. |
-| NFC writer is unavailable | Connect the writer, start Windows Smart Card service, start `npm run nfc-bridge` on that client PC, and retry. |
-| Scanner types but does not submit | Configure the keyboard-wedge scanner to append Enter after the ID. |
-| Wrong scan action/location | Confirm the assigned device direction and terminal location before scanning. |
-| A table is slow | Narrow the search/filter and select a suitable page size. Report persistent delays to MIS. |
-| Page/API error after database import | Restart TapTrack so startup schema updates run, then give the server error to MIS. |
+| Problem                              | What to do                                                                                                     |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Invalid username/password            | Check spelling and Caps Lock. Ask MIS to verify the active account; do not repeatedly guess.                   |
+| Inactive student/employee            | Refer the person to MIS and reactivate only after authorization.                                               |
+| Camera is unavailable                | Open the approved HTTPS URL, allow camera permission, close other apps using the camera, and reload.           |
+| NFC writer is unavailable            | Connect the writer, start Windows Smart Card service, start `npm run nfc-bridge` on that client PC, and retry. |
+| Scanner types but does not submit    | Configure the keyboard-wedge scanner to append Enter after the ID.                                             |
+| Wrong scan action/location           | Confirm the assigned device direction and terminal location before scanning.                                   |
+| A table is slow                      | Narrow the search/filter and select a suitable page size. Report persistent delays to MIS.                     |
+| Page/API error after database import | Restart TapTrack so startup schema updates run, then give the server error to MIS.                             |
 
 ## 15. Data protection and backup
 
@@ -256,4 +256,3 @@ Public kiosk paths are provided by MIS for university entrance, library, and Int
 - Store exported workbooks securely and delete temporary copies when no longer needed.
 - Back up both the MySQL database and `uploads/profile-photos`.
 - Do not edit database rows directly during normal operation; use the TapTrack interface so actions remain auditable.
-

@@ -69,7 +69,8 @@ function renderCurrentAttendee(record) {
     currentAttendeeTimer = null;
   }
   if (record) {
-    const remaining = 30000 - (Date.now() - new Date(record.timestamp).getTime());
+    const remaining =
+      30000 - (Date.now() - new Date(record.timestamp).getTime());
     if (remaining <= 0) record = null;
     else
       currentAttendeeTimer = setTimeout(() => {

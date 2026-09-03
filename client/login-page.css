@@ -262,7 +262,9 @@
   box-shadow: 0 16px 38px rgba(0, 48, 33, 0.2);
   opacity: 0;
   transform: translateY(-12px) scale(0.98);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .auth-toast.visible {
@@ -290,7 +292,9 @@
 .auth-toast strong {
   display: block;
   color: #14392d;
-  font: 700 14px Georgia, serif;
+  font:
+    700 14px Georgia,
+    serif;
 }
 
 .auth-toast p {

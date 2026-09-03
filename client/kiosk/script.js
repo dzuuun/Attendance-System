@@ -134,7 +134,8 @@ async function loadGateOptions() {
     updateTerminalLocation(selected.dataset.location, selected.value);
     loadRecentScans();
   } catch (_error) {
-    terminalLocationInput.innerHTML = '<option value="">Gates unavailable</option>';
+    terminalLocationInput.innerHTML =
+      '<option value="">Gates unavailable</option>';
     terminalLocationInput.disabled = true;
   }
 }
@@ -282,7 +283,9 @@ async function pollLocalNfcReader() {
     while (true) {
       try {
         const result = await window.TapTrackNfc.read();
-        const value = String(result.value || "").trim().toUpperCase();
+        const value = String(result.value || "")
+          .trim()
+          .toUpperCase();
         if (/^(?:\d{7,8}|\d{12}|P\d{7,8})$/.test(value)) scan(value);
       } catch (_error) {
         await new Promise((resolve) => setTimeout(resolve, 1000));

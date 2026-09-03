@@ -320,10 +320,13 @@ $("#cardEnrollmentForm").addEventListener("submit", async (event) => {
   button.textContent = "Writing… keep card in place";
   $("#cardEnrollmentError").textContent = "";
   try {
-    const authorization = await api(`/api/student/${cardEnrollmentStudent.id}/card-enrollment`, {
-      method: "POST",
-      body: JSON.stringify({ validateOnly: true }),
-    });
+    const authorization = await api(
+      `/api/student/${cardEnrollmentStudent.id}/card-enrollment`,
+      {
+        method: "POST",
+        body: JSON.stringify({ validateOnly: true }),
+      },
+    );
     await TapTrackNfc.write(authorization.idNumber);
     await api(`/api/student/${cardEnrollmentStudent.id}/card-enrollment`, {
       method: "POST",

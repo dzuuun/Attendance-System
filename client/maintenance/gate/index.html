@@ -13,33 +13,85 @@
       <div id="sidebarMount"></div>
       <main class="main">
         <header class="topbar">
-          <div><p class="eyebrow">MAINTENANCE</p><h1>Gates</h1></div>
-          <div class="live-time"><span id="liveTime"></span><small id="liveDate"></small></div>
+          <div>
+            <p class="eyebrow">MAINTENANCE</p>
+            <h1>Gates</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
         </header>
         <div class="section-header">
           <p>Reusable campus gate locations available to entrance terminals.</p>
           <div class="event-actions">
-            <label class="directory-toggle" for="showInactive"><span>Show inactive</span><input id="showInactive" type="checkbox" /></label>
+            <label class="directory-toggle" for="showInactive"
+              ><span>Show inactive</span
+              ><input id="showInactive" type="checkbox"
+            /></label>
             <button class="primary-button" id="addBtn">+ Add gate</button>
           </div>
         </div>
         <article class="table-card">
-          <div class="filter-row"><div class="search-box"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="search" placeholder="Search gates or campuses" /></div></div>
-          <div class="table-wrap"><table><thead><tr><th>GATE</th><th>CAMPUS</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="body"></tbody></table></div>
+          <div class="filter-row">
+            <div class="search-box">
+              <span class="material-symbols-rounded" aria-hidden="true"
+                >search</span
+              ><input id="search" placeholder="Search gates or campuses" />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>GATE</th>
+                  <th>CAMPUS</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
         </article>
       </main>
     </div>
     <dialog id="dialog">
       <form id="form">
         <input type="hidden" id="recordId" />
-        <div class="modal-head"><h2>Add gate</h2><button type="button" class="close-button">×</button></div>
+        <div class="modal-head">
+          <h2>Add gate</h2>
+          <button type="button" class="close-button">×</button>
+        </div>
         <div class="form-grid">
-          <label class="full">Gate name<input id="name" maxlength="120" placeholder="Example: Main Gate" required /></label>
-          <label class="full">Campus<select id="campus" required><option value="">Select campus</option><option>Main Campus</option><option>IBED Campus</option></select></label>
-          <label class="full status-toggle-field"><span><strong>Active gate</strong><small>Available when configuring entrance terminals</small></span><input id="isActive" type="checkbox" checked /></label>
+          <label class="full"
+            >Gate name<input
+              id="name"
+              maxlength="120"
+              placeholder="Example: Main Gate"
+              required
+          /></label>
+          <label class="full"
+            >Campus<select id="campus" required>
+              <option value="">Select campus</option>
+              <option>Main Campus</option>
+              <option>IBED Campus</option>
+            </select></label
+          >
+          <label class="full status-toggle-field"
+            ><span
+              ><strong>Active gate</strong
+              ><small
+                >Available when configuring entrance terminals</small
+              ></span
+            ><input id="isActive" type="checkbox" checked
+          /></label>
         </div>
         <p id="error" class="form-error"></p>
-        <div class="modal-actions"><button type="button" value="cancel" class="secondary-button">Cancel</button><button class="primary-button">Save gate</button></div>
+        <div class="modal-actions">
+          <button type="button" value="cancel" class="secondary-button">
+            Cancel</button
+          ><button class="primary-button">Save gate</button>
+        </div>
       </form>
     </dialog>
     <script src="/client/shared-ui.js"></script>

@@ -20,7 +20,12 @@ function render() {
           `<tr><td><strong>${escapeHtml(gate.name)}</strong></td><td>${escapeHtml(gate.campus)}</td><td><span class="status-pill ${gate.isActive ? "" : "time-out"}">${gate.isActive ? "Active" : "Inactive"}</span></td><td><button class="secondary-button edit edit-icon" data-id="${gate.id}" aria-label="Edit ${escapeHtml(gate.name)}" title="Edit"></button></td></tr>`,
       )
       .join("") || emptyRow(4, "No gate records found.");
-  TapTrack.initDataTable(table, { order: [[1, "asc"], [0, "asc"]] });
+  TapTrack.initDataTable(table, {
+    order: [
+      [1, "asc"],
+      [0, "asc"],
+    ],
+  });
 }
 
 function open(gate = null) {
@@ -64,7 +69,11 @@ $("#form").addEventListener("submit", async (event) => {
         isActive: $("#isActive").checked,
       }),
     });
-    if (id) Object.assign(gates.find((item) => String(item.id) === id), gate);
+    if (id)
+      Object.assign(
+        gates.find((item) => String(item.id) === id),
+        gate,
+      );
     else gates.push(gate);
     render();
     $("#dialog").close();

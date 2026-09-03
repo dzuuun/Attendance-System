@@ -94,7 +94,7 @@ JWT_SECRET=replace-with-a-long-random-secret
 | `/`                         | Public landing page                           |
 | `/login`                    | Staff sign-in                                 |
 | `/setup`                    | One-time administrator setup                  |
-| `/overview`                      | Current-day university entrance overview      |
+| `/overview`                 | Current-day university entrance overview      |
 | `/attendance`               | University entrance logs and previous periods |
 | `/events`                   | Events in the current academic period         |
 | `/events/past`              | Past events by selected academic period       |

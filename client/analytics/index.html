@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Analytics - TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+    <link rel="stylesheet" href="/client/analytics/style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar analytics-topbar">
+          <div>
+            <p class="eyebrow" id="pageKicker">ATTENDANCE INSIGHTS</p>
+            <h1 id="pageTitle">Analytics</h1>
+          </div>
+          <form id="rangeForm" class="range-form">
+            <label>From<input id="dateFrom" type="date" required /></label
+            ><label>To<input id="dateTo" type="date" required /></label
+            ><button type="submit">Apply</button
+            ><button type="button" class="export-button" id="exportAnalytics">
+              <span class="material-symbols-rounded">picture_as_pdf</span>Export
+              PDF
+            </button>
+          </form>
+        </header>
+        <section class="page-content analytics-page">
+          <div class="preset-row">
+            <button type="button" data-days="7">Last 7 days</button
+            ><button type="button" class="active" data-days="30">
+              Last 30 days</button
+            ><button type="button" data-days="90">Last 90 days</button
+            ><button type="button" data-period>Entire academic period</button>
+          </div>
+          <div
+            class="analytics-tabs facility-tabs"
+            id="facilityTabs"
+            role="tablist"
+            hidden
+          >
+            <button type="button" role="tab" data-facility="library">
+              Library</button
+            ><button type="button" role="tab" data-facility="internet">
+              Internet Section
+            </button>
+          </div>
+          <div id="analyticsError" class="analytics-error" hidden></div>
+          <section class="metric-grid">
+            <article>
+              <span class="material-symbols-rounded">sensor_door</span>
+              <div>
+                <small id="totalLabel">TOTAL SCANS</small
+                ><strong id="scanTotal">-</strong>
+                <p id="uniquePeople">- unique people</p>
+              </div>
+            </article>
+            <article>
+              <span class="material-symbols-rounded">school</span>
+              <div>
+                <small>STUDENT SCANS</small><strong id="studentTotal">-</strong>
+                <p id="studentShare">- of scans</p>
+              </div>
+            </article>
+            <article>
+              <span class="material-symbols-rounded">badge</span>
+              <div>
+                <small>EMPLOYEE SCANS</small
+                ><strong id="employeeTotal">-</strong>
+                <p id="employeeShare">- of scans</p>
+              </div>
+            </article>
+            <article>
+              <span class="material-symbols-rounded">compare_arrows</span>
+              <div>
+                <small id="actionLabel">TIME IN / OUT</small
+                ><strong id="actionPrimary">-</strong>
+                <p id="actionSecondary">-</p>
+              </div>
+            </article>
+          </section>
+          <section class="analytics-grid">
+            <article class="analytics-card trend-card">
+              <header>
+                <div>
+                  <span id="trendKicker">ACTIVITY</span>
+                  <h2>Daily scan trend</h2>
+                </div>
+                <p id="rangeLabel"></p>
+              </header>
+              <div
+                id="dailyChart"
+                class="daily-chart"
+                role="img"
+                aria-label="Daily scans"
+              ></div>
+              <div class="chart-legend"><i></i>Total scans</div>
+            </article>
+            <article class="analytics-card">
+              <header>
+                <div>
+                  <span id="breakdownKicker">BREAKDOWN</span>
+                  <h2 id="breakdownTitle">Usage</h2>
+                </div>
+              </header>
+              <div id="breakdownChart" class="bar-list"></div>
+            </article>
+            <article class="analytics-card">
+              <header>
+                <div>
+                  <span>TRAFFIC PATTERN</span>
+                  <h2>Peak scan hours</h2>
+                </div>
+              </header>
+              <div id="hourChart" class="hour-chart"></div>
+            </article>
+            <article class="analytics-card insights-card">
+              <header>
+                <div>
+                  <span>ACTIONABLE SUMMARY</span>
+                  <h2>Operational insights</h2>
+                </div>
+              </header>
+              <div id="insightsList" class="insights-list"></div>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/analytics/script.js"></script>
+  </body>
+</html>
