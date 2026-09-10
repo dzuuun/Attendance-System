@@ -1,4 +1,4 @@
-import com.android.build.gradle.internal.api.ApkVariantOutputImpl
+import com.android.build.gradle.api.ApkVariantOutput
 
 plugins {
     id("com.android.application")
@@ -28,7 +28,7 @@ android {
 
     applicationVariants.all {
         outputs.all {
-            val output = this as ApkVariantOutputImpl
+            val output = this as ApkVariantOutput
             output.outputFileName = "TapTrack-${name}-${versionName}.apk"
         }
     }

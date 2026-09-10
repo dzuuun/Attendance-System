@@ -13,7 +13,45 @@ const {
   apiNotFound,
   apiErrorHandler,
 } = require("./api/middleware/api_standards");
+
 const morgan = require("morgan");
+
+morgan.token("manila-date", () => {
+  const now = new Date();
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type) => parts.find((part) => part.type === type)?.value;
+
+  return `${get("day")}/${get("month")}/${get("year")}:${get("hour")}:${get("minute")}:${get("second")} +0800`;
+});
+
+morgan.token("client-ip", (req) => {
+  let ip =
+    req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
+    req.socket.remoteAddress ||
+    "";
+
+  if (ip.startsWith("::ffff:")) {
+    ip = ip.substring(7);
+  }
+
+  if (ip === "::1") {
+    ip = "127.0.0.1";
+  }
+
+  return ip;
+});
+
 const app = express(),
   port = Number(process.env.PORT) || 4000,
   httpsPort = Number(process.env.HTTPS_PORT) || 4443,
@@ -41,7 +79,11 @@ function secureWebServer() {
   return https.createServer(options, app);
 }
 const scannerBridge = require("./scanner/scanner-bridge");
-app.use(morgan("combined"));
+app.use(
+  morgan(
+    ':client-ip - :remote-user [:manila-date] ":method :url HTTP/:http-version" :status :res[content-length]'
+  )
+);
 app.use(express.json({ limit: "1mb" }));
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
