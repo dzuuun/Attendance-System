@@ -84,7 +84,7 @@ app.use(
     ':client-ip - :remote-user [:manila-date] ":method :url HTTP/:http-version" :status :res[content-length]'
   )
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -112,8 +112,15 @@ const historyRouter = require("./api/history/history.router");
 const libraryRouter = require("./api/library/library.router");
 const personLogsRouter = require("./api/person_logs/person_logs.router");
 const analyticsRouter = require("./api/analytics/analytics.router");
+const kioskManagementRouter = require("./api/kiosk-management/kiosk.router");
+const kioskManagement = require("./api/kiosk-management/kiosk.controller");
 app.use("/api/auth", asyncHandler(loginRouter));
 // Public kiosk access is intentionally limited to daily entrance scans.
+app.post("/api/kiosk/heartbeat", asyncHandler(kioskManagement.heartbeat));
+app.get("/api/kiosk/config", asyncHandler(kioskManagement.config));
+app.post("/api/kiosk/commands/poll", asyncHandler(kioskManagement.pollCommands));
+app.post("/api/kiosk/commands/complete", asyncHandler(kioskManagement.completeCommand));
+app.post("/api/kiosk/screenshots", asyncHandler(kioskManagement.saveScreenshot));
 app.post(
   "/api/kiosk/scan",
   asyncHandler((req, res) => {
@@ -281,6 +288,11 @@ app.use(
   wrapRouter(gateRouter),
 );
 app.use(
+  "/api/kiosks",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(kioskManagementRouter),
+);
+app.use(
   "/api/program",
   requireAccess("maintenanceAccess"),
   wrapRouter(programRouter),
@@ -374,6 +386,10 @@ app.use(
   }),
 );
 app.use(
+  "/uploads/kiosk-screenshots",
+  express.static(path.join(__dirname, "uploads", "kiosk-screenshots"), { fallthrough: false, maxAge: "1h" }),
+);
+app.use(
   "/vendor/datatables",
   express.static(path.join(__dirname, "node_modules", "datatables.net")),
   express.static(path.join(__dirname, "node_modules", "datatables.net-dt")),
@@ -450,6 +466,7 @@ app.get(
   adminPage("maintenance/employee_department/index.html"),
 );
 app.get("/maintenance/gates", adminPage("maintenance/gate/index.html"));
+app.get("/maintenance/kiosks", adminPage("maintenance/kiosk/index.html"));
 app.get("/maintenance/program", adminPage("maintenance/program/index.html"));
 app.get(
   "/maintenance/academic-periods",

@@ -79,6 +79,43 @@ INSERT INTO gates (id, name, campus, is_active) VALUES
 (3, 'Gate 3', 'Main Campus', 1),
 (4, 'Gate 4', 'Main Campus', 1);
 
+CREATE TABLE IF NOT EXISTS kiosks (
+  id VARCHAR(80) PRIMARY KEY,
+  kiosk_type VARCHAR(32) NOT NULL,
+  location VARCHAR(120) NOT NULL,
+  display_name VARCHAR(120) NULL,
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  last_seen_at DATETIME NOT NULL,
+  user_agent VARCHAR(500) NULL,
+  ip_address VARCHAR(64) NULL,
+  hostname VARCHAR(255) NULL,
+  uptime_seconds BIGINT UNSIGNED NULL,
+  browser_status VARCHAR(40) NULL,
+  current_page VARCHAR(500) NULL,
+  mac_address VARCHAR(32) NULL,
+  operating_system VARCHAR(160) NULL,
+  agent_last_seen_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_kiosks_seen (last_seen_at),
+  INDEX idx_kiosks_type_location (kiosk_type, location)
+);
+
+CREATE TABLE IF NOT EXISTS kiosk_commands (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  kiosk_id VARCHAR(80) NOT NULL,
+  command VARCHAR(40) NOT NULL,
+  channel ENUM('browser','agent') NOT NULL,
+  payload JSON NULL,
+  status ENUM('Queued','Dispatched','Completed','Failed','Unsupported') NOT NULL DEFAULT 'Queued',
+  result_text VARCHAR(1000) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  dispatched_at DATETIME NULL,
+  completed_at DATETIME NULL,
+  INDEX idx_kiosk_commands_poll (kiosk_id, channel, status, id),
+  CONSTRAINT fk_kiosk_commands_kiosk FOREIGN KEY (kiosk_id) REFERENCES kiosks(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS employees (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,

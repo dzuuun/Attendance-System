@@ -447,6 +447,7 @@
         employee_department: "maintenanceAccess",
         program: "maintenanceAccess",
         gates: "maintenanceAccess",
+        kiosks: "maintenanceAccess",
         periods: "maintenanceAccess",
         maintenance: "maintenanceAccess",
         users: "usersAccess",
@@ -488,6 +489,19 @@
     $("#sidebarMount").innerHTML = sidebar;
     $("#signedInName").textContent = user.fullName;
     $("#signedInRole").textContent = user.role;
+    const profileAvatar = $(".profile-avatar");
+    if (profileAvatar) {
+      profileAvatar.dataset.initials = String(user.fullName || "User")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join("");
+      profileAvatar.setAttribute(
+        "aria-label",
+        `${user.fullName} · ${user.role}`,
+      );
+    }
     api("/api/current-academic-period")
       .then((period) => {
         const context = document.querySelector(
@@ -501,6 +515,58 @@
       element.classList.toggle("hidden", !admin),
     );
     const sidebarMount = $("#sidebarMount");
+    const removeRailTooltip = () =>
+      document.querySelector(".sidebar-rail-tooltip")?.remove();
+    const showRailTooltip = (element, label) => {
+      removeRailTooltip();
+      if (!document.body.classList.contains("sidebar-collapsed") || !label)
+        return;
+      const tooltip = document.createElement("div");
+      tooltip.className = "sidebar-rail-tooltip";
+      tooltip.textContent = label;
+      tooltip.setAttribute("role", "tooltip");
+      document.body.append(tooltip);
+      const rect = element.getBoundingClientRect();
+      const top = Math.max(
+        8,
+        Math.min(
+          rect.top + (rect.height - tooltip.offsetHeight) / 2,
+          innerHeight - tooltip.offsetHeight - 8,
+        ),
+      );
+      tooltip.style.left = `${rect.right + 10}px`;
+      tooltip.style.top = `${top}px`;
+      requestAnimationFrame(() => tooltip.classList.add("visible"));
+    };
+    sidebarMount.querySelectorAll(".nav-item").forEach((item) => {
+      const label = item.querySelector(".nav-label")?.textContent?.trim();
+      if (!label) return;
+      item.setAttribute("aria-label", label);
+      item.addEventListener("mouseenter", () => showRailTooltip(item, label));
+      item.addEventListener("mouseleave", removeRailTooltip);
+      item.addEventListener("focus", () => showRailTooltip(item, label));
+      item.addEventListener("blur", removeRailTooltip);
+    });
+    if (profileAvatar) {
+      const profileLabel = `${user.fullName} · ${user.role}`;
+      profileAvatar.setAttribute("role", "button");
+      profileAvatar.setAttribute("tabindex", "0");
+      profileAvatar.addEventListener("mouseenter", () =>
+        showRailTooltip(profileAvatar, profileLabel),
+      );
+      profileAvatar.addEventListener("mouseleave", removeRailTooltip);
+      const expandProfile = () => {
+        if (!document.body.classList.contains("sidebar-collapsed")) return;
+        localStorage.setItem("taptrack_sidebar_collapsed", "false");
+        applySidebar(false);
+      };
+      profileAvatar.addEventListener("click", expandProfile);
+      profileAvatar.addEventListener("keydown", (event) => {
+        if (!["Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        expandProfile();
+      });
+    }
     sidebarMount.querySelectorAll("[data-access]").forEach((element) => {
       if (!user[element.dataset.access] && user.role !== "Superadmin")
         element.remove();
@@ -545,6 +611,8 @@
           "department",
           "employee_department",
           "program",
+          "gates",
+          "kiosks",
           "periods",
           "maintenance",
         ],
@@ -566,7 +634,15 @@
       entry.toggle.classList.toggle("active", isCurrentModule);
       setGroupOpen(entry, isCurrentModule);
       entry.toggle.addEventListener("click", () => {
-        const shouldOpen = !entry.group.classList.contains("open");
+        const wasCollapsed = document.body.classList.contains(
+          "sidebar-collapsed",
+        );
+        if (wasCollapsed) {
+          localStorage.setItem("taptrack_sidebar_collapsed", "false");
+          applySidebar(false);
+        }
+        const shouldOpen =
+          wasCollapsed || !entry.group.classList.contains("open");
         sidebarGroups.forEach((groupEntry) =>
           setGroupOpen(groupEntry, groupEntry === entry && shouldOpen),
         );
@@ -578,6 +654,7 @@
     localStorage.removeItem("taptrack_library_open");
     const toggle = $("#sidebarToggle"),
       applySidebar = (collapsed) => {
+        removeRailTooltip();
         document.body.classList.toggle("sidebar-collapsed", collapsed);
         toggle.setAttribute("aria-expanded", String(!collapsed));
         toggle.setAttribute(

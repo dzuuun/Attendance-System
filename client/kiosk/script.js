@@ -55,6 +55,16 @@ const terminalGateKey = "taptrack_kiosk_terminal_gate_id";
 let terminalLocation =
   localStorage.getItem(terminalLocationKey)?.trim() || "Main Entrance";
 let terminalGateId = localStorage.getItem(terminalGateKey) || "";
+const kioskIdKey = "taptrack_kiosk_id";
+let kioskId = localStorage.getItem(kioskIdKey);
+if (!kioskId) {
+  kioskId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/[^A-Za-z0-9_-]/g, "");
+  localStorage.setItem(kioskIdKey, kioskId);
+}
+let kioskEnabled = true;
+let lastKioskActivity = Date.now();
+const kioskSessionStartedAt = Number(sessionStorage.getItem("taptrack_kiosk_session_started_at")) || Date.now();
+sessionStorage.setItem("taptrack_kiosk_session_started_at", String(kioskSessionStartedAt));
 let pendingScannerAction = null;
 let localScannerAssignments = loadScannerAssignments();
 
@@ -96,6 +106,55 @@ function updateTerminalLocation(value, gateId = terminalGateId) {
 }
 
 updateTerminalLocation(terminalLocation);
+
+async function checkInKiosk() {
+  try {
+    const response = await fetch("/api/kiosk/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kioskId, type: "entrance", location: terminalLocation, browserStatus: navigator.onLine ? "Online" : "Offline", currentPage: location.pathname, uptimeSeconds: Math.floor((Date.now() - kioskSessionStartedAt) / 1000) }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || "Unable to check in kiosk.");
+    kioskEnabled = data.enabled !== false;
+    if (!kioskEnabled) {
+      document.querySelector("#terminalStatusText").textContent = "TERMINAL DISABLED";
+      input.disabled = true;
+    } else input.disabled = false;
+  } catch (_error) {}
+}
+
+function promptKioskHealthCheck() {
+  lastKioskActivity = Date.now();
+  void checkInKiosk();
+}
+
+async function completeKioskCommand(commandId, status, resultText) {
+  await fetch("/api/kiosk/commands/complete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kioskId, commandId, status, resultText }) });
+}
+async function pollKioskCommands() {
+  try {
+    const response = await fetch("/api/kiosk/commands/poll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kioskId, channel: "browser" }) });
+    const { commands = [] } = await response.json();
+    for (const command of commands) {
+      if (command.command === "reload") { await completeKioskCommand(command.id, "Completed", "Attendance page reloaded."); location.reload(); return; }
+      if (command.command === "navigate") { await completeKioskCommand(command.id, "Completed", `Navigating to ${command.payload?.path || "/kiosk/entrance"}.`); location.assign(command.payload?.path || "/kiosk/entrance"); return; }
+      if (command.command === "screenshot") {
+        try {
+          const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+          const video = document.createElement("video"); video.srcObject = stream; await video.play();
+          const canvas = document.createElement("canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+          canvas.getContext("2d").drawImage(video, 0, 0); stream.getTracks().forEach((track) => track.stop());
+          const imageData = canvas.toDataURL("image/jpeg", 0.7);
+          const saved = await fetch("/api/kiosk/screenshots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kioskId, commandId: command.id, imageData }) });
+          if (!saved.ok) throw new Error((await saved.json().catch(() => ({}))).message || "Screenshot upload failed.");
+        } catch (error) { await completeKioskCommand(command.id, "Failed", error.message || "Screenshot request was declined."); }
+        continue;
+      }
+      await completeKioskCommand(command.id, "Unsupported", "Unsupported browser command.");
+    }
+  } catch (_error) {}
+}
 
 async function loadGateOptions() {
   if (!terminalLocationInput) return;
@@ -631,6 +690,7 @@ function submitManualScan(raw) {
 
 // --- Main Scan Request Handler ---
 function scan(raw, actionOverride) {
+  lastKioskActivity = Date.now();
   const idNumber = String(raw || "")
     .trim()
     .toUpperCase();
@@ -677,7 +737,7 @@ async function performScan(idNumber, actionOverride) {
     const response = await fetch("/api/kiosk/scan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idNumber, action, location: terminalLocation }),
+      body: JSON.stringify({ idNumber, action, location: terminalLocation, kioskId }),
     });
 
     const data = await response.json().catch(() => ({}));
@@ -1101,9 +1161,26 @@ if (terminalLocationInput) {
   terminalLocationInput.addEventListener("change", () => {
     const selected = terminalLocationInput.selectedOptions[0];
     updateTerminalLocation(selected?.dataset.location, selected?.value);
+    checkInKiosk();
     loadRecentScans();
   });
 }
+
+checkInKiosk();
+setInterval(checkInKiosk, 90_000);
+document.addEventListener("keydown", () => { lastKioskActivity = Date.now(); });
+document.addEventListener("pointerdown", () => { lastKioskActivity = Date.now(); });
+window.addEventListener("online", promptKioskHealthCheck);
+window.addEventListener("focus", promptKioskHealthCheck);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") promptKioskHealthCheck();
+});
+setInterval(() => {
+  if (Date.now() - lastKioskActivity < 90_000) return;
+  checkInKiosk().finally(() => location.reload());
+}, 15_000);
+setInterval(pollKioskCommands, 5_000);
+pollKioskCommands();
 if (doneScannerModal) {
   doneScannerModal.addEventListener("click", () => {
     const selected = terminalLocationInput?.selectedOptions[0];

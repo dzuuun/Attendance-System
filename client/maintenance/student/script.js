@@ -505,6 +505,9 @@ $("#form").addEventListener("submit", async (event) => {
     loadingTitle.textContent = "Loading student directory";
     loadingMessage.textContent = "Checking your access and preparing the page.";
     ({ user: currentUser } = await init("students"));
+    $("#mssqlImportBtn").hidden = !["Superadmin", "Administrator"].includes(
+      currentUser?.role,
+    );
     loadingTitle.textContent = "Loading student records";
     loadingMessage.textContent = "Retrieving students and academic programs.";
     [students, programs] = await Promise.all([

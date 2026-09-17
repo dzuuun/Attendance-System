@@ -4,6 +4,8 @@ const router = require("express").Router(),
   photos = require("../profile-photo").handlers("student", model);
 const { requireAdmin } = require("../../../auth/auth_validation");
 router.get("/", controller.getAll);
+router.get("/mssql-import/preview", requireAdmin, require("./mssql-import.controller").preview);
+router.post("/mssql-import", requireAdmin, require("./mssql-import.controller").import);
 router.get("/card-writer/status", requireAdmin, controller.cardWriterStatus);
 router.post("/card-writer/read", requireAdmin, controller.readCard);
 router.post("/:id/card-enrollment", requireAdmin, controller.enrollCard);

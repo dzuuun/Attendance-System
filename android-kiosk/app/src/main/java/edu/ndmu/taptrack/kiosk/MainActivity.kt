@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.InputType
 import android.view.Gravity
 import android.view.KeyEvent
@@ -52,6 +53,7 @@ import java.util.Locale
 import java.util.concurrent.Executors
 import java.time.Instant
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 
 class MainActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
@@ -82,6 +84,38 @@ class MainActivity : Activity() {
     private var resetAnimator: ObjectAnimator? = null
     private val recentlyAccepted = mutableMapOf<String, Long>()
     private val nfcAdapter: NfcAdapter? by lazy { NfcAdapter.getDefaultAdapter(this) }
+    private var kioskEnabled = true
+    private val kioskId: String by lazy {
+        preferences.getString("kiosk_id", null) ?: UUID.randomUUID().toString().also {
+            preferences.edit().putString("kiosk_id", it).apply()
+        }
+    }
+    private val kioskHeartbeat = object : Runnable {
+        override fun run() {
+            val gate = (gateSpinner.adapter as? GateSpinnerAdapter)?.gateAt(gateSpinner.selectedItemPosition)
+            val server = baseUrl()
+            if (gate != null && server.isNotBlank()) executor.execute {
+                runCatching {
+                    request("POST", "$server/api/kiosk/heartbeat", JSONObject().apply {
+                        put("kioskId", kioskId)
+                        put("type", "entrance")
+                        put("location", gate.location)
+                        put("name", Build.MODEL)
+                        put("browserStatus", "Online")
+                        put("currentPage", "/kiosk/entrance (Android native)")
+                        put("uptimeSeconds", SystemClock.elapsedRealtime() / 1_000L)
+                    }) as JSONObject
+                }.onSuccess { data ->
+                    kioskEnabled = data.optBoolean("enabled", true)
+                    if (!kioskEnabled) mainHandler.post {
+                        showFailure("This kiosk has been disabled by central management.")
+                    }
+                    pollBrowserCommands(server)
+                }
+            }
+            mainHandler.postDelayed(this, 90_000L)
+        }
+    }
     private val clockUpdater = object : Runnable {
         override fun run() {
             val now = Date()
@@ -107,6 +141,7 @@ class MainActivity : Activity() {
         setContentView(buildScreen())
         clockUpdater.run()
         loadGates()
+        mainHandler.postDelayed(kioskHeartbeat, 2_000L)
     }
 
     override fun onResume() {
@@ -136,6 +171,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(clockUpdater)
+        mainHandler.removeCallbacks(kioskHeartbeat)
         resultReset?.let(mainHandler::removeCallbacks)
         resetAnimator?.cancel()
         executor.shutdownNow()
@@ -540,6 +576,35 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun pollBrowserCommands(server: String) {
+        runCatching {
+            request("POST", "$server/api/kiosk/commands/poll", JSONObject().apply {
+                put("kioskId", kioskId)
+                put("channel", "browser")
+            }) as JSONObject
+        }.onSuccess { response ->
+            val commands = response.optJSONArray("commands") ?: return@onSuccess
+            for (index in 0 until commands.length()) {
+                val command = commands.getJSONObject(index)
+                val id = command.getLong("id")
+                val status: String
+                val result: String
+                when (command.optString("command")) {
+                    "reload" -> {
+                        mainHandler.post { loadGates() }
+                        status = "Completed"; result = "Android kiosk reloaded its attendance configuration."
+                    }
+                    else -> { status = "Unsupported"; result = "This command is not supported by the Android kiosk app." }
+                }
+                runCatching {
+                    request("POST", "$server/api/kiosk/commands/complete", JSONObject().apply {
+                        put("kioskId", kioskId); put("commandId", id); put("status", status); put("resultText", result)
+                    })
+                }
+            }
+        }
+    }
+
     private fun showGateMessage(message: String) {
         gates = emptyList()
         assignedGateText.text = when {
@@ -564,6 +629,7 @@ class MainActivity : Activity() {
         val idNumber = rawId.trim().uppercase(Locale.US)
         val gate = (gateSpinner.adapter as? GateSpinnerAdapter)?.gateAt(gateSpinner.selectedItemPosition)
         if (idNumber.isBlank()) { showFailure("Enter or scan an ID number."); return }
+        if (!kioskEnabled) { showFailure("This kiosk has been disabled by central management."); return }
         if (gate == null) { showFailure("Select an assigned gate first."); return }
         val previous = recentlyAccepted[idNumber] ?: 0L
         if (System.currentTimeMillis() - previous < 5_000L) return
@@ -576,6 +642,7 @@ class MainActivity : Activity() {
                     put("idNumber", idNumber)
                     put("action", "Auto")
                     put("location", gate.location)
+                    put("kioskId", kioskId)
                 }
                 val response = request("POST", "${baseUrl()}/api/kiosk/scan", body) as JSONObject
                 val photo = loadPhoto(response.optString("photoUrl"))

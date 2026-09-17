@@ -244,6 +244,10 @@ NFC_BRIDGE_ALLOWED_ORIGINS.
 
 ## Imports, photos, and backups
 
+### SQL Server student import
+
+Administrators can select **Import SQL Server** on the Students page to preview and synchronize enrolled registrar records for a school year and semester. The import creates new students, updates matching student IDs, and—after an explicit confirmation—deactivates active local students missing from that source term. Configure the `MSSQL_*` variables in `.env` and use a least-privilege read-only account. The expected view shape and a starter view are in [docs/mssql-student-import-view.sql](docs/mssql-student-import-view.sql).
+
 Student and employee records can be imported from Excel. Download the template
 from the appropriate directory so its codes match the academic hierarchy.
 

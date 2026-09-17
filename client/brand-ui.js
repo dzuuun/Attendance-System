@@ -26,9 +26,7 @@
     .ndmu-brand-seal{width:44px!important;height:44px!important;max-width:44px!important;object-fit:contain!important;border-radius:9999px!important;background:#fff!important;padding:2px!important}
     .attendance-system-header-identity img{width:44px!important;height:44px!important;max-width:44px!important;object-fit:contain!important}
     dialog[open]{position:fixed!important;inset:0!important;margin:auto!important;max-width:calc(100vw - 32px)!important;max-height:calc(100vh - 40px)!important}
-    body.sidebar-collapsed .app-shell{grid-template-columns:0 minmax(0,1fr)!important}
-    body.sidebar-collapsed .sidebar{width:0!important;min-width:0!important;padding:0!important;border:0!important;overflow:hidden!important}
-    body.sidebar-collapsed .sidebar-inner{visibility:hidden!important}
+    @media (min-width:901px){body.sidebar-collapsed .app-shell{grid-template-columns:74px minmax(0,1fr)!important}body.sidebar-collapsed .sidebar{width:74px!important;min-width:74px!important;padding:0!important;overflow:hidden!important}body.sidebar-collapsed .sidebar-inner{width:74px!important;visibility:visible!important}}
     body.sidebar-collapsed .main{width:100%!important;min-width:0!important;max-width:100vw!important;margin:0!important}
     .material-symbols-rounded,.material-icon{font-family:"Material Symbols Rounded"!important;font-weight:normal!important;font-style:normal!important;line-height:1!important;letter-spacing:normal!important;text-transform:none!important;white-space:nowrap!important;word-wrap:normal!important;direction:ltr!important;-webkit-font-smoothing:antialiased!important;text-rendering:optimizeLegibility!important;font-feature-settings:"liga"!important;font-variation-settings:"FILL" 0,"wght" 500,"GRAD" 0,"opsz" 24!important}
     .nav-icon.material-symbols-rounded{font-size:20px!important}

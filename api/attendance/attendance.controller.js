@@ -153,6 +153,12 @@ exports.scan = async (req, res) => {
     String(req.body.location || "Main Entrance")
       .trim()
       .slice(0, 120) || "Main Entrance";
+  const kioskId = String(req.body.kioskId || "").trim();
+  if (kioskId) {
+    const enabled = await require("../kiosk-management/kiosk.model").assertEnabled(kioskId);
+    if (!enabled)
+      return res.status(403).json({ message: "This kiosk has been disabled by central management." });
+  }
   if (!idNumber)
     return res.status(400).json({ message: "Enter an ID number." });
   if (!["Time In", "Time Out", "Auto"].includes(action))
