@@ -4,7 +4,19 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const model = require("./login.model");
 const activityModel = require("../user/activity_log/activity_log.model");
-const { createToken } = require("../../auth/auth_validation");
+const {
+  createToken,
+  getJwtSecret,
+  revokeSession,
+} = require("../../auth/auth_validation");
+const setSessionCookie = (req, res, token) =>
+  res.cookie("taptrack_session", token, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: req.secure || process.env.NODE_ENV === "production",
+    maxAge: 8 * 60 * 60 * 1000,
+    path: "/",
+  });
 const googleConfig = (req) => ({
   clientId: String(process.env.GOOGLE_CLIENT_ID || "").trim(),
   clientSecret: String(process.env.GOOGLE_CLIENT_SECRET || "").trim(),
@@ -82,7 +94,8 @@ exports.login = async (req, res) => {
     usersAccess: Boolean(user.usersAccess),
   };
   await logAuth(req, user, "LOGGED_IN", "Signed in to the system.");
-  res.json({ ...session, token: createToken(session) });
+  setSessionCookie(req, res, await createToken(session));
+  res.json(session);
 };
 exports.googleStatus = (req, res) =>
   res.json({ enabled: googleEnabled(googleConfig(req)) });
@@ -93,15 +106,11 @@ exports.googleStart = (req, res) => {
       .status(503)
       .json({ message: "Google sign-in is not configured." });
   const nonce = crypto.randomBytes(24).toString("hex"),
-    state = jwt.sign(
-      { nonce, type: "google-oauth" },
-      process.env.JWT_SECRET || "development-only-change-me",
-      {
-        expiresIn: "10m",
-        issuer: "taptrack",
-        audience: "taptrack-google-oauth",
-      },
-    ),
+    state = jwt.sign({ nonce, type: "google-oauth" }, getJwtSecret(), {
+      expiresIn: "10m",
+      issuer: "taptrack",
+      audience: "taptrack-google-oauth",
+    }),
     secure = req.secure || process.env.NODE_ENV === "production";
   res.cookie("taptrack_google_state", nonce, {
     httpOnly: true,
@@ -131,11 +140,10 @@ exports.googleCallback = async (req, res) => {
       res.redirect(`/login?google_error=${encodeURIComponent(message)}`);
   if (!googleEnabled(config)) return fail("Google sign-in is not configured.");
   try {
-    const state = jwt.verify(
-      String(req.query.state || ""),
-      process.env.JWT_SECRET || "development-only-change-me",
-      { issuer: "taptrack", audience: "taptrack-google-oauth" },
-    );
+    const state = jwt.verify(String(req.query.state || ""), getJwtSecret(), {
+      issuer: "taptrack",
+      audience: "taptrack-google-oauth",
+    });
     if (
       !state.nonce ||
       state.nonce !== cookieValue(req, "taptrack_google_state")
@@ -176,9 +184,8 @@ exports.googleCallback = async (req, res) => {
       "GOOGLE_LOGIN",
       "Signed in with Google Workspace.",
     );
-    res.redirect(
-      `/login#sso_token=${encodeURIComponent(createToken(session))}`,
-    );
+    setSessionCookie(req, res, await createToken(session));
+    res.redirect("/overview");
   } catch (error) {
     console.error("Google sign-in failed:", error.message);
     return fail("Google sign-in could not be completed. Please try again.");
@@ -187,6 +194,8 @@ exports.googleCallback = async (req, res) => {
 exports.me = (req, res) => res.json(req.user);
 exports.logout = async (req, res) => {
   await logAuth(req, req.user, "LOGGED_OUT", "Signed out of the system.");
+  await revokeSession(req.sessionId);
+  res.clearCookie("taptrack_session", { path: "/" });
   res.status(204).end();
 };
 exports.changePassword = async (req, res) => {
@@ -225,8 +234,6 @@ exports.changePassword = async (req, res) => {
 exports.setupStatus = async (_req, res) =>
   res.json({ required: (await model.countUsers()) === 0 });
 exports.setup = async (req, res) => {
-  if (await model.countUsers())
-    return res.status(403).json({ message: "Initial setup is complete." });
   const { firstName, middleName, lastName, username, password } = req.body;
   if (
     !firstName?.trim() ||
@@ -238,13 +245,15 @@ exports.setup = async (req, res) => {
       message:
         "Complete the required fields; use at least 8 password characters.",
     });
-  const result = await model.createSuperadmin({
+  const result = await model.createInitialSuperadmin({
     firstName: firstName.trim(),
     middleName: String(middleName || "").trim() || null,
     lastName: lastName.trim(),
     username: username.trim(),
     passwordHash: await bcrypt.hash(password, 12),
   });
+  if (!result)
+    return res.status(403).json({ message: "Initial setup is complete." });
   const fullName = [firstName, middleName, lastName]
     .map((name) => String(name || "").trim())
     .filter(Boolean)
@@ -261,5 +270,6 @@ exports.setup = async (req, res) => {
     "ACCOUNT_SETUP",
     "Created the initial system account.",
   );
-  res.status(201).json({ ...session, token: createToken(session) });
+  setSessionCookie(req, res, await createToken(session));
+  res.status(201).json(session);
 };

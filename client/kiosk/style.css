@@ -2728,3 +2728,104 @@ html body.kiosk-body main.kiosk .result-hero-card.idle {
     padding: 8px 2px !important;
   }
 }
+.kiosk-verification-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 40, 29, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.kiosk-verification-card {
+  width: min(440px, 100%);
+  padding: 34px;
+  border: 1px solid rgba(8, 114, 71, 0.2);
+  border-radius: 24px;
+  background: #fff;
+  color: #17372d;
+  box-shadow: 0 28px 80px rgba(0, 28, 20, 0.32);
+}
+
+.kiosk-verification-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 18px;
+  place-items: center;
+  border-radius: 16px;
+  background: #e7f5ee;
+  color: #087247;
+}
+
+.kiosk-verification-icon span {
+  font-size: 30px;
+}
+.kiosk-verification-kicker {
+  margin: 0 0 6px;
+  color: #087247;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.kiosk-verification-card h2 {
+  margin: 0;
+  font-size: 28px;
+}
+.kiosk-verification-copy {
+  margin: 10px 0 24px;
+  color: #62736c;
+  line-height: 1.55;
+}
+.kiosk-verification-card label {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.kiosk-verification-card input {
+  min-height: 50px;
+  padding: 0 14px;
+  border: 1px solid #cbd9d3;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 15px;
+  text-transform: none;
+}
+.kiosk-verification-card input:focus {
+  border-color: #087247;
+  outline: 3px solid rgba(8, 114, 71, 0.12);
+}
+.kiosk-verification-error {
+  min-height: 20px;
+  margin: 12px 0 4px;
+  color: #c53b32;
+  font-size: 13px;
+}
+.kiosk-verification-card button {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: #087247;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+.kiosk-verification-card button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.kiosk-verification-card small {
+  display: block;
+  margin-top: 14px;
+  color: #819089;
+  font-size: 10px;
+  text-align: center;
+  word-break: break-all;
+}

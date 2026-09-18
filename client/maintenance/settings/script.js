@@ -6,7 +6,6 @@ $("#form").addEventListener("submit", async (event) => {
       method: "PUT",
       body: JSON.stringify({
         school_name: $("#schoolName").value,
-        duplicate_window: "daily",
       }),
     });
     $("#message").textContent = "Settings saved.";

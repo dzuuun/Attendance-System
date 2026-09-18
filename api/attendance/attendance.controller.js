@@ -154,10 +154,17 @@ exports.scan = async (req, res) => {
       .trim()
       .slice(0, 120) || "Main Entrance";
   const kioskId = String(req.body.kioskId || "").trim();
+  if (req.kioskAuthenticated && !kioskId)
+    return res
+      .status(400)
+      .json({ message: "This kiosk has no device identity." });
   if (kioskId) {
-    const enabled = await require("../kiosk-management/kiosk.model").assertEnabled(kioskId);
+    const enabled =
+      await require("../kiosk-management/kiosk.model").assertEnabled(kioskId);
     if (!enabled)
-      return res.status(403).json({ message: "This kiosk has been disabled by central management." });
+      return res.status(403).json({
+        message: "This kiosk has been disabled by central management.",
+      });
   }
   if (!idNumber)
     return res.status(400).json({ message: "Enter an ID number." });
@@ -196,7 +203,7 @@ exports.scan = async (req, res) => {
     const inactiveStudent = await model.findInactiveStudent(idNumber);
     if (inactiveStudent)
       return res.status(403).json({
-        message: `${inactiveStudent.name}'s student account is inactive. Please visit the MIS Office for reactivation.`,
+        message: `${inactiveStudent.name}'s ${inactiveStudent.type.toLowerCase()} account is inactive. Please visit the MIS Office for reactivation.`,
       });
     return res.status(404).json({
       message:
@@ -242,6 +249,16 @@ exports.scan = async (req, res) => {
         message: `${event.name} is for ${event.targetAudience.toLowerCase()} only.`,
       });
   }
+
+  const releaseDatabaseLock = await model.acquireScanLock(person, eventId);
+  if (!releaseDatabaseLock)
+    return res.status(409).json({
+      message:
+        "Another scan for this person is still processing. Please try again.",
+      duplicate: true,
+    });
+  res.once("finish", releaseDatabaseLock);
+  res.once("close", releaseDatabaseLock);
 
   const latest = await model.findLatest(person, eventId);
   // Daily entrance attendance starts a new in/out cycle every calendar day.
@@ -296,10 +313,12 @@ exports.scan = async (req, res) => {
     idNumber: person.idNumber,
     name: person.name,
     type: person.type,
-    program: person.type === "Student" ? person.program : null,
-    programCode: person.type === "Student" ? person.programCode : null,
-    college: person.type === "Student" ? person.college : null,
+    isAlumnus: Boolean(person.isAlumnus),
+    program: person.type !== "Employee" ? person.program : null,
+    programCode: person.type !== "Employee" ? person.programCode : null,
+    college: person.type !== "Employee" ? person.college : null,
     yearLevel: person.type === "Student" ? person.yearLevel : null,
+    graduationYear: person.type === "Alumnus" ? person.graduationYear : null,
     department: person.type === "Employee" ? person.department : null,
     photoUrl: absoluteAssetUrl(req, person.photoUrl),
     eventId,

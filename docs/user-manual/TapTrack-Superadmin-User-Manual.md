@@ -1,7 +1,7 @@
 # TapTrack Superadmin User Manual
 
 **Notre Dame of Marbel University — Smart Attendance Management System**  
-Version 1.0 · September 2026 · Internal university use only
+Version 1.1 · September 18, 2026 · Internal university use only
 
 This manual explains the tasks available to a TapTrack **Superadmin**. Screen contents may differ as records and the active academic period change.
 
@@ -18,11 +18,13 @@ After signing in, use the menu button at the upper-left to open the navigation p
 - **Overview** and **University entrance logs**
 - **Events**: Event management and Past events
 - **Library**: Library entrance logs and Internet section logs
-- **Maintenance**: people directories, academic records, and system settings
+- **Maintenance**: student, alumni, and employee directories; academic records; kiosks; and system settings
 - **Users & access**: activity logs, permissions, and user accounts
 - **Password** and **Sign out** at the bottom
 
 The current academic period appears at the upper-right. Confirm it before recording attendance or creating events.
+
+The collapsed sidebar keeps the same icon sizes as the expanded sidebar. Hover over an icon to see its module name. Selecting a module that contains submodules, or selecting the user profile at the bottom, automatically expands the sidebar.
 
 ## 2. Overview
 
@@ -109,11 +111,46 @@ If an inactive student scans an ID, TapTrack instructs the student to visit the 
 
 Use the import action and the current template. Match the required columns and review the summary before completing the import. A re-uploaded matching inactive student becomes active again. Bulk activity is recorded as one log entry showing how many rows were added.
 
+### Import enrolled students from SQL Server
+
+Only a **Superadmin** or **Administrator** can see and use **Import SQL Server**.
+
+1. Open **Add student**, then select the SQL Server import option.
+2. Enter the school year in `YYYY-YYYY` format and choose the full semester name, such as **First Semester**.
+3. Select **Preview import**. A processing message remains visible while TapTrack reads and validates the registrar view.
+4. Review **New students**, **Updates**, and **Invalid rows** separately. Each group displays its own records; use its load-more control to view the next batch.
+5. Correct invalid registrar data before importing. Supported gender values are **Male** and **Female**.
+6. Review how many currently active students are absent from the selected enrollment source.
+7. Leave **Confirm deactivation** off to import without deactivating anyone. Turn it on only when the missing students must be made inactive.
+8. Select **Import students**.
+
+The activity log records the school year, full semester name, number added, number updated, and number deactivated. The registrar connection uses the configured read-only view documented in `docs/mssql-student-import-view.sql`.
+
 ### Bulk photo upload
 
-Select **Upload photos** and choose supported image files. Name every file with the matching student ID number so TapTrack can associate it with the correct record.
+Select **Upload photos** and choose supported image files. Name every file with the matching student ID number so TapTrack can associate it with the correct record. There is no overall photo-count limit: TapTrack queues the selection in manageable batches and displays progress until every photo has been processed. Each individual JPEG, PNG, or WebP file must be 2 MB or smaller.
 
-## 7. Employee directory
+## 7. Alumni directory
+
+Open **Maintenance → Alumni** to manage former students independently from the active student directory. Alumni remain eligible for normal university, library, and Internet Section scanning and are identified as **Alumnus**; there is no separate alumni scanner.
+
+### Add or import alumni
+
+- Select **Add alumnus** to enter one record manually.
+- Use the import option inside **Add alumnus** to import an ID-based alumni file.
+- A matching active student is copied to the alumni directory and then deactivated as a student.
+- Importing or transferring a student does not delete the original student record or its attendance history.
+- Verify the program and graduation year before saving or importing.
+
+### Move graduating students to alumni
+
+Use **Move to Alumni** on one student, or **Bulk move to Alumni** for a graduating group. Review the selected records and graduation information before confirming. TapTrack copies each student to the alumni table and deactivates the student account in one controlled operation.
+
+### Re-enroll an alumnus
+
+If an alumnus enrolls in graduate school, law school, or another bachelor’s program, choose the re-enrollment action and select the new program and year level. TapTrack retains the alumni record and graduation history, reactivates the linked student account, and updates the student’s current program.
+
+## 8. Employee directory
 
 Open **Maintenance → Employees**. Employee IDs appear first; names use **Last name, First name Middle name** and are sorted by name.
 
@@ -123,7 +160,9 @@ Adding, editing, deactivating, reactivating, importing, and uploading photos fol
 
 If an inactive employee scans an ID, TapTrack directs the employee to MIS for reactivation.
 
-## 8. NFC card enrollment
+Bulk employee photo selections are also queued automatically with no overall photo-count limit.
+
+## 9. NFC card enrollment
 
 From a student or employee row, choose the NFC enrollment action. Card enrollment is available to Superadmin and Administrator accounts.
 
@@ -135,7 +174,7 @@ From a student or employee row, choose the NFC enrollment action. Card enrollmen
 
 TapTrack writes only the exact ID number, then reads it back for verification. Do not remove the card during writing. The local bridge is required on every client PC that has an NFC writer; a central web server cannot directly access a USB writer attached to another PC.
 
-## 9. Academic maintenance
+## 10. Academic maintenance
 
 Create parent records before child records. Avoid deleting or deactivating records that are still referenced by people or attendance data.
 
@@ -177,7 +216,7 @@ Academic periods determine where current records are stored and which historical
 
 Available terms include First Semester, Second Semester, Summer, First Term, Second Term, and Third Term. Only the period intended for current operations should be marked **Current active period**. Verify the school year and term carefully before activating it.
 
-## 10. System settings
+## 11. System settings
 
 Open **Maintenance → System settings** to configure system-wide options presented by the page.
 
@@ -185,7 +224,7 @@ Open **Maintenance → System settings** to configure system-wide options presen
 
 Changes affect all users or kiosks. Record the reason for operational changes and test scanners after modifying scanner-related settings.
 
-## 11. Users and access
+## 12. Users and access
 
 ### Activity log
 
@@ -218,7 +257,7 @@ Open **Users & access → User management** to create or update staff accounts.
 
 When adding a user, enter the name, unique username, optional institutional email where applicable, initial password, permission, and active status. Deactivate accounts that should no longer sign in. Do not reuse a shared Superadmin account for routine work.
 
-## 12. Change password and sign out
+## 13. Change password and sign out
 
 Select **Password** in the navigation footer. Enter the current password, a new password of at least eight characters, and confirmation, then save.
 
@@ -226,33 +265,51 @@ Select **Password** in the navigation footer. Enter the current password, a new 
 
 Select **Sign out** when finished, especially on shared terminals.
 
-## 13. Kiosks and scanners
+## 14. Kiosks and scanners
 
 Public kiosk paths are provided by MIS for university entrance, library, and Internet Section scanning. Authorized input methods include typed IDs, keyboard-wedge RFID/barcode readers, and supported camera scanning.
+
+### Verify a new kiosk
+
+The first time a kiosk is opened, TapTrack blocks scanning and asks for a **Superadmin username and password**. Successful verification enrolls that browser without exposing or storing the password. The secure kiosk cookie renews automatically for another 30 days whenever the kiosk is used, so routine visits do not ask for the password again.
+
+Clearing the browser cookies or its kiosk device identity requires verification again. Failed verification attempts are rate-limited and written to the activity log. Never allow an unverified terminal to be used for attendance.
+
+### Manage kiosks centrally
+
+Open **Maintenance → Kiosks** to review registered devices and their recent status. A Superadmin or Administrator can enable or disable a kiosk and send the supported browser or computer actions. Disabling a kiosk immediately revokes its session and rejects subsequent scans. Re-enabling it requires a new Superadmin verification.
 
 - Manual keyboard input remains available even when no scanner is assigned.
 - A camera requires a secure browser context. Use the HTTPS university URL approved by MIS; normal browsers block camera access on a LAN HTTP URL.
 - A paired two-scanner university kiosk can distinguish Time In and Time Out devices through the scanner helper.
 - Enter a clear terminal location in the scanner modal. Every scan records that location.
 - Pairing/assignment input must not be treated as attendance.
+- Rapid duplicate scans at the Library or Internet Section are rejected while the first scan is being processed.
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
-| Problem                              | What to do                                                                                                     |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| Invalid username/password            | Check spelling and Caps Lock. Ask MIS to verify the active account; do not repeatedly guess.                   |
-| Inactive student/employee            | Refer the person to MIS and reactivate only after authorization.                                               |
-| Camera is unavailable                | Open the approved HTTPS URL, allow camera permission, close other apps using the camera, and reload.           |
-| NFC writer is unavailable            | Connect the writer, start Windows Smart Card service, start `npm run nfc-bridge` on that client PC, and retry. |
-| Scanner types but does not submit    | Configure the keyboard-wedge scanner to append Enter after the ID.                                             |
-| Wrong scan action/location           | Confirm the assigned device direction and terminal location before scanning.                                   |
-| A table is slow                      | Narrow the search/filter and select a suitable page size. Report persistent delays to MIS.                     |
-| Page/API error after database import | Restart TapTrack so startup schema updates run, then give the server error to MIS.                             |
+| Problem                            | What to do                                                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Invalid username/password          | Check spelling and Caps Lock. Ask MIS to verify the active account; do not repeatedly guess.                   |
+| Inactive student/employee          | Refer the person to MIS and reactivate only after authorization.                                               |
+| Camera is unavailable              | Open the approved HTTPS URL, allow camera permission, close other apps using the camera, and reload.           |
+| NFC writer is unavailable          | Connect the writer, start Windows Smart Card service, start `npm run nfc-bridge` on that client PC, and retry. |
+| Scanner types but does not submit  | Configure the keyboard-wedge scanner to append Enter after the ID.                                             |
+| Wrong scan action/location         | Confirm the assigned device direction and terminal location before scanning.                                   |
+| Kiosk asks for verification        | Have a Superadmin verify the device. If it was disabled, re-enable it in Kiosk management first.               |
+| Kiosk scan is rejected             | Confirm that verification succeeded and that the kiosk is enabled. Unverified kiosks cannot submit scans.      |
+| SQL Server preview takes time      | Keep the dialog open and wait for the processing message to finish. Do not repeatedly start another preview.   |
+| Invalid SQL Server row             | Correct the registrar view value shown under Invalid rows, then preview again.                                 |
+| Some photo filenames are unmatched | Rename each file to the exact student or employee ID number, then upload those files again.                    |
+| A table is slow                    | Narrow the search/filter and select a suitable page size. Report persistent delays to MIS.                     |
+| Page/API error after deployment    | Confirm that the latest `database.sql` was applied, restart TapTrack, and give the server error to MIS.        |
 
-## 15. Data protection and backup
+## 16. Data protection and backup
 
 - TapTrack is for internal university-network use.
 - Export only the records needed for an authorized purpose.
 - Store exported workbooks securely and delete temporary copies when no longer needed.
 - Back up both the MySQL database and `uploads/profile-photos`.
 - Do not edit database rows directly during normal operation; use the TapTrack interface so actions remain auditable.
+- Use HTTPS in production. Staff sessions are stored in secure HttpOnly cookies and are invalidated when the user signs out.
+- Apply `database.sql` during deployment; production runtime schema changes are disabled by default.

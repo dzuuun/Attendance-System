@@ -1,4 +1,5 @@
 (function () {
+  localStorage.removeItem("taptrack_token");
   if (!document.querySelector("script[data-brand-ui]")) {
     const brandUi = document.createElement("script");
     brandUi.src = "/client/brand-ui.js?v=20260830-1";
@@ -6,8 +7,7 @@
     document.head.appendChild(brandUi);
   }
   const $ = (selector) => document.querySelector(selector),
-    $$ = (selector) => [...document.querySelectorAll(selector)],
-    TOKEN_KEY = "taptrack_token";
+    $$ = (selector) => [...document.querySelectorAll(selector)];
   const dataTablesReady = (() => {
     if (!document.querySelector("link[data-datatables]")) {
       const css = document.createElement("link");
@@ -150,17 +150,14 @@
     });
   }
   async function api(url, options = {}) {
-    const token = localStorage.getItem(TOKEN_KEY),
-      response = await fetch(url, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token || ""}`,
-          ...options.headers,
-        },
-      });
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
     if (response.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
       location.href = "/login";
       throw new Error("Please sign in.");
     }
@@ -189,14 +186,11 @@
     if (!file) return null;
     const data = new FormData();
     data.append("photo", file);
-    const token = localStorage.getItem(TOKEN_KEY);
     const response = await fetch("/api/" + type + "/" + id + "/photo", {
       method: "POST",
-      headers: { Authorization: "Bearer " + (token || "") },
       body: data,
     });
     if (response.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
       location.href = "/login";
       throw new Error("Please sign in.");
     }
@@ -440,6 +434,7 @@
         libraryEntrance: "libraryAccess",
         internetEntrance: "libraryAccess",
         students: "maintenanceAccess",
+        alumni: "maintenanceAccess",
         employees: "maintenanceAccess",
         school: "maintenanceAccess",
         college: "maintenanceAccess",
@@ -455,9 +450,11 @@
         activity: "usersAccess",
       }[page];
     const hasPageAccess =
-      page === "analytics"
-        ? user.overviewAccess && user.attendanceAccess
-        : !pageAccess || user[pageAccess];
+      page === "permissions"
+        ? user.role === "Superadmin"
+        : page === "analytics"
+          ? user.overviewAccess && user.attendanceAccess
+          : !pageAccess || user[pageAccess];
     if (!hasPageAccess && user.role !== "Superadmin") {
       const landing = user.overviewAccess
         ? "/overview"
@@ -470,19 +467,14 @@
               : user.maintenanceAccess
                 ? "/maintenance/student"
                 : user.usersAccess
-                  ? "/user/permissions"
+                  ? "/user/user-management"
                   : null;
       if (!landing) {
-        localStorage.removeItem(TOKEN_KEY);
         location.href = "/login?error=no_access";
       } else location.href = landing;
       throw new Error("Administrator access is required.");
     }
-    const sidebar = await fetch("/sidebar.html", {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ""}`,
-      },
-    }).then((response) => {
+    const sidebar = await fetch("/sidebar.html").then((response) => {
       if (!response.ok) throw new Error("Unable to load navigation.");
       return response.text();
     });
@@ -577,6 +569,11 @@
         element.remove();
     });
     sidebarMount
+      .querySelectorAll("[data-superadmin-only]")
+      .forEach((element) => {
+        if (user.role !== "Superadmin") element.remove();
+      });
+    sidebarMount
       .querySelectorAll("[data-entrance-analytics-access]")
       .forEach((element) => {
         if (
@@ -605,6 +602,7 @@
         toggle: $("#maintenanceToggle"),
         pages: [
           "students",
+          "alumni",
           "employees",
           "school",
           "college",
@@ -634,9 +632,8 @@
       entry.toggle.classList.toggle("active", isCurrentModule);
       setGroupOpen(entry, isCurrentModule);
       entry.toggle.addEventListener("click", () => {
-        const wasCollapsed = document.body.classList.contains(
-          "sidebar-collapsed",
-        );
+        const wasCollapsed =
+          document.body.classList.contains("sidebar-collapsed");
         if (wasCollapsed) {
           localStorage.setItem("taptrack_sidebar_collapsed", "false");
           applySidebar(false);
@@ -673,7 +670,6 @@
       try {
         await api("/api/auth/logout", { method: "POST" });
       } finally {
-        localStorage.removeItem(TOKEN_KEY);
         location.href = "/login";
       }
     });

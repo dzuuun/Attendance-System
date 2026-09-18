@@ -1783,10 +1783,16 @@ div.dt-container .dt-paging .ellipsis {
 
 .directory-card-header {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
   padding: 28px 30px 20px;
+}
+
+.directory-card-header > div:first-child {
+  flex: 1 1 280px;
+  min-width: 230px;
+  padding-top: 3px;
 }
 
 .directory-card-header h2 {
@@ -1804,11 +1810,12 @@ div.dt-container .dt-paging .ellipsis {
 }
 
 .directory-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
 }
 
 .directory-actions .material-symbols-rounded {
@@ -1854,6 +1861,12 @@ div.dt-container .dt-paging .ellipsis {
   margin: 0;
   font-size: 19px !important;
   line-height: 1;
+}
+
+.directory-actions > button:focus-visible,
+.directory-toggle:has(input:focus-visible) {
+  outline: 3px solid rgba(8, 114, 71, 0.22);
+  outline-offset: 2px;
 }
 
 .directory-toggle input {
@@ -2287,7 +2300,22 @@ select option {
   }
 
   .directory-actions {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-start;
+  }
+
+  .directory-card-header > div:first-child {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .directory-actions > .primary-button,
+  .directory-actions > .secondary-button,
+  .directory-actions > .directory-toggle {
+    width: 100%;
   }
 }
 @keyframes student-loading-spin {

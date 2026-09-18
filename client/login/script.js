@@ -1,4 +1,4 @@
-const TOKEN_KEY = "taptrack_token";
+localStorage.removeItem("taptrack_token");
 
 function showAuthToast(message, type = "success") {
   let container = document.querySelector("#authToastContainer");
@@ -39,13 +39,6 @@ async function request(url, body) {
   return data;
 }
 const error = document.querySelector("#authError");
-const hashToken = new URLSearchParams(location.hash.slice(1)).get("sso_token");
-if (hashToken) {
-  localStorage.setItem(TOKEN_KEY, hashToken);
-  history.replaceState(null, "", "/login");
-  showAuthToast("Welcome back. Redirecting to TapTrack.");
-  redirectAfterSuccess("/overview");
-}
 const googleError = new URLSearchParams(location.search).get("google_error");
 if (googleError) {
   error.textContent = googleError;
@@ -84,7 +77,6 @@ document
         username: document.querySelector("#username").value,
         password: document.querySelector("#password").value,
       });
-      localStorage.setItem(TOKEN_KEY, session.token);
       showAuthToast(`Welcome back, ${session.fullName || session.username}.`);
       redirectAfterSuccess("/overview");
     } catch (failure) {
@@ -106,7 +98,6 @@ document
         username: document.querySelector("#username").value,
         password: document.querySelector("#password").value,
       });
-      localStorage.setItem(TOKEN_KEY, session.token);
       location.href = "/overview";
     } catch (failure) {
       error.textContent = failure.message;

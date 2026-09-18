@@ -6,7 +6,9 @@ exports.get = async (req, res) => {
       ? "Student"
       : req.params.type === "employee"
         ? "Employee"
-        : null;
+        : req.params.type === "alumnus"
+          ? "Alumnus"
+          : null;
   const academicPeriodId = Number(req.query.academicPeriodId) || null;
   const dateFrom = String(req.query.dateFrom || ""),
     dateTo = String(req.query.dateTo || "");
@@ -44,7 +46,7 @@ exports.get = async (req, res) => {
     dateRange,
     records: await model.getLogs(
       type,
-      req.params.id,
+      person.id,
       req.query.source,
       academicPeriodId,
       dateRange,

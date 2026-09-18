@@ -15,7 +15,7 @@ function apiErrorHandler(error, _req, res, _next) {
       success: 0,
       message:
         error.code === "LIMIT_FILE_SIZE"
-          ? "Each profile photo must be 5 MB or smaller."
+          ? "Each profile photo must be 2 MB or smaller."
           : error.message,
     });
   const databaseError = [

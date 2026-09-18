@@ -26,7 +26,15 @@ async function ensureSchema() {
         "library_entrance_logs",
         "internet_section_entrance_logs",
       ]) {
-        await schema.dropColumns(table, ["id_number", "person_type"]);
+        await schema.addColumns(table, [
+          [
+            "person_type",
+            "ENUM('Student','Employee','Alumnus') NULL AFTER employee_id",
+          ],
+          ["id_number_snapshot", "VARCHAR(80) NULL AFTER person_type"],
+          ["name_snapshot", "VARCHAR(255) NULL AFTER id_number_snapshot"],
+          ["affiliation_snapshot", "VARCHAR(255) NULL AFTER name_snapshot"],
+        ]);
         const [indexRows] = await pool.query(
           "SELECT DISTINCT INDEX_NAME indexName FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?",
           [table],
@@ -48,6 +56,45 @@ async function ensureSchema() {
           await pool.query(
             `ALTER TABLE ${table} ADD INDEX idx_employee_period_time (employee_id,academic_period_id,checked_in_at,id)`,
           );
+        await pool.query(
+          `UPDATE ${table} l
+           LEFT JOIN students s ON s.id=l.student_id
+           LEFT JOIN alumni al ON al.student_id=l.student_id
+           LEFT JOIN employees e ON e.id=l.employee_id
+           LEFT JOIN programs p ON p.id=COALESCE(IF(s.is_active,s.program_id,NULL),al.program_id,s.program_id)
+           LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id
+           SET l.person_type=CASE WHEN l.student_id IS NOT NULL AND s.is_active=TRUE THEN 'Student' WHEN al.id IS NOT NULL THEN 'Alumnus' WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END,
+               l.id_number_snapshot=COALESCE(IF(s.is_active,s.id_number,NULL),al.id_number,s.id_number,e.id_number),
+               l.name_snapshot=CONCAT(COALESCE(IF(s.is_active,s.last_name,NULL),al.last_name,s.last_name,e.last_name),', ',COALESCE(IF(s.is_active,s.first_name,NULL),al.first_name,s.first_name,e.first_name),IF(COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name) IS NULL OR COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name)))),
+               l.affiliation_snapshot=COALESCE(p.name,ed.name)
+           WHERE l.person_type IS NULL AND (l.student_id IS NOT NULL OR l.employee_id IS NOT NULL)`,
+        );
+        await schema.addForeignKey(
+          table,
+          `fk_${table}_student`,
+          ["student_id"],
+          "students",
+          ["id"],
+        );
+        await schema.addForeignKey(
+          table,
+          `fk_${table}_employee`,
+          ["employee_id"],
+          "employees",
+          ["id"],
+        );
+        await schema.addForeignKey(
+          table,
+          `fk_${table}_period`,
+          ["academic_period_id"],
+          "academic_periods",
+          ["id"],
+        );
+        await schema.addCheckConstraint(
+          table,
+          `chk_${table}_identity`,
+          "(student_id IS NULL) <> (employee_id IS NULL)",
+        );
       }
     })();
   return ready;
@@ -71,7 +118,7 @@ exports.scan = async (locationKey, idNumber) => {
     const inactiveStudent = await attendance.findInactiveStudent(idNumber);
     if (inactiveStudent) {
       const error = new Error(
-        `${inactiveStudent.name}'s student account is inactive. Please visit the MIS Office for reactivation.`,
+        `${inactiveStudent.name}'s ${inactiveStudent.type.toLowerCase()} account is inactive. Please visit the MIS Office for reactivation.`,
       );
       error.code = "INACTIVE_STUDENT";
       throw error;
@@ -84,12 +131,56 @@ exports.scan = async (locationKey, idNumber) => {
     error.code = "NO_PERIOD";
     throw error;
   }
-  const studentId = person.type === "Student" ? person.id : null;
+  const studentId = person.type !== "Employee" ? person.id : null;
   const employeeId = person.type === "Employee" ? person.id : null;
-  const [result] = await pool.query(
-    `INSERT INTO ${location.table} (student_id,employee_id,academic_period_id) VALUES (?,?,?)`,
-    [studentId, employeeId, current.id],
-  );
+  const connection = await pool.getConnection();
+  const lockKey =
+    `taptrack-library:${locationKey}:${person.type}:${person.id}`.slice(0, 64);
+  let locked = false;
+  let result;
+  try {
+    const [[lock]] = await connection.query("SELECT GET_LOCK(?,5) acquired", [
+      lockKey,
+    ]);
+    locked = Boolean(lock?.acquired);
+    if (!locked) {
+      const error = new Error(
+        "Another scan for this ID is still being processed.",
+      );
+      error.code = "DUPLICATE_SCAN";
+      throw error;
+    }
+    const personColumn = studentId ? "student_id" : "employee_id";
+    const [[latest]] = await connection.query(
+      `SELECT TIMESTAMPDIFF(SECOND,checked_in_at,NOW()) secondsAgo FROM ${location.table} WHERE ${personColumn}=? AND academic_period_id=? ORDER BY checked_in_at DESC,id DESC LIMIT 1`,
+      [person.id, current.id],
+    );
+    if (latest && Number(latest.secondsAgo) < 5) {
+      const error = new Error(
+        "This ID was already scanned. Please wait a few seconds.",
+      );
+      error.code = "DUPLICATE_SCAN";
+      throw error;
+    }
+    [result] = await connection.query(
+      `INSERT INTO ${location.table} (student_id,employee_id,person_type,id_number_snapshot,name_snapshot,affiliation_snapshot,academic_period_id) VALUES (?,?,?,?,?,?,?)`,
+      [
+        studentId,
+        employeeId,
+        person.type,
+        person.idNumber,
+        person.name,
+        person.program || person.department || null,
+        current.id,
+      ],
+    );
+  } finally {
+    if (locked)
+      await connection
+        .query("SELECT RELEASE_LOCK(?)", [lockKey])
+        .catch(() => {});
+    connection.release();
+  }
   return {
     id: result.insertId,
     ...person,
@@ -105,7 +196,7 @@ exports.getAll = async (locationKey, periodId = null) => {
   const periodClause = periodId ? "ap.id=?" : "ap.is_current=TRUE";
   const params = periodId ? [periodId] : [];
   const [rows] = await pool.query(
-    `SELECT l.id,COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name,CASE WHEN l.student_id IS NOT NULL THEN p.code ELSE NULL END courseCode,CASE WHEN l.student_id IS NOT NULL THEN d.code ELSE ed.code END department,l.checked_in_at timestamp FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ${periodClause} LEFT JOIN students s ON s.id=l.student_id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE l.student_id IS NOT NULL OR l.employee_id IS NOT NULL ORDER BY l.checked_in_at DESC,l.id DESC`,
+    `SELECT l.id,COALESCE(l.id_number_snapshot,IF(s.is_active,s.id_number,NULL),al.id_number,s.id_number,e.id_number) idNumber,COALESCE(l.person_type,CASE WHEN l.student_id IS NOT NULL AND s.is_active=TRUE THEN 'Student' WHEN al.id IS NOT NULL THEN 'Alumnus' WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END) type,COALESCE(l.person_type='Alumnus',al.id IS NOT NULL) isAlumnus,COALESCE(l.name_snapshot,CONCAT(COALESCE(IF(s.is_active,s.last_name,NULL),al.last_name,s.last_name,e.last_name),', ',COALESCE(IF(s.is_active,s.first_name,NULL),al.first_name,s.first_name,e.first_name),IF(COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name) IS NULL OR COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name))))) name,CASE WHEN l.student_id IS NOT NULL THEN p.code ELSE NULL END courseCode,COALESCE(l.affiliation_snapshot,CASE WHEN l.student_id IS NOT NULL THEN d.code ELSE ed.code END) department,l.checked_in_at timestamp FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ${periodClause} LEFT JOIN students s ON s.id=l.student_id LEFT JOIN alumni al ON al.student_id=l.student_id LEFT JOIN programs p ON p.id=COALESCE(IF(s.is_active,s.program_id,NULL),al.program_id,s.program_id) LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE l.student_id IS NOT NULL OR l.employee_id IS NOT NULL ORDER BY l.checked_in_at DESC,l.id DESC`,
     params,
   );
   return rows;
@@ -116,7 +207,7 @@ exports.getToday = async (locationKey, limit = 10) => {
   const location = locationFor(locationKey);
   const safeLimit = Math.max(1, Math.min(50, Number(limit) || 10));
   const [scans] = await pool.query(
-    `SELECT l.id,COALESCE(s.id_number,e.id_number) idNumber,CASE WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END type,CONCAT(COALESCE(s.last_name,e.last_name),', ',COALESCE(s.first_name,e.first_name),IF(COALESCE(s.middle_name,e.middle_name) IS NULL OR COALESCE(s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(s.middle_name,e.middle_name)))) name,p.name program,s.year_level yearLevel,ed.name department,COALESCE(s.photo_url,e.photo_url) photoUrl,l.checked_in_at timestamp,'Time In' action,? location FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ap.is_current=TRUE LEFT JOIN students s ON s.id=l.student_id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE (l.student_id IS NOT NULL OR l.employee_id IS NOT NULL) AND l.checked_in_at>=CURDATE() AND l.checked_in_at<CURDATE()+INTERVAL 1 DAY ORDER BY l.checked_in_at DESC,l.id DESC LIMIT ${safeLimit}`,
+    `SELECT l.id,COALESCE(l.id_number_snapshot,IF(s.is_active,s.id_number,NULL),al.id_number,s.id_number,e.id_number) idNumber,COALESCE(l.person_type,CASE WHEN l.student_id IS NOT NULL AND s.is_active=TRUE THEN 'Student' WHEN al.id IS NOT NULL THEN 'Alumnus' WHEN l.student_id IS NOT NULL THEN 'Student' ELSE 'Employee' END) type,COALESCE(l.person_type='Alumnus',al.id IS NOT NULL) isAlumnus,COALESCE(l.name_snapshot,CONCAT(COALESCE(IF(s.is_active,s.last_name,NULL),al.last_name,s.last_name,e.last_name),', ',COALESCE(IF(s.is_active,s.first_name,NULL),al.first_name,s.first_name,e.first_name),IF(COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name) IS NULL OR COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name)='','',CONCAT(' ',COALESCE(IF(s.is_active,s.middle_name,NULL),al.middle_name,s.middle_name,e.middle_name))))) name,COALESCE(l.affiliation_snapshot,p.name,ed.name) program,CASE WHEN l.person_type='Student' OR (l.person_type IS NULL AND s.is_active=TRUE) THEN s.year_level ELSE NULL END yearLevel,al.graduation_year graduationYear,ed.name department,COALESCE(IF(s.is_active,s.photo_url,NULL),al.photo_url,s.photo_url,e.photo_url) photoUrl,l.checked_in_at timestamp,'Time In' action,? location FROM ${location.table} l INNER JOIN academic_periods ap ON ap.id=l.academic_period_id AND ap.is_current=TRUE LEFT JOIN students s ON s.id=l.student_id LEFT JOIN alumni al ON al.student_id=l.student_id LEFT JOIN programs p ON p.id=COALESCE(IF(s.is_active,s.program_id,NULL),al.program_id,s.program_id) LEFT JOIN employees e ON e.id=l.employee_id LEFT JOIN employee_departments ed ON ed.id=e.emp_dept_id WHERE (l.student_id IS NOT NULL OR l.employee_id IS NOT NULL) AND l.checked_in_at>=CURDATE() AND l.checked_in_at<CURDATE()+INTERVAL 1 DAY ORDER BY l.checked_in_at DESC,l.id DESC LIMIT ${safeLimit}`,
     [location.label],
   );
   const [[stats]] = await pool.query(

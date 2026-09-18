@@ -4,15 +4,33 @@ const router = require("express").Router(),
   photos = require("../profile-photo").handlers("student", model);
 const { requireAdmin } = require("../../../auth/auth_validation");
 router.get("/", controller.getAll);
-router.get("/mssql-import/preview", requireAdmin, require("./mssql-import.controller").preview);
-router.post("/mssql-import", requireAdmin, require("./mssql-import.controller").import);
+router.get(
+  "/mssql-import/preview",
+  requireAdmin,
+  require("./mssql-import.controller").preview,
+);
+router.post(
+  "/mssql-import",
+  requireAdmin,
+  require("./mssql-import.controller").import,
+);
+router.post(
+  "/bulk-transfer-to-alumni",
+  requireAdmin,
+  controller.bulkTransferToAlumni,
+);
 router.get("/card-writer/status", requireAdmin, controller.cardWriterStatus);
 router.post("/card-writer/read", requireAdmin, controller.readCard);
 router.post("/:id/card-enrollment", requireAdmin, controller.enrollCard);
+router.post(
+  "/:id/transfer-to-alumni",
+  requireAdmin,
+  controller.transferToAlumni,
+);
 router.post("/", controller.create);
 router.post("/photos/bulk", photos.bulkUpload, photos.bulk);
 router.post("/:id/photo", photos.singleUpload, photos.single);
-router.post("/deactivate-missing", controller.deactivateMissing);
+router.post("/deactivate-missing", requireAdmin, controller.deactivateMissing);
 router.put("/:id", controller.update);
 router.patch("/:id/status", controller.setStatus);
 module.exports = router;

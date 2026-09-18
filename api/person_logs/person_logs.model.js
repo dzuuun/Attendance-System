@@ -3,6 +3,7 @@ const attendance = require("../attendance/attendance.model");
 const library = require("../library/library.model");
 const personConfig = {
   Student: { column: "student_id" },
+  Alumnus: { column: "student_id" },
   Employee: { column: "employee_id" },
 };
 exports.getPerson = async (type, id) => {
@@ -11,6 +12,13 @@ exports.getPerson = async (type, id) => {
     return (
       await pool.query(
         "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name course,NULL department,'Student' type FROM students s LEFT JOIN programs p ON p.id=s.program_id WHERE s.id=?",
+        [id],
+      )
+    )[0][0];
+  if (type === "Alumnus")
+    return (
+      await pool.query(
+        "SELECT a.student_id id,a.id alumniId,a.id_number idNumber,TRIM(CONCAT_WS(' ',a.first_name,NULLIF(a.middle_name,''),a.last_name)) name,p.name course,NULL department,a.graduation_year graduationYear,'Alumnus' type FROM alumni a LEFT JOIN programs p ON p.id=a.program_id WHERE a.id=?",
         [id],
       )
     )[0][0];

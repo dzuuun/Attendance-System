@@ -7,14 +7,21 @@
   const type =
     path === "student"
       ? "student"
-      : path === "employee"
-        ? "employee"
-        : academic
-          ? path
-          : null;
+      : path === "alumni"
+        ? "alumni"
+        : path === "employee"
+          ? "employee"
+          : academic
+            ? path
+            : null;
   if (!type) return;
 
-  const plural = type === "employee" ? "employees" : `${type}s`;
+  const plural =
+    type === "employee"
+      ? "employees"
+      : type === "alumni"
+        ? "alumni"
+        : `${type}s`;
   const parent = {
     college: "school",
     department: "college",
@@ -24,15 +31,17 @@
     ? ["Name", "Code", ...(parent ? [`${title(parent)}Code`] : [])]
     : type === "employee"
       ? ["IDNumber", "FirstName", "LastName", "DepartmentCode"]
-      : [
-          "IDNumber",
-          "FirstName",
-          "LastName",
-          "ProgramCode",
-          "YearLevel",
-          "Birthday",
-          "Gender",
-        ];
+      : type === "alumni"
+        ? ["IDNumber", "FirstName", "LastName", "ProgramCode", "GraduationYear"]
+        : [
+            "IDNumber",
+            "FirstName",
+            "LastName",
+            "ProgramCode",
+            "YearLevel",
+            "Birthday",
+            "Gender",
+          ];
   const templateColumns =
     type === "student"
       ? [
@@ -46,7 +55,19 @@
           "InstitutionalEmail",
           "Gender",
         ]
-      : required;
+      : type === "alumni"
+        ? [
+            "IDNumber",
+            "FirstName",
+            "MiddleName",
+            "LastName",
+            "ProgramCode",
+            "GraduationYear",
+            "Birthday",
+            "InstitutionalEmail",
+            "Gender",
+          ]
+        : required;
   const studentYearLevels = [
     ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`),
     "1st Year",
@@ -90,7 +111,7 @@
     "attendance-system-modal attendance-system-import-modal";
   $("#importForm").innerHTML = `
     <div class="modal-head"><div><span class="modal-kicker">BULK ACTION</span><h2>Import ${plural}</h2></div><button type="button" class="close-button" data-close aria-label="Close">×</button></div>
-    <div class="attendance-system-modal-body"><label class="attendance-system-file-drop" id="importDrop"><span class="attendance-system-upload-icon material-symbols-rounded" aria-hidden="true">upload_file</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${type === "student" ? ". Optional values: MiddleName, InstitutionalEmail" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="attendance-system-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
+    <div class="attendance-system-modal-body"><label class="attendance-system-file-drop" id="importDrop"><span class="attendance-system-upload-icon material-symbols-rounded" aria-hidden="true">upload_file</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${type === "student" ? ". Optional values: MiddleName, InstitutionalEmail" : type === "alumni" ? ". Optional values: MiddleName, Birthday, InstitutionalEmail, Gender" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="attendance-system-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
     <div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button type="submit" class="primary-button">Validate file</button></div>`;
   const previewDialog = $("#previewDialog");
   previewDialog.className =
@@ -258,6 +279,7 @@
           Birthday: "2000-01-01",
           InstitutionalEmail: "juan@example.edu",
           Gender: "Male",
+          GraduationYear: String(new Date().getFullYear()),
         }[h] || "PARENT",
       ]),
     );
@@ -302,7 +324,7 @@
         api(`/api/${type}`),
         parent
           ? api(`/api/${parent}`)
-          : type === "student"
+          : type === "student" || type === "alumni"
             ? api("/api/program-options")
             : type === "employee"
               ? api("/api/employee_department")
@@ -353,7 +375,7 @@
           departmentCode: cell(row, "DepartmentCode").toUpperCase(),
           contact: cell(row, "Contact"),
         });
-      else
+      else if (type === "student")
         Object.assign(item, {
           idNumber: cell(row, "IDNumber").toUpperCase(),
           firstName: cell(row, "FirstName"),
@@ -361,6 +383,18 @@
           lastName: cell(row, "LastName"),
           programCode: cell(row, "ProgramCode").toUpperCase(),
           yearLevel: cell(row, "YearLevel"),
+          birthday: normalizeBirthday(cell(row, "Birthday")),
+          institutionalEmail: cell(row, "InstitutionalEmail").toLowerCase(),
+          gender: cell(row, "Gender"),
+        });
+      else
+        Object.assign(item, {
+          idNumber: cell(row, "IDNumber").toUpperCase(),
+          firstName: cell(row, "FirstName"),
+          middleName: cell(row, "MiddleName"),
+          lastName: cell(row, "LastName"),
+          programCode: cell(row, "ProgramCode").toUpperCase(),
+          graduationYear: Number(cell(row, "GraduationYear")),
           birthday: normalizeBirthday(cell(row, "Birthday")),
           institutionalEmail: cell(row, "InstitutionalEmail").toLowerCase(),
           gender: cell(row, "Gender"),
@@ -415,6 +449,24 @@
           )
         )
           errors.push("Gender is invalid");
+      }
+      if (type === "alumni") {
+        const program = new Map(
+          parents.map((row) => [norm(row.code).toUpperCase(), row]),
+        ).get(item.programCode);
+        if (!program) errors.push("ProgramCode was not found");
+        else item.programId = program.id;
+        if (
+          !Number.isInteger(item.graduationYear) ||
+          item.graduationYear < 1900 ||
+          item.graduationYear > new Date().getFullYear() + 1
+        )
+          errors.push("GraduationYear is invalid");
+        if (
+          item.institutionalEmail &&
+          !/^\S+@\S+\.\S+$/.test(item.institutionalEmail)
+        )
+          errors.push("InstitutionalEmail is invalid");
       }
       if (type === "employee") {
         const department = parentByCode.get(item.departmentCode);

@@ -4,16 +4,15 @@ const path = require("path");
 const baseUrl = process.env.TAPTRACK_MANUAL_URL || "https://localhost:4000";
 const username = process.env.TAPTRACK_MANUAL_USERNAME;
 const password = process.env.TAPTRACK_MANUAL_PASSWORD;
-const sessionToken = process.env.TAPTRACK_MANUAL_TOKEN;
 const debugPort = process.env.TAPTRACK_DEBUG_PORT || "9223";
 const outputDir = path.resolve(
   process.env.TAPTRACK_MANUAL_OUTPUT || "docs/user-manual/screenshots",
 );
 const privacyMode = process.env.TAPTRACK_MANUAL_PRIVACY !== "0";
 
-if (!sessionToken && (!username || !password)) {
+if (!username || !password) {
   throw new Error(
-    "Set TAPTRACK_MANUAL_TOKEN, or set TAPTRACK_MANUAL_USERNAME and TAPTRACK_MANUAL_PASSWORD before running this script.",
+    "Set TAPTRACK_MANUAL_USERNAME and TAPTRACK_MANUAL_PASSWORD before running this script.",
   );
 }
 
@@ -25,6 +24,7 @@ const pages = [
   ["06-library-entrance-logs", "/library/entrance"],
   ["07-internet-section-logs", "/library/internet-section"],
   ["08-students", "/maintenance/student"],
+  ["21-alumni", "/maintenance/alumni"],
   ["09-employees", "/maintenance/employee"],
   ["10-schools", "/maintenance/school"],
   ["11-colleges", "/maintenance/college"],
@@ -37,6 +37,7 @@ const pages = [
   ["18-permissions", "/user/permissions"],
   ["19-user-management", "/user/user-management"],
   ["20-change-password", "/account/change-password"],
+  ["22-kiosks", "/maintenance/kiosks"],
 ];
 
 let nextId = 0;
@@ -141,28 +142,19 @@ async function main() {
 
   await navigate(socket, "/login");
   await screenshot(socket, "01-sign-in");
-  const captureToken = sessionToken;
-  if (captureToken) {
-    await evaluate(
-      socket,
-      `localStorage.setItem('taptrack_token', ${JSON.stringify(captureToken)})`,
-    );
-  } else {
-    await evaluate(
-      socket,
-      `(async () => {
+  await evaluate(
+    socket,
+    `(async () => {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(${JSON.stringify({ username, password })})
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || 'Sign-in failed.');
-      localStorage.setItem('taptrack_token', data.token);
       return true;
     })()`,
-    );
-  }
+  );
 
   for (const [name, pathname] of pages) {
     await navigate(socket, pathname);

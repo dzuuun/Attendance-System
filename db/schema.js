@@ -57,6 +57,18 @@ async function addForeignKey(
     `ALTER TABLE ${identifier(table)} ADD CONSTRAINT ${identifier(name)} FOREIGN KEY (${columns.map(identifier).join(",")}) REFERENCES ${identifier(referencedTable)} (${referencedColumns.map(identifier).join(",")}) ON UPDATE ${onUpdate} ON DELETE ${onDelete}`,
   );
 }
+async function addCheckConstraint(table, name, expression) {
+  const [rows] = await pool.query(
+    "SELECT COUNT(*) count FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME=? AND CONSTRAINT_NAME=? AND CONSTRAINT_TYPE='CHECK'",
+    [table, name],
+  );
+  if (rows[0].count) return;
+  if (!/^[A-Za-z0-9_ ()<>=!+*/.'-]+$/.test(expression))
+    throw new Error("Invalid check constraint expression.");
+  await pool.query(
+    `ALTER TABLE ${identifier(table)} ADD CONSTRAINT ${identifier(name)} CHECK (${expression})`,
+  );
+}
 
 module.exports = {
   columnExists,
@@ -65,4 +77,5 @@ module.exports = {
   dropColumn,
   dropColumns,
   addForeignKey,
+  addCheckConstraint,
 };

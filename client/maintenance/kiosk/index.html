@@ -10,14 +10,67 @@
     <link rel="stylesheet" href="/client/maintenance/kiosk/style.css" />
   </head>
   <body>
-    <div class="app-shell"><div id="sidebarMount"></div><main class="main">
-      <header class="topbar"><div><p class="eyebrow">CENTRAL MANAGEMENT</p><h1>Active kiosks</h1></div><div class="live-time"><span id="liveTime"></span><small id="liveDate"></small></div></header>
-      <section class="kiosk-summary" aria-label="Kiosk device summary"><div><span>DEVICES</span><strong id="deviceCount">0</strong></div><div class="online"><span>ONLINE</span><strong id="onlineCount">0</strong></div><div class="offline"><span>OFFLINE</span><strong id="offlineCount">0</strong></div><button class="secondary-button" id="refreshBtn">Refresh</button></section>
-      <section class="kiosk-layout">
-        <article class="table-card kiosk-directory"><div class="table-toolbar"><div><span class="section-kicker">DEVICE DIRECTORY</span><h2>Active kiosk fleet</h2></div></div><div class="filter-row"><div class="search-box"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="search" placeholder="Search location or device" /></div></div><div class="table-wrap"><table><thead><tr><th>LOCATION</th><th>DEVICE</th><th>STATUS</th></tr></thead><tbody id="body"></tbody></table></div></article>
-        <article class="table-card kiosk-detail" id="kioskDetail"><div class="detail-empty"><span class="material-symbols-rounded">desktop_windows</span><h2>Select a kiosk</h2><p>Choose a device to view status and controls.</p></div></article>
-      </section>
-    </main></div>
-    <script src="/client/shared-ui.js"></script><script src="/client/maintenance/kiosk/script.js"></script>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">CENTRAL MANAGEMENT</p>
+            <h1>Active kiosks</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <section class="kiosk-summary" aria-label="Kiosk device summary">
+          <div><span>DEVICES</span><strong id="deviceCount">0</strong></div>
+          <div class="online">
+            <span>ONLINE</span><strong id="onlineCount">0</strong>
+          </div>
+          <div class="offline">
+            <span>OFFLINE</span><strong id="offlineCount">0</strong>
+          </div>
+          <button class="secondary-button" id="refreshBtn">Refresh</button>
+        </section>
+        <section class="kiosk-layout">
+          <article class="table-card kiosk-directory">
+            <div class="table-toolbar">
+              <div>
+                <span class="section-kicker">DEVICE DIRECTORY</span>
+                <h2>Active kiosk fleet</h2>
+              </div>
+            </div>
+            <div class="filter-row">
+              <div class="search-box">
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >search</span
+                ><input id="search" placeholder="Search location or device" />
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>LOCATION</th>
+                    <th>DEVICE</th>
+                    <th>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody id="body"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="table-card kiosk-detail" id="kioskDetail">
+            <div class="detail-empty">
+              <span class="material-symbols-rounded">desktop_windows</span>
+              <h2>Select a kiosk</h2>
+              <p>Choose a device to view status and controls.</p>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/maintenance/kiosk/script.js"></script>
   </body>
 </html>

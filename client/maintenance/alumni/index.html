@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Alumni — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body data-type="Alumnus">
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Maintenance</p>
+            <h1>Alumni</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <article class="table-card">
+          <div class="directory-card-header">
+            <div>
+              <span class="section-kicker">ALUMNI DIRECTORY</span>
+              <h2 id="directoryTitle">Active alumni</h2>
+              <p>
+                Graduates retain their existing ID for university access
+                scanning.
+              </p>
+            </div>
+            <div class="directory-actions">
+              <label class="directory-toggle" for="showInactive"
+                ><span>Show inactive</span
+                ><input id="showInactive" type="checkbox"
+              /></label>
+              <button class="primary-button" id="addBtn">
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >add</span
+                >Add alumnus
+              </button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <div class="search-box">
+              <span class="material-symbols-rounded" aria-hidden="true"
+                >search</span
+              ><input id="search" placeholder="Search alumni..." />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID NUMBER</th>
+                  <th>ALUMNUS</th>
+                  <th>PROGRAM</th>
+                  <th>GRADUATION YEAR</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form id="form">
+        <input type="hidden" id="recordId" />
+        <div class="modal-head">
+          <div>
+            <span class="section-kicker">ALUMNI RECORD</span>
+            <h2 id="dialogTitle">Add alumnus</h2>
+          </div>
+          <button type="button" class="close-button" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div class="form-grid">
+          <label>First name<input id="firstName" required /></label>
+          <label>Middle name (optional)<input id="middleName" /></label>
+          <label>Last name<input id="lastName" required /></label>
+          <label>ID number<input id="idNumber" required /></label>
+          <label
+            >Program<select id="program" required>
+              <option value="">Select program</option>
+            </select></label
+          >
+          <label
+            >Graduation year<input
+              id="graduationYear"
+              type="number"
+              min="1900"
+              required
+          /></label>
+          <label>Birthday (optional)<input id="birthday" type="date" /></label>
+          <label
+            >Gender (optional)<select id="gender">
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+              <option>Prefer not to say</option>
+            </select></label
+          >
+          <label class="full"
+            >Institutional email (optional)<input
+              id="institutionalEmail"
+              type="email"
+          /></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button type="button" value="cancel" class="secondary-button">
+            Cancel</button
+          ><button type="submit" class="primary-button">Save alumnus</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="reenrollDialog" class="attendance-system-modal">
+      <form id="reenrollForm">
+        <input type="hidden" id="reenrollAlumnusId" />
+        <div class="modal-head">
+          <div>
+            <span class="section-kicker">RETURNING STUDENT</span>
+            <h2>Re-enroll as student</h2>
+          </div>
+          <button type="button" class="close-button" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div class="attendance-system-modal-body">
+          <p>
+            <strong id="reenrollName"></strong> will remain in Alumni and will
+            also become an active student.
+          </p>
+          <div class="form-grid !p-0">
+            <label
+              >New program<select id="reenrollProgram" required>
+                <option value="">Select program</option>
+              </select></label
+            >
+            <label
+              >Year level<select id="reenrollYearLevel" required>
+                <option value="">Select year level</option>
+                <option>Grade 1</option>
+                <option>Grade 2</option>
+                <option>Grade 3</option>
+                <option>Grade 4</option>
+                <option>Grade 5</option>
+                <option>Grade 6</option>
+                <option>Grade 7</option>
+                <option>Grade 8</option>
+                <option>Grade 9</option>
+                <option>Grade 10</option>
+                <option>Grade 11</option>
+                <option>Grade 12</option>
+                <option>1st Year</option>
+                <option>2nd Year</option>
+                <option>3rd Year</option>
+                <option>4th Year</option>
+                <option>5th Year</option>
+              </select></label
+            >
+          </div>
+          <p id="reenrollError" class="form-error"></p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" value="cancel" class="secondary-button">
+            Cancel</button
+          ><button type="submit" class="primary-button">
+            Activate student
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/maintenance/alumni/script.js"></script>
+    <script src="/client/maintenance/import.js"></script>
+    <script src="/client/person-log-export.js"></script>
+  </body>
+</html>

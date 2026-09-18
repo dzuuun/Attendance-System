@@ -50,9 +50,27 @@
                 >
                 Export students
               </button>
-              <button class="secondary-button" id="mssqlImportBtn" type="button" hidden>
-                <span class="material-symbols-rounded" aria-hidden="true">database</span>
+              <button
+                class="secondary-button"
+                id="mssqlImportBtn"
+                type="button"
+                hidden
+              >
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >database</span
+                >
                 Import SQL Server
+              </button>
+              <button
+                class="secondary-button"
+                id="bulkGraduateBtn"
+                type="button"
+                hidden
+              >
+                <span class="material-symbols-rounded" aria-hidden="true"
+                  >school</span
+                >
+                Bulk move to Alumni
               </button>
               <button class="primary-button" id="addBtn">
                 <span class="material-symbols-rounded" aria-hidden="true"
@@ -239,6 +257,99 @@
             disabled
           >
             Write and verify card
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="graduateDialog" class="attendance-system-modal">
+      <form id="graduateForm">
+        <input type="hidden" id="graduateStudentId" />
+        <div class="modal-head">
+          <div>
+            <span class="section-kicker">GRADUATE STUDENT</span>
+            <h2>Move to Alumni</h2>
+          </div>
+          <button class="close-button" type="button" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div class="attendance-system-modal-body">
+          <p>
+            <strong id="graduateStudentName"></strong> will be copied to the
+            Alumni directory and deactivated as a student.
+          </p>
+          <label
+            >Graduation year<input
+              id="graduationYear"
+              type="number"
+              min="1900"
+              required
+          /></label>
+          <p class="form-error" id="graduateError"></p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" value="cancel" class="secondary-button">
+            Cancel
+          </button>
+          <button type="submit" class="primary-button">
+            Confirm graduation
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="bulkGraduateDialog" class="attendance-system-modal">
+      <form id="bulkGraduateForm">
+        <div class="modal-head">
+          <div>
+            <span class="section-kicker">BULK GRADUATION</span>
+            <h2>Import graduating student IDs</h2>
+          </div>
+          <button class="close-button" type="button" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div class="attendance-system-modal-body">
+          <label class="attendance-system-file-drop" for="bulkGraduateFile">
+            <span
+              class="attendance-system-upload-icon material-symbols-rounded"
+              aria-hidden="true"
+              >upload_file</span
+            >
+            <strong id="bulkGraduateFileName"
+              >Choose an Excel or CSV file</strong
+            >
+            <small
+              >Use one column named IDNumber, StudentID, or SchoolID.</small
+            >
+            <input id="bulkGraduateFile" type="file" accept=".xlsx,.xls,.csv" />
+          </label>
+          <p class="attendance-system-template-copy">
+            Need the format?
+            <button type="button" id="bulkGraduateTemplateBtn">
+              Download template
+            </button>
+          </p>
+          <p><strong id="bulkGraduateCount">No IDs loaded.</strong></p>
+          <label
+            >Graduation year<input
+              id="bulkGraduationYear"
+              type="number"
+              min="1900"
+              required
+          /></label>
+          <p class="form-error" id="bulkGraduateError"></p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" value="cancel" class="secondary-button">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="primary-button"
+            id="runBulkGraduate"
+            disabled
+          >
+            Move students
           </button>
         </div>
       </form>

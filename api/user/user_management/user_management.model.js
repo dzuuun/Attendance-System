@@ -43,7 +43,7 @@ exports.getById = async (id) => {
   await ensureSchema();
   return (
     await pool.query(
-      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,u.is_active isActive FROM users u WHERE u.id=? LIMIT 1",
+      "SELECT u.id,TRIM(CONCAT_WS(' ',u.first_name,NULLIF(u.middle_name,''),u.last_name)) fullName,u.username,u.permission_id permissionId,p.name role,u.is_active isActive FROM users u INNER JOIN permissions p ON p.id=u.permission_id WHERE u.id=? LIMIT 1",
       [id],
     )
   )[0][0];

@@ -6,7 +6,9 @@ const express = require("express"),
 const {
   checkSession,
   requireAdmin,
+  requireSuperadmin,
   requireAccess,
+  getJwtSecret,
 } = require("./auth/auth_validation");
 const {
   asyncHandler,
@@ -56,6 +58,7 @@ const app = express(),
   port = Number(process.env.PORT) || 4000,
   httpsPort = Number(process.env.HTTPS_PORT) || 4443,
   client = path.join(__dirname, "client");
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 function secureWebServer() {
   const pfxPath = String(process.env.HTTPS_PFX_PATH || "").trim();
   const certPath = String(process.env.HTTPS_CERT_PATH || "").trim();
@@ -79,22 +82,55 @@ function secureWebServer() {
   return https.createServer(options, app);
 }
 const scannerBridge = require("./scanner/scanner-bridge");
+const {
+  requireKioskSession,
+  pairKiosk,
+} = require("./api/middleware/kiosk_auth");
+const rateLimit = require("./api/middleware/rate_limit");
 app.use(
   morgan(
-    ':client-ip - :remote-user [:manila-date] ":method :url HTTP/:http-version" :status :res[content-length]'
-  )
+    ':client-ip - :remote-user [:manila-date] ":method :url HTTP/:http-version" :status :res[content-length]',
+  ),
 );
+app.use((req, res, next) => {
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.ALLOW_INSECURE_HTTP === "true" ||
+    req.secure
+  )
+    return next();
+  if (["GET", "HEAD"].includes(req.method))
+    return res.redirect(
+      308,
+      `https://${req.hostname}${httpsPort === 443 ? "" : `:${httpsPort}`}${req.originalUrl}`,
+    );
+  return res.status(426).json({ message: "HTTPS is required." });
+});
 app.use(express.json({ limit: "10mb" }));
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "same-origin");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(self), geolocation=(), microphone=()",
+  );
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+  );
+  if (req.secure)
+    res.setHeader(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
   next();
 });
 
 const loginRouter = require("./api/login/login.router");
 const attendanceRouter = require("./api/attendance/attendance.router");
 const studentRouter = require("./api/maintenance/student/student.router");
+const alumniRouter = require("./api/maintenance/alumni/alumni.router");
 const employeeRouter = require("./api/maintenance/employee/employee.router");
 const settingsRouter = require("./api/maintenance/settings/settings.router");
 const userRouter = require("./api/user/user_management/user_management.router");
@@ -114,13 +150,47 @@ const personLogsRouter = require("./api/person_logs/person_logs.router");
 const analyticsRouter = require("./api/analytics/analytics.router");
 const kioskManagementRouter = require("./api/kiosk-management/kiosk.router");
 const kioskManagement = require("./api/kiosk-management/kiosk.controller");
+app.use(
+  "/api/auth/login",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    message: "Too many sign-in attempts. Try again later.",
+  }),
+);
+app.use("/api/auth/setup", rateLimit({ windowMs: 15 * 60 * 1000, limit: 10 }));
 app.use("/api/auth", asyncHandler(loginRouter));
-// Public kiosk access is intentionally limited to daily entrance scans.
+app.post(
+  "/api/kiosk/pair",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    message: "Too many verification attempts. Try again later.",
+  }),
+  asyncHandler(pairKiosk),
+);
+app.use(
+  ["/api/kiosk", "/api/library-kiosk"],
+  asyncHandler(requireKioskSession),
+);
+app.use(
+  ["/api/kiosk/scan", "/api/library-kiosk"],
+  rateLimit({ windowMs: 60 * 1000, limit: 120 }),
+);
 app.post("/api/kiosk/heartbeat", asyncHandler(kioskManagement.heartbeat));
 app.get("/api/kiosk/config", asyncHandler(kioskManagement.config));
-app.post("/api/kiosk/commands/poll", asyncHandler(kioskManagement.pollCommands));
-app.post("/api/kiosk/commands/complete", asyncHandler(kioskManagement.completeCommand));
-app.post("/api/kiosk/screenshots", asyncHandler(kioskManagement.saveScreenshot));
+app.post(
+  "/api/kiosk/commands/poll",
+  asyncHandler(kioskManagement.pollCommands),
+);
+app.post(
+  "/api/kiosk/commands/complete",
+  asyncHandler(kioskManagement.completeCommand),
+);
+app.post(
+  "/api/kiosk/screenshots",
+  asyncHandler(kioskManagement.saveScreenshot),
+);
 app.post(
   "/api/kiosk/scan",
   asyncHandler((req, res) => {
@@ -225,6 +295,11 @@ app.use(
   wrapRouter(studentRouter),
 );
 app.use(
+  "/api/alumni",
+  requireAccess("maintenanceAccess"),
+  wrapRouter(alumniRouter),
+);
+app.use(
   "/api/employee",
   requireAccess("maintenanceAccess"),
   wrapRouter(employeeRouter),
@@ -314,11 +389,7 @@ app.get(
   ),
 );
 app.use("/api/user", requireAccess("usersAccess"), wrapRouter(userRouter));
-app.use(
-  "/api/permissions",
-  requireAccess("usersAccess"),
-  wrapRouter(permissionRouter),
-);
+app.use("/api/permissions", requireSuperadmin, wrapRouter(permissionRouter));
 app.use(
   "/api/activity-log",
   requireAccess("usersAccess"),
@@ -328,23 +399,32 @@ app.get(
   "/api/people",
   requireAccess("maintenanceAccess"),
   asyncHandler(async (_req, res) => {
-    const [students, employees] = await Promise.all([
+    const [students, alumni, employees] = await Promise.all([
       require("./api/maintenance/student/student.model").getAll(),
+      require("./api/maintenance/alumni/alumni.model").getAll(),
       require("./api/maintenance/employee/employee.model").getAll(),
     ]);
-    res.json([...students, ...employees]);
+    res.json([...students, ...alumni, ...employees]);
   }),
 );
 app.post(
   "/api/people",
   requireAccess("maintenanceAccess"),
   asyncHandler((req, res) => {
-    return req.body.type === "Student"
-      ? require("./api/maintenance/student/student.controller").create(req, res)
-      : require("./api/maintenance/employee/employee.controller").create(
-          req,
-          res,
-        );
+    if (req.body.type === "Student")
+      return require("./api/maintenance/student/student.controller").create(
+        req,
+        res,
+      );
+    if (req.body.type === "Alumnus")
+      return require("./api/maintenance/alumni/alumni.controller").create(
+        req,
+        res,
+      );
+    return require("./api/maintenance/employee/employee.controller").create(
+      req,
+      res,
+    );
   }),
 );
 app.delete(
@@ -380,6 +460,10 @@ app.use(
 );
 app.use(
   "/uploads/profile-photos",
+  (req, res, next) =>
+    String(req.get("cookie") || "").includes("taptrack_kiosk_session=")
+      ? requireKioskSession(req, res, next)
+      : checkSession(req, res, next),
   express.static(path.join(__dirname, "uploads", "profile-photos"), {
     fallthrough: false,
     maxAge: "1h",
@@ -387,7 +471,11 @@ app.use(
 );
 app.use(
   "/uploads/kiosk-screenshots",
-  express.static(path.join(__dirname, "uploads", "kiosk-screenshots"), { fallthrough: false, maxAge: "1h" }),
+  checkSession,
+  express.static(path.join(__dirname, "uploads", "kiosk-screenshots"), {
+    fallthrough: false,
+    maxAge: "1h",
+  }),
 );
 app.use(
   "/vendor/datatables",
@@ -428,8 +516,10 @@ app.get("/kiosk/internet-section", (_req, res) =>
 app.get("/sidebar.html", checkSession, (_req, res) =>
   res.sendFile(path.join(client, "sidebar.html")),
 );
-const protectedPage = (file) => (_req, res) =>
-  res.sendFile(path.join(client, file));
+const protectedPage = (file) => (req, res, next) =>
+  checkSession(req, res, () =>
+    res.sendFile(path.join(client, file), (error) => error && next(error)),
+  );
 const adminPage = protectedPage;
 app.get("/overview", protectedPage("dashboard/index.html"));
 app.get("/analytics", protectedPage("analytics/index.html"));
@@ -443,6 +533,7 @@ app.get(
   "/maintenance/student",
   protectedPage("maintenance/student/index.html"),
 );
+app.get("/maintenance/alumni", protectedPage("maintenance/alumni/index.html"));
 app.get(
   "/maintenance/employee",
   protectedPage("maintenance/employee/index.html"),
@@ -484,8 +575,10 @@ app.get("/auth.js", (_req, res) =>
 app.use(apiErrorHandler);
 require("./api/maintenance/employee/employee.model")
   .ensureSchema()
+  .then(() => require("./api/maintenance/alumni/alumni.model").ensureSchema())
   .then(() => require("./db/indexes").ensureIndexes())
   .then(() => {
+    getJwtSecret();
     app.listen(port, () =>
       console.log(`TapTrack HTTP running at http://localhost:${port}`),
     );

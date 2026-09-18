@@ -41,7 +41,21 @@ async function ensureTable() {
   )`);
 }
 
-exports.heartbeat = async ({ id, type, location, name, userAgent, ipAddress, hostname, uptimeSeconds, browserStatus, currentPage, macAddress, operatingSystem, agent }) => {
+exports.heartbeat = async ({
+  id,
+  type,
+  location,
+  name,
+  userAgent,
+  ipAddress,
+  hostname,
+  uptimeSeconds,
+  browserStatus,
+  currentPage,
+  macAddress,
+  operatingSystem,
+  agent,
+}) => {
   await ensureTable();
   await pool.query(
     `INSERT INTO kiosks (id,kiosk_type,location,display_name,last_seen_at,user_agent,ip_address,hostname,uptime_seconds,browser_status,current_page,mac_address,operating_system,agent_last_seen_at)
@@ -52,7 +66,21 @@ exports.heartbeat = async ({ id, type, location, name, userAgent, ipAddress, hos
        uptime_seconds=COALESCE(VALUES(uptime_seconds),uptime_seconds),browser_status=COALESCE(VALUES(browser_status),browser_status),
        current_page=COALESCE(VALUES(current_page),current_page),mac_address=COALESCE(VALUES(mac_address),mac_address),operating_system=COALESCE(VALUES(operating_system),operating_system),
        agent_last_seen_at=${agent ? "NOW()" : "agent_last_seen_at"}`,
-    [id, type, location, name || null, userAgent || null, ipAddress || null, hostname || null, uptimeSeconds || null, browserStatus || null, currentPage || null, macAddress || null, operatingSystem || null, Boolean(agent)],
+    [
+      id,
+      type,
+      location,
+      name || null,
+      userAgent || null,
+      ipAddress || null,
+      hostname || null,
+      uptimeSeconds || null,
+      browserStatus || null,
+      currentPage || null,
+      macAddress || null,
+      operatingSystem || null,
+      Boolean(agent),
+    ],
   );
   return exports.getById(id);
 };
@@ -100,15 +128,29 @@ exports.takeCommands = async (kioskId, channel) => {
     [kioskId, channel],
   );
   if (rows.length)
-    await pool.query(`UPDATE kiosk_commands SET status='Dispatched',dispatched_at=NOW() WHERE id IN (${rows.map(() => "?").join(",")})`, rows.map((row) => row.id));
-  return rows.map((row) => ({ ...row, payload: typeof row.payload === "string" ? JSON.parse(row.payload || "null") : row.payload }));
+    await pool.query(
+      `UPDATE kiosk_commands SET status='Dispatched',dispatched_at=NOW() WHERE id IN (${rows.map(() => "?").join(",")})`,
+      rows.map((row) => row.id),
+    );
+  return rows.map((row) => ({
+    ...row,
+    payload:
+      typeof row.payload === "string"
+        ? JSON.parse(row.payload || "null")
+        : row.payload,
+  }));
 };
 
 exports.completeCommand = async (kioskId, commandId, status, resultText) => {
   await ensureTable();
   const [result] = await pool.query(
     "UPDATE kiosk_commands SET status=?,result_text=?,completed_at=NOW() WHERE id=? AND kiosk_id=? AND status='Dispatched'",
-    [status, String(resultText || "").slice(0, 1000) || null, commandId, kioskId],
+    [
+      status,
+      String(resultText || "").slice(0, 1000) || null,
+      commandId,
+      kioskId,
+    ],
   );
   return Boolean(result.affectedRows);
 };
@@ -124,7 +166,17 @@ exports.getRecentCommands = async (kioskId) => {
 
 exports.setEnabled = async (id, isEnabled) => {
   await ensureTable();
-  const [result] = await pool.query("UPDATE kiosks SET is_enabled=? WHERE id=?", [isEnabled, id]);
+  const [result] = await pool.query(
+    "UPDATE kiosks SET is_enabled=? WHERE id=?",
+    [isEnabled, id],
+  );
+  if (result.affectedRows && !isEnabled) {
+    await require("../middleware/kiosk_auth").ensureSessionSchema();
+    await pool.query(
+      "UPDATE kiosk_sessions SET revoked_at=NOW() WHERE kiosk_id=? AND revoked_at IS NULL",
+      [id],
+    );
+  }
   return result.affectedRows ? exports.getById(id) : null;
 };
 

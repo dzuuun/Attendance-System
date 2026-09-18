@@ -58,13 +58,21 @@ let terminalGateId = localStorage.getItem(terminalGateKey) || "";
 const kioskIdKey = "taptrack_kiosk_id";
 let kioskId = localStorage.getItem(kioskIdKey);
 if (!kioskId) {
-  kioskId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/[^A-Za-z0-9_-]/g, "");
+  kioskId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(
+    /[^A-Za-z0-9_-]/g,
+    "",
+  );
   localStorage.setItem(kioskIdKey, kioskId);
 }
 let kioskEnabled = true;
 let lastKioskActivity = Date.now();
-const kioskSessionStartedAt = Number(sessionStorage.getItem("taptrack_kiosk_session_started_at")) || Date.now();
-sessionStorage.setItem("taptrack_kiosk_session_started_at", String(kioskSessionStartedAt));
+const kioskSessionStartedAt =
+  Number(sessionStorage.getItem("taptrack_kiosk_session_started_at")) ||
+  Date.now();
+sessionStorage.setItem(
+  "taptrack_kiosk_session_started_at",
+  String(kioskSessionStartedAt),
+);
 let pendingScannerAction = null;
 let localScannerAssignments = loadScannerAssignments();
 
@@ -112,13 +120,22 @@ async function checkInKiosk() {
     const response = await fetch("/api/kiosk/heartbeat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kioskId, type: "entrance", location: terminalLocation, browserStatus: navigator.onLine ? "Online" : "Offline", currentPage: location.pathname, uptimeSeconds: Math.floor((Date.now() - kioskSessionStartedAt) / 1000) }),
+      body: JSON.stringify({
+        kioskId,
+        type: "entrance",
+        location: terminalLocation,
+        browserStatus: navigator.onLine ? "Online" : "Offline",
+        currentPage: location.pathname,
+        uptimeSeconds: Math.floor((Date.now() - kioskSessionStartedAt) / 1000),
+      }),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || "Unable to check in kiosk.");
+    if (!response.ok)
+      throw new Error(data.message || "Unable to check in kiosk.");
     kioskEnabled = data.enabled !== false;
     if (!kioskEnabled) {
-      document.querySelector("#terminalStatusText").textContent = "TERMINAL DISABLED";
+      document.querySelector("#terminalStatusText").textContent =
+        "TERMINAL DISABLED";
       input.disabled = true;
     } else input.disabled = false;
   } catch (_error) {}
@@ -130,28 +147,78 @@ function promptKioskHealthCheck() {
 }
 
 async function completeKioskCommand(commandId, status, resultText) {
-  await fetch("/api/kiosk/commands/complete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kioskId, commandId, status, resultText }) });
+  await fetch("/api/kiosk/commands/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kioskId, commandId, status, resultText }),
+  });
 }
 async function pollKioskCommands() {
   try {
-    const response = await fetch("/api/kiosk/commands/poll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kioskId, channel: "browser" }) });
+    const response = await fetch("/api/kiosk/commands/poll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kioskId, channel: "browser" }),
+    });
     const { commands = [] } = await response.json();
     for (const command of commands) {
-      if (command.command === "reload") { await completeKioskCommand(command.id, "Completed", "Attendance page reloaded."); location.reload(); return; }
-      if (command.command === "navigate") { await completeKioskCommand(command.id, "Completed", `Navigating to ${command.payload?.path || "/kiosk/entrance"}.`); location.assign(command.payload?.path || "/kiosk/entrance"); return; }
+      if (command.command === "reload") {
+        await completeKioskCommand(
+          command.id,
+          "Completed",
+          "Attendance page reloaded.",
+        );
+        location.reload();
+        return;
+      }
+      if (command.command === "navigate") {
+        await completeKioskCommand(
+          command.id,
+          "Completed",
+          `Navigating to ${command.payload?.path || "/kiosk/entrance"}.`,
+        );
+        location.assign(command.payload?.path || "/kiosk/entrance");
+        return;
+      }
       if (command.command === "screenshot") {
         try {
-          const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-          const video = document.createElement("video"); video.srcObject = stream; await video.play();
-          const canvas = document.createElement("canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-          canvas.getContext("2d").drawImage(video, 0, 0); stream.getTracks().forEach((track) => track.stop());
+          const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: false,
+          });
+          const video = document.createElement("video");
+          video.srcObject = stream;
+          await video.play();
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext("2d").drawImage(video, 0, 0);
+          stream.getTracks().forEach((track) => track.stop());
           const imageData = canvas.toDataURL("image/jpeg", 0.7);
-          const saved = await fetch("/api/kiosk/screenshots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kioskId, commandId: command.id, imageData }) });
-          if (!saved.ok) throw new Error((await saved.json().catch(() => ({}))).message || "Screenshot upload failed.");
-        } catch (error) { await completeKioskCommand(command.id, "Failed", error.message || "Screenshot request was declined."); }
+          const saved = await fetch("/api/kiosk/screenshots", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ kioskId, commandId: command.id, imageData }),
+          });
+          if (!saved.ok)
+            throw new Error(
+              (await saved.json().catch(() => ({}))).message ||
+                "Screenshot upload failed.",
+            );
+        } catch (error) {
+          await completeKioskCommand(
+            command.id,
+            "Failed",
+            error.message || "Screenshot request was declined.",
+          );
+        }
         continue;
       }
-      await completeKioskCommand(command.id, "Unsupported", "Unsupported browser command.");
+      await completeKioskCommand(
+        command.id,
+        "Unsupported",
+        "Unsupported browser command.",
+      );
     }
   } catch (_error) {}
 }
@@ -504,12 +571,13 @@ function showResult(type, title, detail, previous = "", data = null) {
   if (attendeeDetailsContainer) {
     if (data) {
       const isStudent = data.type === "Student";
+      const isAlumnus = data.type === "Alumnus";
       attendeeDetailsContainer.innerHTML = isStudent
         ? `
           <div class="identity-grid">
             <div>
               <span>ATTENDEE TYPE</span>
-              <b>Student</b>
+              <b>${data.isAlumnus ? "Student · Alumnus" : "Student"}</b>
             </div>
             <div class="program-detail">
               <span>PROGRAM / STRAND</span>
@@ -520,7 +588,14 @@ function showResult(type, title, detail, previous = "", data = null) {
               <b>${escapeHtml(data.yearLevel || "Not specified")}</b>
             </div>
           </div>`
-        : `
+        : isAlumnus
+          ? `
+          <div class="identity-grid">
+            <div><span>ATTENDEE TYPE</span><b>Alumnus</b></div>
+            <div class="program-detail"><span>PROGRAM / STRAND</span><b>${escapeHtml(data.program || "Not specified")}</b></div>
+            <div><span>GRADUATION YEAR</span><b>${escapeHtml(data.graduationYear || "Not specified")}</b></div>
+          </div>`
+          : `
           <div class="identity-grid employee-details">
             <div>
               <span>ATTENDEE TYPE</span>
@@ -737,7 +812,12 @@ async function performScan(idNumber, actionOverride) {
     const response = await fetch("/api/kiosk/scan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idNumber, action, location: terminalLocation, kioskId }),
+      body: JSON.stringify({
+        idNumber,
+        action,
+        location: terminalLocation,
+        kioskId,
+      }),
     });
 
     const data = await response.json().catch(() => ({}));
@@ -1168,8 +1248,12 @@ if (terminalLocationInput) {
 
 checkInKiosk();
 setInterval(checkInKiosk, 90_000);
-document.addEventListener("keydown", () => { lastKioskActivity = Date.now(); });
-document.addEventListener("pointerdown", () => { lastKioskActivity = Date.now(); });
+document.addEventListener("keydown", () => {
+  lastKioskActivity = Date.now();
+});
+document.addEventListener("pointerdown", () => {
+  lastKioskActivity = Date.now();
+});
 window.addEventListener("online", promptKioskHealthCheck);
 window.addEventListener("focus", promptKioskHealthCheck);
 document.addEventListener("visibilitychange", () => {

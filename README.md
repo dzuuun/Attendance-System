@@ -67,7 +67,7 @@ camera scanning because browsers block camera access from LAN HTTP origins.
 | `DB_USER`                 | MySQL account                              |
 | `DB_PASSWORD`             | MySQL password                             |
 | `DB_NAME`                 | Database; defaults to `attendance_system`  |
-| `JWT_SECRET`              | Secret used to sign authenticated sessions |
+| `JWT_SECRET`              | 32+ character secret used to sign sessions |
 | `GOOGLE_CLIENT_ID`        | Optional Google OAuth client ID            |
 | `GOOGLE_CLIENT_SECRET`    | Optional Google OAuth client secret        |
 | `GOOGLE_WORKSPACE_DOMAIN` | Allowed institutional Google domain        |
@@ -110,6 +110,15 @@ Public kiosks:
 - `/kiosk/entrance`
 - `/kiosk/library`
 - `/kiosk/internet-section`
+
+The first time a kiosk browser is opened, it asks a Superadmin to verify the
+device. Successful verification is stored as a secure, device-bound cookie that
+is renewed while the kiosk is used, so succeeding visits do not ask for the password. Clearing the
+browser's cookies or local storage makes it a new kiosk and requires verification.
+
+In production, apply `database.sql` during deployment and use a database account
+without schema-changing privileges. Runtime DDL is disabled unless
+`ALLOW_RUNTIME_DDL=true` is explicitly configured.
 
 ## Permissions
 
@@ -261,6 +270,7 @@ Back up both MySQL and `uploads/profile-photos` regularly.
 
 - Use MySQL 8.0+ and a dedicated database account.
 - Replace the development JWT secret with a long random value.
+- Verify every new kiosk with a Superadmin account and review kiosk activity regularly.
 - Serve TapTrack through HTTPS.
 - Protect `.env` and uploaded profile photos.
 - Confirm the current academic period before opening kiosks.
@@ -272,4 +282,6 @@ Back up both MySQL and `uploads/profile-photos` regularly.
 ```bash
 npm run dev   # development server using Node watch mode
 npm start     # production server
+npm test      # security regression tests
+npm run check # syntax-check all JavaScript files
 ```

@@ -5,6 +5,7 @@ const labels = {
   events: "Events",
   student: "Students",
   employee: "Employees",
+  alumni: "Alumni",
   people: "People",
   settings: "System settings",
   school: "Schools",
@@ -19,18 +20,12 @@ const labels = {
 function activityLog(req, res, next) {
   const method = req.method.toUpperCase();
   const path = req.originalUrl.split("?")[0];
-  const bulkImportType = String(req.get("X-Bulk-Import") || "")
-    .trim()
-    .toLowerCase();
-  const bulkImportRequest =
-    bulkImportType && path.startsWith(`/api/${bulkImportType}`);
   const excluded =
     /\/scan$/.test(path) ||
     path === "/api/attendance/scan" ||
     path.startsWith("/api/kiosk/") ||
     path.startsWith("/api/activity-log") ||
-    path.startsWith("/api/users") ||
-    bulkImportRequest;
+    path.startsWith("/api/users");
   if (
     !req.user ||
     !["POST", "PUT", "PATCH", "DELETE"].includes(method) ||

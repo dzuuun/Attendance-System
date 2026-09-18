@@ -187,7 +187,7 @@
       document.querySelector("#personLogExportName").textContent =
         selected.name;
       document.querySelector("#personLogExportIdentity").textContent =
-        `${selected.idNumber} · ${selected.type === "student" ? "Student" : "Employee"}`;
+        `${selected.idNumber} · ${selected.type === "student" ? "Student" : selected.type === "alumnus" ? "Alumnus" : "Employee"}`;
       document.querySelector("#personLogExportError").textContent = "";
       dialog.showModal();
       try {

@@ -14,6 +14,7 @@
           </div>
         </div>
         <p class="form-error" id="profilePhotoError"></p>
+        <p id="profilePhotoProgress" role="status" aria-live="polite"></p>
         <div class="modal-actions"><button type="button" class="secondary-button" id="profilePhotoCancel">Cancel</button><button type="submit" class="primary-button" id="profilePhotoSubmit">Upload</button></div>
       </form>
     </dialog>`,
@@ -23,19 +24,21 @@
   const form = document.querySelector("#profilePhotoForm");
   const input = document.querySelector("#profilePhotoInput");
   const error = document.querySelector("#profilePhotoError");
+  const progress = document.querySelector("#profilePhotoProgress");
   let selectedPerson = null;
 
   function openBulk() {
     selectedPerson = null;
     form.reset();
     error.textContent = "";
+    progress.textContent = "";
     input.multiple = true;
     document.querySelector("#profilePhotoTitle").textContent =
       `Upload ${type} photos`;
     document.querySelector("#profilePhotoPrompt").textContent =
       "Choose one or more images";
     document.querySelector("#profilePhotoHelp").textContent =
-      "Name every image using the ID number, for example 2023620.jpg.";
+      "Name every image using the ID number. Any number of photos can be selected; they will be queued automatically.";
     dialog.showModal();
   }
 
@@ -47,6 +50,7 @@
     };
     form.reset();
     error.textContent = "";
+    progress.textContent = "";
     input.multiple = false;
     document.querySelector("#profilePhotoTitle").textContent =
       `Upload photo for ${selectedPerson.name}`;
@@ -73,31 +77,50 @@
     if (!input.files.length) return;
     const submit = document.querySelector("#profilePhotoSubmit");
     submit.disabled = true;
+    input.disabled = true;
+    document.querySelector("#profilePhotoClose").disabled = true;
+    document.querySelector("#profilePhotoCancel").disabled = true;
     error.textContent = "";
     try {
-      const data = new FormData();
-      [...input.files].forEach((file) =>
-        data.append(selectedPerson ? "photo" : "photos", file),
-      );
-      const token = localStorage.getItem("taptrack_token");
-      const url = selectedPerson
-        ? `/api/${type}/${selectedPerson.id}/photo`
-        : `/api/${type}/photos/bulk`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token || ""}` },
-        body: data,
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok)
-        throw new Error(result.message || "Photo upload failed.");
-      const updated = selectedPerson ? [result] : result.updated || [];
-      updated.forEach((record) =>
-        document.dispatchEvent(
-          new CustomEvent("taptrack:photo-updated", { detail: record }),
-        ),
-      );
-      const unmatched = result.unmatched || [];
+      const files = [...input.files];
+      const batches = selectedPerson
+        ? [files]
+        : Array.from({ length: Math.ceil(files.length / 25) }, (_, index) =>
+            files.slice(index * 25, index * 25 + 25),
+          );
+      const updated = [];
+      const unmatched = [];
+      let processed = 0;
+      for (const batch of batches) {
+        const data = new FormData();
+        batch.forEach((file) =>
+          data.append(selectedPerson ? "photo" : "photos", file),
+        );
+        const end = processed + batch.length;
+        progress.textContent = selectedPerson
+          ? "Uploading photoâ€¦"
+          : `Uploading queued photos ${processed + 1}â€“${end} of ${files.length}â€¦`;
+        submit.textContent = selectedPerson
+          ? "Uploadingâ€¦"
+          : `Uploading ${end} of ${files.length}`;
+        const url = selectedPerson
+          ? `/api/${type}/${selectedPerson.id}/photo`
+          : `/api/${type}/photos/bulk`;
+        const response = await fetch(url, { method: "POST", body: data });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok)
+          throw new Error(result.message || "Photo upload failed.");
+        const completed = selectedPerson ? [result] : result.updated || [];
+        updated.push(...completed);
+        unmatched.push(...(result.unmatched || []));
+        completed.forEach((record) =>
+          document.dispatchEvent(
+            new CustomEvent("taptrack:photo-updated", { detail: record }),
+          ),
+        );
+        processed = end;
+      }
+      progress.textContent = `Finished processing ${files.length} photo${files.length === 1 ? "" : "s"}.`;
       TapTrack.toast(
         `${updated.length} photo${updated.length === 1 ? "" : "s"} uploaded.${unmatched.length ? ` ${unmatched.length} filename${unmatched.length === 1 ? " was" : "s were"} not matched.` : ""}`,
         unmatched.length ? "error" : "success",
@@ -107,6 +130,10 @@
       error.textContent = uploadError.message;
     } finally {
       submit.disabled = false;
+      input.disabled = false;
+      document.querySelector("#profilePhotoClose").disabled = false;
+      document.querySelector("#profilePhotoCancel").disabled = false;
+      submit.textContent = "Upload";
     }
   });
 })();

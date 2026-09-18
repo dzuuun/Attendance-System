@@ -1,9 +1,7 @@
 (() => {
-  const TOKEN_KEY = "taptrack_token";
-  const token = localStorage.getItem(TOKEN_KEY);
+  localStorage.removeItem("taptrack_token");
   const staffLink = document.querySelector("#staffPortalLink");
-
-  if (!token || !staffLink) return;
+  if (!staffLink) return;
 
   const firstAvailablePage = (user) => {
     if (user.overviewAccess) return "/overview";
@@ -15,9 +13,7 @@
     return null;
   };
 
-  const sessionCheck = fetch("/api/auth/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const sessionCheck = fetch("/api/auth/me")
     .then(async (response) => {
       if (!response.ok) throw new Error(String(response.status));
       return response.json();
@@ -30,8 +26,7 @@
         "Continue to staff portal";
     })
     .catch((error) => {
-      if (error.message === "401" || error.message === "403")
-        localStorage.removeItem(TOKEN_KEY);
+      return error;
     });
 
   staffLink.addEventListener("click", async (event) => {

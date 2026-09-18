@@ -101,6 +101,37 @@ CREATE TABLE IF NOT EXISTS kiosks (
   INDEX idx_kiosks_type_location (kiosk_type, location)
 );
 
+CREATE TABLE IF NOT EXISTS alumni (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id INT UNSIGNED NULL UNIQUE,
+  id_number VARCHAR(80) NOT NULL UNIQUE,
+  contact VARCHAR(150),
+  first_name VARCHAR(80) NOT NULL,
+  middle_name VARCHAR(80),
+  last_name VARCHAR(80) NOT NULL,
+  program_id INT UNSIGNED NULL,
+  graduation_year SMALLINT UNSIGNED NOT NULL,
+  birthday DATE NULL,
+  institutional_email VARCHAR(150),
+  photo_url VARCHAR(500),
+  gender VARCHAR(30),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  transferred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_alumni_name (last_name, first_name),
+  INDEX idx_alumni_program (program_id),
+  INDEX idx_alumni_active_name (is_active, last_name, first_name)
+);
+
+CREATE TABLE IF NOT EXISTS alumni_degrees (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  alumni_id INT UNSIGNED NOT NULL,
+  program_id INT UNSIGNED NOT NULL,
+  graduation_year SMALLINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_alumni_degree (alumni_id, program_id, graduation_year),
+  INDEX idx_alumni_degrees_alumni (alumni_id)
+);
+
 CREATE TABLE IF NOT EXISTS kiosk_commands (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   kiosk_id VARCHAR(80) NOT NULL,
@@ -4711,13 +4742,21 @@ CREATE TABLE IF NOT EXISTS university_entrance_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id INT UNSIGNED NULL,
   employee_id INT UNSIGNED NULL,
+  person_type ENUM('Student', 'Employee', 'Alumnus') NULL,
+  id_number_snapshot VARCHAR(80) NULL,
+  name_snapshot VARCHAR(255) NULL,
+  affiliation_snapshot VARCHAR(255) NULL,
   attendance_action ENUM('Time In', 'Time Out') NOT NULL DEFAULT 'Time In',
   scan_location VARCHAR(120) NULL,
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   academic_period_id INT UNSIGNED NULL,
   INDEX idx_university_period_time (academic_period_id, checked_in_at, id),
   INDEX idx_university_student_time (student_id, academic_period_id, checked_in_at, id),
-  INDEX idx_university_employee_time (employee_id, academic_period_id, checked_in_at, id)
+  INDEX idx_university_employee_time (employee_id, academic_period_id, checked_in_at, id),
+  CONSTRAINT fk_university_logs_student FOREIGN KEY (student_id) REFERENCES students(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_university_logs_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_university_logs_period FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_university_logs_identity CHECK ((student_id IS NULL) <> (employee_id IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS event_attendance_logs (
@@ -4725,6 +4764,10 @@ CREATE TABLE IF NOT EXISTS event_attendance_logs (
   event_id INT UNSIGNED NOT NULL,
   student_id INT UNSIGNED NULL,
   employee_id INT UNSIGNED NULL,
+  person_type ENUM('Student', 'Employee', 'Alumnus') NULL,
+  id_number_snapshot VARCHAR(80) NULL,
+  name_snapshot VARCHAR(255) NULL,
+  affiliation_snapshot VARCHAR(255) NULL,
   attendance_action ENUM('Time In', 'Time Out') NOT NULL DEFAULT 'Time In',
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   academic_period_id INT UNSIGNED NULL,
@@ -4737,7 +4780,8 @@ CREATE TABLE IF NOT EXISTS event_attendance_logs (
   CONSTRAINT fk_event_attendance_event FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT fk_event_attendance_student FOREIGN KEY (student_id) REFERENCES students(id) ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT fk_event_attendance_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_event_attendance_period FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  CONSTRAINT fk_event_attendance_period FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_event_attendance_identity CHECK ((student_id IS NULL) <> (employee_id IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS event_attendance_corrections (
@@ -4746,7 +4790,7 @@ CREATE TABLE IF NOT EXISTS event_attendance_corrections (
   event_id INT UNSIGNED NOT NULL,
   attendee_id_number VARCHAR(50) NOT NULL,
   attendee_name VARCHAR(255) NOT NULL,
-  attendee_type ENUM('Student', 'Employee') NOT NULL,
+  attendee_type ENUM('Student', 'Employee', 'Alumnus') NOT NULL,
   correction_type ENUM('Updated', 'Deleted') NOT NULL,
   original_action ENUM('Time In', 'Time Out') NOT NULL,
   original_checked_in_at DATETIME NOT NULL,
@@ -4828,6 +4872,38 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     NULL
 );
 
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  jti CHAR(36) PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  expires_at DATETIME NOT NULL,
+  revoked_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at DATETIME NULL,
+  INDEX idx_auth_sessions_user (user_id),
+  INDEX idx_auth_sessions_expiry (expires_at),
+  CONSTRAINT fk_auth_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS kiosk_sessions (
+  jti CHAR(36) PRIMARY KEY,
+  kiosk_id VARCHAR(80) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  revoked_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at DATETIME NULL,
+  INDEX idx_kiosk_sessions_device (kiosk_id),
+  INDEX idx_kiosk_sessions_expiry (expires_at)
+);
+
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+  bucket_key CHAR(64) NOT NULL,
+  window_start BIGINT UNSIGNED NOT NULL,
+  request_count INT UNSIGNED NOT NULL DEFAULT 1,
+  expires_at DATETIME NOT NULL,
+  PRIMARY KEY (bucket_key, window_start),
+  INDEX idx_rate_limit_expiry (expires_at)
+);
+
 CREATE TABLE IF NOT EXISTS system_settings (
   setting_key VARCHAR(80) PRIMARY KEY,
   setting_value VARCHAR(255) NOT NULL,
@@ -4847,6 +4923,10 @@ CREATE TABLE IF NOT EXISTS library_entrance_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id INT UNSIGNED NULL,
   employee_id INT UNSIGNED NULL,
+  person_type ENUM('Student', 'Employee', 'Alumnus') NULL,
+  id_number_snapshot VARCHAR(80) NULL,
+  name_snapshot VARCHAR(255) NULL,
+  affiliation_snapshot VARCHAR(255) NULL,
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   academic_period_id INT UNSIGNED NULL,
   INDEX idx_period_time (academic_period_id, checked_in_at, id),
@@ -4854,12 +4934,20 @@ CREATE TABLE IF NOT EXISTS library_entrance_logs (
   INDEX idx_employee_time (employee_id, checked_in_at, id),
   INDEX idx_student_period_time (student_id, academic_period_id, checked_in_at, id),
   INDEX idx_employee_period_time (employee_id, academic_period_id, checked_in_at, id)
+  ,CONSTRAINT fk_library_logs_student FOREIGN KEY (student_id) REFERENCES students(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  ,CONSTRAINT fk_library_logs_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  ,CONSTRAINT fk_library_logs_period FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  ,CONSTRAINT chk_library_logs_identity CHECK ((student_id IS NULL) <> (employee_id IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS internet_section_entrance_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id INT UNSIGNED NULL,
   employee_id INT UNSIGNED NULL,
+  person_type ENUM('Student', 'Employee', 'Alumnus') NULL,
+  id_number_snapshot VARCHAR(80) NULL,
+  name_snapshot VARCHAR(255) NULL,
+  affiliation_snapshot VARCHAR(255) NULL,
   checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   academic_period_id INT UNSIGNED NULL,
   INDEX idx_period_time (academic_period_id, checked_in_at, id),
@@ -4867,6 +4955,10 @@ CREATE TABLE IF NOT EXISTS internet_section_entrance_logs (
   INDEX idx_employee_time (employee_id, checked_in_at, id),
   INDEX idx_student_period_time (student_id, academic_period_id, checked_in_at, id),
   INDEX idx_employee_period_time (employee_id, academic_period_id, checked_in_at, id)
+  ,CONSTRAINT fk_internet_logs_student FOREIGN KEY (student_id) REFERENCES students(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  ,CONSTRAINT fk_internet_logs_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  ,CONSTRAINT fk_internet_logs_period FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id) ON UPDATE CASCADE ON DELETE RESTRICT
+  ,CONSTRAINT chk_internet_logs_identity CHECK ((student_id IS NULL) <> (employee_id IS NULL))
 );
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -1,7 +1,11 @@
-param([string]$Source="docs/user-manual/TapTrack-Superadmin-User-Manual.md",[string]$Output="docs/user-manual/TapTrack-Superadmin-User-Manual.docx")
+param(
+  [string]$Source="docs/user-manual/TapTrack-Superadmin-User-Manual.md",
+  [string]$Output="docs/user-manual/TapTrack-Superadmin-User-Manual.docx",
+  [string]$PdfOutput=""
+)
 $ErrorActionPreference="Stop"
 $root=Split-Path -Parent $PSScriptRoot
-$sourcePath=[IO.Path]::GetFullPath((Join-Path $root $Source));$outputPath=[IO.Path]::GetFullPath((Join-Path $root $Output));$manualRoot=Split-Path -Parent $sourcePath
+$sourcePath=[IO.Path]::GetFullPath((Join-Path $root $Source));$outputPath=[IO.Path]::GetFullPath((Join-Path $root $Output));$pdfPath=if($PdfOutput){[IO.Path]::GetFullPath((Join-Path $root $PdfOutput))}else{$null};$manualRoot=Split-Path -Parent $sourcePath
 if(-not(Test-Path -LiteralPath $sourcePath)){throw "Manual source not found: $sourcePath"}
 function Clean([string]$value){$value.Replace("**","").Replace(([char]96).ToString(),"")}
 function Paragraph($doc,[string]$text="",[string]$style="Normal"){
@@ -22,7 +26,7 @@ try{
   $title=Paragraph $doc "TapTrack User Manual";$title.Alignment=1;$title.Range.Font.Name="Georgia";$title.Range.Font.Size=21;$title.Range.Font.Bold=$true;$title.Range.Font.Color=$green;$title.Format.SpaceBefore=12;$title.Format.SpaceAfter=24
   $p=Paragraph $doc "Smart Attendance Management System";$p.Format.SpaceAfter=3
   $p=Paragraph $doc "Notre Dame of Marbel University";$p.Format.SpaceAfter=12
-  $p=Paragraph $doc "Version: September 1, 2026";$p.Format.SpaceAfter=18
+  $p=Paragraph $doc "Version 1.1: September 18, 2026";$p.Format.SpaceAfter=18
 
   $lines=[IO.File]::ReadAllLines($sourcePath);$i=4;$figure=0;$figureLead=@()
   while($i-lt$lines.Count){
@@ -53,4 +57,5 @@ try{
     if($lookAhead-lt$lines.Count-and$lines[$lookAhead]-match'^!\['){$p.Format.KeepWithNext=$true}
   }
   $doc.SaveAs2($outputPath,12);Write-Output "Created $outputPath"
+  if($pdfPath){$doc.ExportAsFixedFormat($pdfPath,17);Write-Output "Created $pdfPath"}
 }finally{if($doc){$doc.Close($false)};if($word){$word.Quit()};if($doc){[void][Runtime.InteropServices.Marshal]::ReleaseComObject($doc)};if($word){[void][Runtime.InteropServices.Marshal]::ReleaseComObject($word)};[GC]::Collect();[GC]::WaitForPendingFinalizers()}

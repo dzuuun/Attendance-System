@@ -40,7 +40,10 @@
       try {
         const schoolYear = schoolYearInput.value.trim();
         const semester = Number(semesterInput.value);
-        const query = new URLSearchParams({ schoolYear, semester: String(semester) });
+        const query = new URLSearchParams({
+          schoolYear,
+          semester: String(semester),
+        });
         const preview = await api(`/api/student/mssql-import/preview?${query}`);
         clearTimeout(slowMessage);
         renderPreview(preview);
@@ -90,34 +93,40 @@
     </div>`;
     bindCloseButtons();
 
-    $(".attendance-system-review-body", dialog).addEventListener("click", async (event) => {
-      const button = event.target.closest("[data-mssql-group]");
-      if (!button) return;
-      const key = button.dataset.mssqlGroup;
-      const group = data.groups[key];
-      button.disabled = true;
-      button.textContent = "Loading…";
-      try {
-        const query = new URLSearchParams({
-          schoolYear: data.period.schoolYear,
-          semester: String(data.period.semester),
-          offset: String(group.nextOffset),
-        });
-        const page = await api(`/api/student/mssql-import/preview?${query}`);
-        const nextGroup = page.groups[key];
-        button.insertAdjacentHTML("beforebegin", nextGroup.records.map(recordMarkup).join(""));
-        group.nextOffset = nextGroup.nextOffset;
-        group.hasMore = nextGroup.hasMore;
-        if (group.hasMore) {
+    $(".attendance-system-review-body", dialog).addEventListener(
+      "click",
+      async (event) => {
+        const button = event.target.closest("[data-mssql-group]");
+        if (!button) return;
+        const key = button.dataset.mssqlGroup;
+        const group = data.groups[key];
+        button.disabled = true;
+        button.textContent = "Loading…";
+        try {
+          const query = new URLSearchParams({
+            schoolYear: data.period.schoolYear,
+            semester: String(data.period.semester),
+            offset: String(group.nextOffset),
+          });
+          const page = await api(`/api/student/mssql-import/preview?${query}`);
+          const nextGroup = page.groups[key];
+          button.insertAdjacentHTML(
+            "beforebegin",
+            nextGroup.records.map(recordMarkup).join(""),
+          );
+          group.nextOffset = nextGroup.nextOffset;
+          group.hasMore = nextGroup.hasMore;
+          if (group.hasMore) {
+            button.disabled = false;
+            button.textContent = "Load next 100 rows";
+          } else button.remove();
+        } catch (requestError) {
+          $("#mssqlError", dialog).textContent = requestError.message;
           button.disabled = false;
           button.textContent = "Load next 100 rows";
-        } else button.remove();
-      } catch (requestError) {
-        $("#mssqlError", dialog).textContent = requestError.message;
-        button.disabled = false;
-        button.textContent = "Load next 100 rows";
-      }
-    });
+        }
+      },
+    );
 
     $("#mssqlRun", dialog).addEventListener("click", async () => {
       const error = $("#mssqlError", dialog);

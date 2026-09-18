@@ -53,7 +53,7 @@ const updatePassword = async (id, passwordHash) =>
   )[0];
 const countUsers = async () =>
   (await pool.query("SELECT COUNT(*) count FROM users"))[0][0].count;
-const createSuperadmin = async ({
+const createInitialSuperadmin = async ({
   firstName,
   middleName,
   lastName,
@@ -62,12 +62,38 @@ const createSuperadmin = async ({
 }) => {
   await permissionModel.ensureSchema();
   await ensureNames();
-  return (
-    await pool.query(
-      "INSERT INTO users (first_name,middle_name,last_name,username,password_hash,permission_id) VALUES (?,?,?,?,?,(SELECT id FROM permissions WHERE name='Superadmin' LIMIT 1))",
-      [firstName, middleName, lastName, username, passwordHash],
-    )
-  )[0];
+  const connection = await pool.getConnection();
+  try {
+    const [lock] = await connection.query(
+      "SELECT GET_LOCK('taptrack-initial-setup',10) acquired",
+    );
+    if (!lock[0]?.acquired)
+      throw new Error("Initial setup is busy. Try again.");
+    await connection.beginTransaction();
+    const [counts] = await connection.query(
+      "SELECT COUNT(*) count FROM users FOR UPDATE",
+    );
+    if (counts[0].count) {
+      await connection.rollback();
+      return null;
+    }
+    const result = (
+      await connection.query(
+        "INSERT INTO users (first_name,middle_name,last_name,username,password_hash,permission_id) VALUES (?,?,?,?,?,(SELECT id FROM permissions WHERE name='Superadmin' LIMIT 1))",
+        [firstName, middleName, lastName, username, passwordHash],
+      )
+    )[0];
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback().catch(() => {});
+    throw error;
+  } finally {
+    await connection
+      .query("SELECT RELEASE_LOCK('taptrack-initial-setup')")
+      .catch(() => {});
+    connection.release();
+  }
 };
 module.exports = {
   findByUsername,
@@ -75,5 +101,5 @@ module.exports = {
   findPasswordById,
   updatePassword,
   countUsers,
-  createSuperadmin,
+  createInitialSuperadmin,
 };

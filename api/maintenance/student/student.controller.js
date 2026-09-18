@@ -65,7 +65,7 @@ function valid(data) {
     data.birthday &&
     (!data.institutionalEmail ||
       /^\S+@\S+\.\S+$/.test(data.institutionalEmail)) &&
-    ["Male", "Female", "Other", "Prefer not to say"].includes(data.gender)
+    ["Male", "Female"].includes(data.gender)
   );
 }
 exports.getAll = async (_req, res) => res.json(await model.getAll());
@@ -153,6 +153,64 @@ exports.setStatus = async (req, res) => {
     return res.status(404).json({ message: "Student not found." });
   req.activityDescription = `${isActive ? "Enabled" : "Disabled"} student ${student.idNumber} — ${student.name}.`;
   res.status(204).end();
+};
+exports.transferToAlumni = async (req, res) => {
+  const graduationYear = Number(req.body.graduationYear);
+  const maximumYear = new Date().getFullYear() + 1;
+  if (
+    !Number.isInteger(graduationYear) ||
+    graduationYear < 1900 ||
+    graduationYear > maximumYear
+  )
+    return res.status(400).json({ message: "Enter a valid graduation year." });
+  const alumniModel = require("../alumni/alumni.model");
+  const result = await alumniModel.transferStudent(
+    req.params.id,
+    graduationYear,
+  );
+  if (result.status === "missing")
+    return res.status(404).json({ message: "Student not found." });
+  const alumnus = await alumniModel.getById(result.id);
+  req.activityAction = "STUDENT_GRADUATED";
+  req.activityDescription = `Transferred ${alumnus.idNumber} — ${alumnus.name} to Alumni (${graduationYear}) and deactivated the student record.`;
+  res.status(result.status === "created" ? 201 : 200).json(alumnus);
+};
+exports.bulkTransferToAlumni = async (req, res) => {
+  const graduationYear = Number(req.body.graduationYear);
+  const idNumbers = [
+    ...new Set(
+      (Array.isArray(req.body.idNumbers) ? req.body.idNumbers : [])
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toUpperCase(),
+        )
+        .filter(Boolean),
+    ),
+  ];
+  const maximumYear = new Date().getFullYear() + 1;
+  if (!idNumbers.length || idNumbers.length > 10000)
+    return res
+      .status(400)
+      .json({ message: "Import between 1 and 10,000 student IDs." });
+  if (
+    !Number.isInteger(graduationYear) ||
+    graduationYear < 1900 ||
+    graduationYear > maximumYear
+  )
+    return res.status(400).json({ message: "Enter a valid graduation year." });
+  const result =
+    await require("../alumni/alumni.model").transferStudentsByIdNumbers(
+      idNumbers,
+      graduationYear,
+    );
+  if (!result.transferred)
+    return res
+      .status(409)
+      .json({ message: "None of the selected students are active." });
+  req.activityAction = "STUDENTS_GRADUATED";
+  req.activityDescription = `Bulk transferred ${result.transferred} student${result.transferred === 1 ? "" : "s"} to Alumni (${graduationYear}) by ID import and deactivated their student records. ${result.skipped} ID${result.skipped === 1 ? " was" : "s were"} skipped.`;
+  res.json(result);
 };
 exports.deactivateMissing = async (req, res) => {
   const idNumbers = [

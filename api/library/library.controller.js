@@ -7,10 +7,17 @@ exports.scan = async (req, res) => {
   if (!idNumber)
     return res.status(400).json({ message: "Enter an ID number." });
   const kioskId = String(req.body.kioskId || "").trim();
+  if (req.kioskAuthenticated && !kioskId)
+    return res
+      .status(400)
+      .json({ message: "This kiosk has no device identity." });
   if (kioskId) {
-    const enabled = await require("../kiosk-management/kiosk.model").assertEnabled(kioskId);
+    const enabled =
+      await require("../kiosk-management/kiosk.model").assertEnabled(kioskId);
     if (!enabled)
-      return res.status(403).json({ message: "This kiosk has been disabled by central management." });
+      return res.status(403).json({
+        message: "This kiosk has been disabled by central management.",
+      });
   }
   try {
     const record = await model.scan(req.params.location, idNumber);
@@ -24,6 +31,8 @@ exports.scan = async (req, res) => {
       return res.status(400).json({ message: error.message });
     if (error.code === "INACTIVE_STUDENT")
       return res.status(403).json({ message: error.message });
+    if (error.code === "DUPLICATE_SCAN")
+      return res.status(409).json({ message: error.message, duplicate: true });
     throw error;
   }
 };

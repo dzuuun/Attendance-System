@@ -6,6 +6,7 @@ const types = {
   program: "programs",
   school: "schools",
   student: "students",
+  alumni: "alumni",
 };
 
 exports.create = (req, res) => {

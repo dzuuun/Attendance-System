@@ -8,6 +8,9 @@ const validInstitutionalEmail = (email) => {
     .toLowerCase();
   return !domain || email.endsWith(`@${domain}`);
 };
+const protectedRole = (role) => ["Superadmin", "Administrator"].includes(role);
+const mayManageRole = (actor, role) =>
+  actor?.role === "Superadmin" || !protectedRole(role);
 exports.getAll = async (_req, res) => res.json(await model.getAll());
 exports.create = async (req, res) => {
   const firstName = String(req.body.firstName || "").trim(),
@@ -27,7 +30,7 @@ exports.create = async (req, res) => {
     (institutionalEmail && !validInstitutionalEmail(institutionalEmail)) ||
     String(password).length < 8 ||
     !permission?.isActive ||
-    (role === "Superadmin" && req.user.role !== "Superadmin")
+    !mayManageRole(req.user, role)
   )
     return res.status(400).json({
       message: "Complete all required fields; passwords need 8 characters.",
@@ -73,12 +76,22 @@ exports.setStatus = async (req, res) => {
       .json({ message: "You cannot deactivate your account." });
   const user = await model.getById(req.params.id);
   if (!user) return res.status(404).json({ message: "User not found." });
+  if (!mayManageRole(req.user, user.role))
+    return res.status(403).json({
+      message: "Only a superadmin can change an administrator account.",
+    });
   const isActive = Boolean(req.body.isActive);
   await model.setStatus(req.params.id, isActive);
   req.activityDescription = `${isActive ? "Enabled" : "Disabled"} user ${user.username} — ${user.fullName}.`;
   res.status(204).end();
 };
 exports.update = async (req, res) => {
+  const existing = await model.getById(req.params.id);
+  if (!existing) return res.status(404).json({ message: "User not found." });
+  if (!mayManageRole(req.user, existing.role))
+    return res.status(403).json({
+      message: "Only a superadmin can change an administrator account.",
+    });
   const firstName = String(req.body.firstName || "").trim(),
     middleName = String(req.body.middleName || "").trim(),
     lastName = String(req.body.lastName || "").trim(),
@@ -91,9 +104,7 @@ exports.update = async (req, res) => {
     permission = await permissionModel.findById(req.body.permissionId),
     role = permission?.name || "",
     isActive = Boolean(req.body.isActive),
-    canAssign =
-      permission?.isActive &&
-      (role !== "Superadmin" || req.user.role === "Superadmin");
+    canAssign = permission?.isActive && mayManageRole(req.user, role);
   if (
     !firstName ||
     !lastName ||

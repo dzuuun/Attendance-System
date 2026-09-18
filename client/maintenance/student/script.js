@@ -4,6 +4,7 @@ let students = [],
   currentUser = null;
 let managePopup = null;
 let manageTrigger = null;
+let bulkGraduateIds = [];
 
 function closeManagePopup() {
   if (manageTrigger) manageTrigger.setAttribute("aria-expanded", "false");
@@ -20,7 +21,7 @@ function openManagePopup(trigger) {
   if (!student) return;
   const popup = document.createElement("div");
   popup.className = "event-action-options event-action-popup";
-  popup.innerHTML = `<button class="edit" data-id="${student.id}">Edit</button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button>` : ""}<button class="person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button>`;
+  popup.innerHTML = `<button class="edit" data-id="${student.id}">Edit</button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button><button class="graduate" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Move to Alumni</button>` : ""}<button class="person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button>`;
   document.body.appendChild(popup);
   const rect = trigger.getBoundingClientRect();
   const width = 172;
@@ -165,7 +166,7 @@ function render() {
     columns: [
       {
         data: "idNumber",
-        render: (value, type) =>
+        render: (value, type, student) =>
           type === "display" ? `<strong>${escapeHtml(value)}</strong>` : value,
       },
       {
@@ -191,9 +192,9 @@ function render() {
       },
       {
         data: "isActive",
-        render: (value, type) =>
+        render: (value, type, student) =>
           type === "display"
-            ? `<span class="status-pill ${value ? "" : "time-out"}">${value ? "Active" : "Inactive"}</span>`
+            ? `<span class="status-pill ${value ? "" : "time-out"}">${value ? "Active" : "Inactive"}${student.isAlumnus ? " · Alumnus" : ""}</span>`
             : value
               ? "Active"
               : "Inactive",
@@ -418,6 +419,15 @@ document.addEventListener("click", async (event) => {
   if (event.target.classList.contains("edit")) open(student);
   if (event.target.classList.contains("card-enroll"))
     openCardEnrollment(student);
+  if (event.target.classList.contains("graduate")) {
+    $("#graduateStudentId").value = student.id;
+    $("#graduateStudentName").textContent =
+      `${student.name} (${student.idNumber})`;
+    $("#graduationYear").value = new Date().getFullYear();
+    $("#graduationYear").max = new Date().getFullYear() + 1;
+    $("#graduateError").textContent = "";
+    $("#graduateDialog").showModal();
+  }
   if (event.target.classList.contains("status")) {
     await api(`/api/student/${student.id}/status`, {
       method: "PATCH",
@@ -425,6 +435,157 @@ document.addEventListener("click", async (event) => {
     });
     student.isActive = !student.isActive;
     await render();
+  }
+});
+$("#graduateForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const studentId = $("#graduateStudentId").value;
+  const submit = event.submitter;
+  submit.disabled = true;
+  submit.textContent = "Transferring…";
+  try {
+    await api(`/api/student/${studentId}/transfer-to-alumni`, {
+      method: "POST",
+      body: JSON.stringify({
+        graduationYear: Number($("#graduationYear").value),
+      }),
+    });
+    const student = students.find((item) => String(item.id) === studentId);
+    if (student) student.isActive = false;
+    await render();
+    $("#graduateDialog").close();
+    TapTrack.toast("Student transferred to the Alumni directory.", "success");
+  } catch (error) {
+    $("#graduateError").textContent = error.message;
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Confirm graduation";
+  }
+});
+$("#bulkGraduateBtn").addEventListener("click", () => {
+  bulkGraduateIds = [];
+  $("#bulkGraduateForm").reset();
+  $("#bulkGraduationYear").value = new Date().getFullYear();
+  $("#bulkGraduationYear").max = new Date().getFullYear() + 1;
+  $("#bulkGraduateFileName").textContent = "Choose an Excel or CSV file";
+  $("#bulkGraduateCount").textContent = "No IDs loaded.";
+  $("#bulkGraduateError").textContent = "";
+  $("#runBulkGraduate").disabled = true;
+  $("#bulkGraduateDialog").showModal();
+});
+$("#bulkGraduateFile").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  bulkGraduateIds = [];
+  $("#runBulkGraduate").disabled = true;
+  $("#bulkGraduateError").textContent = "";
+  if (!file) return;
+  $("#bulkGraduateFileName").textContent = `Selected: ${file.name}`;
+  try {
+    if (!/\.(xlsx|xls|csv)$/i.test(file.name))
+      throw new Error("Choose an .xlsx, .xls, or .csv file.");
+    if (file.size > 5 * 1024 * 1024)
+      throw new Error("The ID file must be 5 MB or smaller.");
+    await loadXlsx();
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const rows = XLSX.utils.sheet_to_json(
+      workbook.Sheets[workbook.SheetNames[0]],
+      {
+        header: 1,
+        defval: "",
+        raw: false,
+      },
+    );
+    if (!rows.length) throw new Error("The first worksheet is empty.");
+    const normalizeHeader = (value) =>
+      String(value || "")
+        .replace(/[^a-z0-9]/gi, "")
+        .toLowerCase();
+    const acceptedHeaders = new Set(["idnumber", "studentid", "schoolid"]);
+    const column = rows[0].findIndex((value) =>
+      acceptedHeaders.has(normalizeHeader(value)),
+    );
+    if (column < 0)
+      throw new Error("Add a column named IDNumber, StudentID, or SchoolID.");
+    const imported = [
+      ...new Set(
+        rows
+          .slice(1)
+          .map((row) =>
+            String(row[column] || "")
+              .trim()
+              .toUpperCase(),
+          )
+          .filter(Boolean),
+      ),
+    ];
+    if (!imported.length)
+      throw new Error("No student IDs were found in the file.");
+    if (imported.length > 10000)
+      throw new Error("A bulk move can contain at most 10,000 IDs.");
+    const activeIds = new Set(
+      students
+        .filter((student) => student.isActive)
+        .map((student) => String(student.idNumber).trim().toUpperCase()),
+    );
+    bulkGraduateIds = imported.filter((id) => activeIds.has(id));
+    const skipped = imported.length - bulkGraduateIds.length;
+    $("#bulkGraduateCount").textContent =
+      `${bulkGraduateIds.length.toLocaleString()} active student${bulkGraduateIds.length === 1 ? "" : "s"} ready to move${skipped ? `; ${skipped.toLocaleString()} unknown or inactive ID${skipped === 1 ? "" : "s"} will be skipped` : ""}.`;
+    $("#runBulkGraduate").disabled = !bulkGraduateIds.length;
+  } catch (error) {
+    $("#bulkGraduateCount").textContent = "No valid IDs loaded.";
+    $("#bulkGraduateError").textContent = error.message;
+  }
+});
+$("#bulkGraduateTemplateBtn").addEventListener("click", async () => {
+  try {
+    await loadXlsx();
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet([{ IDNumber: "20230001" }]),
+      "Graduating Students",
+    );
+    XLSX.writeFile(workbook, "alumni_bulk_move_template.xlsx");
+  } catch (error) {
+    $("#bulkGraduateError").textContent = error.message;
+  }
+});
+$("#bulkGraduateForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!bulkGraduateIds.length) return;
+  const submit = event.submitter;
+  submit.disabled = true;
+  submit.textContent = "Moving students…";
+  try {
+    const result = await api("/api/student/bulk-transfer-to-alumni", {
+      method: "POST",
+      body: JSON.stringify({
+        idNumbers: bulkGraduateIds,
+        graduationYear: Number($("#bulkGraduationYear").value),
+      }),
+    });
+    const moved = new Set(
+      result.movedIdNumbers.map((value) => String(value).trim().toUpperCase()),
+    );
+    students.forEach((student) => {
+      if (moved.has(String(student.idNumber).trim().toUpperCase())) {
+        student.isActive = false;
+        student.isAlumnus = 1;
+      }
+    });
+    bulkGraduateIds = [];
+    $("#bulkGraduateDialog").close();
+    await render();
+    TapTrack.toast(
+      `${result.transferred.toLocaleString()} student${result.transferred === 1 ? "" : "s"} moved to Alumni.`,
+      "success",
+    );
+  } catch (error) {
+    $("#bulkGraduateError").textContent = error.message;
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Move students";
   }
 });
 $("#form").addEventListener("submit", async (event) => {
@@ -506,6 +667,9 @@ $("#form").addEventListener("submit", async (event) => {
     loadingMessage.textContent = "Checking your access and preparing the page.";
     ({ user: currentUser } = await init("students"));
     $("#mssqlImportBtn").hidden = !["Superadmin", "Administrator"].includes(
+      currentUser?.role,
+    );
+    $("#bulkGraduateBtn").hidden = !["Superadmin", "Administrator"].includes(
       currentUser?.role,
     );
     loadingTitle.textContent = "Loading student records";
