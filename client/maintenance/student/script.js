@@ -1,6 +1,7 @@
 const { $, api, escapeHtml, personCell, emptyRow, init, loadXlsx } = TapTrack;
 let students = [],
   programs = [],
+  sections = [],
   currentUser = null;
 let managePopup = null;
 let manageTrigger = null;
@@ -118,7 +119,7 @@ function enhanceSearchableSelect(select) {
   sync();
 }
 
-["program", "yearLevel", "gender"].forEach((id) =>
+["program", "yearLevel", "section", "gender"].forEach((id) =>
   TapTrack.enhanceSearchableSelect($(`#${id}`)),
 );
 
@@ -141,7 +142,7 @@ function render() {
     rows = students.filter(
       (s) =>
         (showInactive || Boolean(s.isActive)) &&
-        `${s.name} ${s.idNumber} ${s.programCode || ""}`
+        `${s.name} ${s.idNumber} ${s.programCode || ""} ${s.yearLevel || ""} ${s.sectionName || ""}`
           .toLowerCase()
           .includes(q),
     );
@@ -187,8 +188,10 @@ function render() {
       },
       {
         data: "yearLevel",
-        render: (value, type) =>
-          type === "display" ? display(value) : value || "",
+        render: (value, type, student) =>
+          type === "display"
+            ? `<span class="student-placement">${display(value)}${student.sectionName ? `<small>${escapeHtml(student.sectionName)}</small>` : ""}</span>`
+            : `${value || ""} ${student.sectionName || ""}`.trim(),
       },
       {
         data: "isActive",
@@ -224,6 +227,25 @@ function programOptions(selected = "") {
       .join("");
   $("#program").searchableSelectSync?.();
 }
+function syncSectionField(selected = $("#section").value) {
+  const isGrade = /^Grade\s+(?:[1-9]|1[0-2])$/.test($("#yearLevel").value);
+  $("#sectionNameField").hidden = !isGrade;
+  $("#section").required = isGrade;
+  $("#section").innerHTML = isGrade
+    ? `<option value="">Select section</option>${sections
+        .filter(
+          (section) =>
+            section.isActive && section.yearLevel === $("#yearLevel").value,
+        )
+        .map(
+          (section) =>
+            `<option value="${section.id}" ${String(section.id) === String(selected) ? "selected" : ""}>${escapeHtml(section.name)}</option>`,
+        )
+        .join("")}`
+    : '<option value="">Not applicable</option>';
+  $("#section").searchableSelectSync?.();
+}
+$("#yearLevel").addEventListener("change", syncSectionField);
 function open(student = null) {
   document.querySelectorAll(".searchable-select").forEach((wrapper) => {
     wrapper.classList.remove("open");
@@ -266,6 +288,7 @@ function open(student = null) {
   ["program", "yearLevel", "gender"].forEach((id) =>
     $(`#${id}`).searchableSelectSync?.(),
   );
+  syncSectionField(student?.sectionId);
   $("#error").textContent = "";
   $("#dialog").showModal();
 }
@@ -361,6 +384,7 @@ $("#exportStudentsBtn").addEventListener("click", async () => {
       "Last Name": student.lastName,
       "Program Code": student.programCode || "",
       "Year Level": student.yearLevel || "",
+      "Section Name": student.sectionName || "",
       Birthday: student.birthday ? String(student.birthday).slice(0, 10) : "",
       "Institutional Email": student.institutionalEmail || "",
       Gender: student.gender || "",
@@ -601,6 +625,7 @@ $("#form").addEventListener("submit", async (event) => {
       programCode: selected?.code || "",
       programName: selected?.name || "",
       yearLevel: $("#yearLevel").value,
+      sectionId: $("#section").value,
       birthday: $("#birthday").value,
       institutionalEmail: $("#institutionalEmail").value,
       gender: $("#gender").value,
@@ -674,9 +699,10 @@ $("#form").addEventListener("submit", async (event) => {
     );
     loadingTitle.textContent = "Loading student records";
     loadingMessage.textContent = "Retrieving students and academic programs.";
-    [students, programs] = await Promise.all([
+    [students, programs, sections] = await Promise.all([
       api("/api/student"),
       api("/api/program-options"),
+      api("/api/section-options"),
     ]);
     loadingTitle.textContent = "Preparing the table";
     loadingMessage.textContent = `Displaying ${students.length.toLocaleString()} student records.`;

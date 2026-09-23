@@ -89,6 +89,7 @@
             files.slice(index * 25, index * 25 + 25),
           );
       const updated = [];
+      const unchanged = [];
       const unmatched = [];
       let processed = 0;
       for (const batch of batches) {
@@ -112,6 +113,7 @@
           throw new Error(result.message || "Photo upload failed.");
         const completed = selectedPerson ? [result] : result.updated || [];
         updated.push(...completed);
+        unchanged.push(...(result.unchanged || []));
         unmatched.push(...(result.unmatched || []));
         completed.forEach((record) =>
           document.dispatchEvent(
@@ -122,7 +124,7 @@
       }
       progress.textContent = `Finished processing ${files.length} photo${files.length === 1 ? "" : "s"}.`;
       TapTrack.toast(
-        `${updated.length} photo${updated.length === 1 ? "" : "s"} uploaded.${unmatched.length ? ` ${unmatched.length} filename${unmatched.length === 1 ? " was" : "s were"} not matched.` : ""}`,
+        `${updated.length} photo${updated.length === 1 ? "" : "s"} uploaded or updated.${unchanged.length ? ` ${unchanged.length} unchanged photo${unchanged.length === 1 ? " was" : "s were"} kept.` : ""}${unmatched.length ? ` ${unmatched.length} filename${unmatched.length === 1 ? " was" : "s were"} not matched.` : ""}`,
         unmatched.length ? "error" : "success",
       );
       dialog.close();

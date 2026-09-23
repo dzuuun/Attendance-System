@@ -94,7 +94,7 @@
                   <th>ID NUMBER</th>
                   <th>STUDENT</th>
                   <th>PROGRAM</th>
-                  <th>YEAR LEVEL</th>
+                  <th>YEAR / SECTION</th>
                   <th>STATUS</th>
                   <th>ACTION</th>
                 </tr>
@@ -153,6 +153,10 @@
               <option>3rd Year</option>
               <option>4th Year</option>
               <option>5th Year</option>
+            </select></label
+          ><label id="sectionNameField" hidden
+            >Section<select id="section">
+              <option value="">Select section</option>
             </select></label
           ><label>Birthday<input id="birthday" type="date" required /></label
           ><label
@@ -356,10 +360,10 @@
     </dialog>
     <script src="/client/shared-ui.js"></script>
     <script src="/client/nfc-client-bridge.js"></script>
-    <script src="/client/maintenance/student/script.js"></script>
-    <script src="/client/maintenance/import.js"></script>
-    <script src="/client/maintenance/student/mssql-import.js?v=7"></script>
+    <script src="/client/maintenance/student/script.js?v=2"></script>
+    <script src="/client/maintenance/import.js?v=2"></script>
+    <script src="/client/maintenance/student/mssql-import.js?v=10"></script>
     <script src="/client/person-log-export.js"></script>
-    <script src="/client/profile-photo-upload.js"></script>
+    <script src="/client/profile-photo-upload.js?v=2"></script>
   </body>
 </html>

@@ -1,13 +1,62 @@
 const { $, api, emptyRow, escapeHtml, init } = TapTrack;
 let permissions = [];
+const maintenanceModuleInputs = () => [
+  ...document.querySelectorAll(".maintenance-module"),
+];
+const accessInputs = () =>
+  [
+    "overviewAccess",
+    "attendanceAccess",
+    "specialEventsAccess",
+    "libraryAccess",
+    "maintenanceAccess",
+    "usersAccess",
+  ].map((id) => $(`#${id}`));
+const selectedMaintenanceModules = () =>
+  maintenanceModuleInputs()
+    .filter((input) => input.checked)
+    .map((input) => input.value);
+
+function syncSelectAllAccess() {
+  const selector = $("#selectAllAccess");
+  const inputs = [...accessInputs(), ...maintenanceModuleInputs()];
+  const selected = inputs.filter((input) => input.checked).length;
+  selector.checked = selected === inputs.length;
+  selector.indeterminate = selected > 0 && selected < inputs.length;
+}
+
+function syncMaintenancePanel({ selectAllWhenEmpty = false } = {}) {
+  const master = $("#maintenanceAccess"),
+    inputs = maintenanceModuleInputs();
+  if (
+    master.checked &&
+    selectAllWhenEmpty &&
+    !inputs.some((input) => input.checked)
+  )
+    inputs.forEach((input) => (input.checked = true));
+  inputs.forEach((input) => (input.disabled = !master.checked));
+  $("#selectAllMaintenance").disabled = !master.checked;
+  $("#maintenanceModulePanel").classList.toggle("is-disabled", !master.checked);
+  const selected = inputs.filter((input) => input.checked).length;
+  $("#selectAllMaintenance").checked = selected === inputs.length;
+  $("#selectAllMaintenance").indeterminate =
+    selected > 0 && selected < inputs.length;
+  syncSelectAllAccess();
+}
+
 function accessSummary(item) {
+  const maintenanceLabel = item.maintenanceAccess
+    ? item.maintenanceModules?.length === maintenanceModuleInputs().length
+      ? "Maintenance (all)"
+      : `Maintenance (${item.maintenanceModules?.length || 0})`
+    : "Maintenance";
   return (
     [
       [item.overviewAccess, "Overview"],
       [item.attendanceAccess, "Attendance"],
       [item.specialEventsAccess, "Events"],
       [item.libraryAccess, "Library"],
-      [item.maintenanceAccess, "Maintenance"],
+      [item.maintenanceAccess, maintenanceLabel],
       [item.usersAccess, "User & access"],
     ]
       .filter(([enabled]) => enabled)
@@ -46,11 +95,46 @@ function open(item = null) {
       "usersAccess",
       "isActive",
     ].forEach((key) => ($(`#${key}`).checked = Boolean(item[key])));
+    const selected = new Set(item.maintenanceModules || []);
+    maintenanceModuleInputs().forEach(
+      (input) => (input.checked = selected.has(input.value)),
+    );
   }
+  syncMaintenancePanel({
+    selectAllWhenEmpty: Boolean(item?.maintenanceAccess),
+  });
   $("#error").textContent = "";
   $("#dialog").showModal();
 }
 $("#addBtn").onclick = () => open();
+$("#maintenanceAccess").addEventListener("change", (event) => {
+  if (!event.target.checked)
+    maintenanceModuleInputs().forEach((input) => (input.checked = false));
+  syncMaintenancePanel();
+});
+$("#selectAllMaintenance").addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  $("#maintenanceAccess").checked = checked;
+  maintenanceModuleInputs().forEach((input) => (input.checked = checked));
+  syncMaintenancePanel();
+});
+maintenanceModuleInputs().forEach((input) =>
+  input.addEventListener("change", () => {
+    $("#maintenanceAccess").checked = maintenanceModuleInputs().some(
+      (candidate) => candidate.checked,
+    );
+    syncMaintenancePanel();
+  }),
+);
+$("#selectAllAccess").addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  accessInputs().forEach((input) => (input.checked = checked));
+  maintenanceModuleInputs().forEach((input) => (input.checked = checked));
+  syncMaintenancePanel();
+});
+accessInputs()
+  .filter((input) => input.id !== "maintenanceAccess")
+  .forEach((input) => input.addEventListener("change", syncSelectAllAccess));
 document.addEventListener("click", (event) => {
   if (event.target.matches('.close-button,button[value="cancel"]')) {
     event.preventDefault();
@@ -81,6 +165,7 @@ $("#form").onsubmit = async (event) => {
           specialEventsAccess: $("#specialEventsAccess").checked,
           libraryAccess: $("#libraryAccess").checked,
           maintenanceAccess: $("#maintenanceAccess").checked,
+          maintenanceModules: selectedMaintenanceModules(),
           usersAccess: $("#usersAccess").checked,
           isActive: $("#isActive").checked,
         }),

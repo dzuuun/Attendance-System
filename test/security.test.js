@@ -9,6 +9,10 @@ const {
   requireAdmin,
   requireSuperadmin,
   requireAccess,
+  requireMaintenance,
+  checkPageSession,
+  canReadPeople,
+  visiblePeopleModules,
 } = require("../auth/auth_validation");
 
 function responseStub() {
@@ -100,4 +104,97 @@ test("module access cannot be inferred from another permission", () => {
   );
   assert.equal(accepted, false);
   assert.equal(response.statusCode, 403);
+});
+
+test("maintenance access is restricted to selected areas", () => {
+  const user = {
+    role: "Registrar",
+    maintenanceAccess: true,
+    maintenanceModules: ["students"],
+  };
+  let accepted = false;
+  requireMaintenance("students")(
+    { user, method: "GET" },
+    responseStub(),
+    () => {
+      accepted = true;
+    },
+  );
+  assert.equal(accepted, true);
+
+  const response = responseStub();
+  requireMaintenance("employees")({ user, method: "GET" }, response, () => {});
+  assert.equal(response.statusCode, 403);
+});
+
+test("maintenance dependencies are read-only", () => {
+  const user = {
+    role: "Academic Staff",
+    maintenanceAccess: true,
+    maintenanceModules: ["colleges"],
+  };
+  let readAccepted = false;
+  const guard = requireMaintenance("schools", { readFor: ["colleges"] });
+  guard({ user, method: "GET" }, responseStub(), () => {
+    readAccepted = true;
+  });
+  assert.equal(readAccepted, true);
+
+  const response = responseStub();
+  guard({ user, method: "POST" }, response, () => {});
+  assert.equal(response.statusCode, 403);
+});
+
+test("unauthenticated page navigation redirects to sign in", async () => {
+  const response = {
+    clearCookie() {},
+    redirect(status, location) {
+      this.statusCode = status;
+      this.location = location;
+    },
+  };
+  await checkPageSession(
+    { get: () => "", originalUrl: "/maintenance/student" },
+    response,
+    () => {},
+  );
+  assert.equal(response.statusCode, 303);
+  assert.equal(
+    response.location,
+    "/attendance-system/login?returnTo=%2Fmaintenance%2Fstudent",
+  );
+});
+
+test("attendance access can read all people needed by attendance search", () => {
+  const user = {
+    role: "Attendance Access",
+    attendanceAccess: true,
+    maintenanceAccess: false,
+    maintenanceModules: [],
+  };
+  assert.equal(canReadPeople(user), true);
+  assert.deepEqual(visiblePeopleModules(user), [
+    "students",
+    "alumni",
+    "employees",
+  ]);
+});
+
+test("maintenance-only people access is limited to selected directories", () => {
+  const user = {
+    role: "Registrar",
+    attendanceAccess: false,
+    maintenanceAccess: true,
+    maintenanceModules: ["students", "alumni"],
+  };
+  assert.equal(canReadPeople(user), true);
+  assert.deepEqual(visiblePeopleModules(user), ["students", "alumni"]);
+  assert.equal(
+    canReadPeople({
+      attendanceAccess: false,
+      maintenanceAccess: true,
+      maintenanceModules: ["sections"],
+    }),
+    false,
+  );
 });

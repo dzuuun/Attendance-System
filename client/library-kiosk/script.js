@@ -2,7 +2,7 @@ const $ = (selector) => document.querySelector(selector);
 const input = $("#kioskInput");
 const form = $("#kioskForm");
 const resultCard = $("#kioskResult");
-const fallbackPhotoUrl = "/client/images/NDMU-Logo.png";
+const fallbackPhotoUrl = window.taptrackUrl("/client/images/NDMU-Logo.png");
 const locationKey = location.pathname.includes("internet-section")
   ? "internet"
   : "library";
@@ -40,7 +40,7 @@ document.title = `${locationName} Entrance Terminal — TapTrack`;
 $("#brandContext").textContent =
   `TapTrack Attendance System · ${locationName} Entrance`;
 $("#terminalStatusText").textContent =
-  `${locationName.toUpperCase()} TERMINAL ONLINE`;
+  `${locationName.toUpperCase()} TERMINAL CONNECTING`;
 $("#locationBadge").textContent = `${locationName.toUpperCase()} ACCESS`;
 $("#locationLane").textContent = `${locationName.toUpperCase()} ENTRANCE`;
 $("#recentTitle").textContent = `Recent ${locationName} Scans`;
@@ -115,10 +115,18 @@ async function checkInKiosk() {
       input.disabled = true;
       $("#submitScanBtn").disabled = true;
     } else {
+      $("#terminalStatusText").textContent =
+        `${locationName.toUpperCase()} TERMINAL ONLINE`;
       input.disabled = false;
       $("#submitScanBtn").disabled = pendingScans > 0;
     }
-  } catch (_error) {}
+  } catch (_error) {
+    $("#terminalStatusText").textContent = navigator.onLine
+      ? `${locationName.toUpperCase()} TERMINAL RECONNECTING`
+      : "NETWORK OFFLINE";
+    input.disabled = true;
+    $("#submitScanBtn").disabled = true;
+  }
 }
 
 function promptKioskHealthCheck() {
@@ -216,7 +224,7 @@ function idle() {
 
 function personDetails(data) {
   return data.type === "Student"
-    ? `<div class="identity-grid"><div><span>ATTENDEE TYPE</span><b>${data.isAlumnus ? "Student · Alumnus" : "Student"}</b></div><div class="program-detail"><span>PROGRAM / STRAND</span><b title="${escapeHtml(data.program || "N/A")}">${escapeHtml(data.program || "Not specified")}</b></div><div><span>YEAR LEVEL</span><b>${escapeHtml(data.yearLevel || "Not specified")}</b></div></div>`
+    ? `<div class="identity-grid"><div><span>ATTENDEE TYPE</span><b>${data.isAlumnus ? "Student · Alumnus" : "Student"}</b></div><div class="program-detail"><span>PROGRAM / STRAND</span><b title="${escapeHtml(data.program || "N/A")}">${escapeHtml(data.program || "Not specified")}</b></div><div><span>YEAR / SECTION</span><b>${escapeHtml([data.yearLevel, data.sectionName].filter(Boolean).join(" · ") || "Not specified")}</b></div></div>`
     : data.type === "Alumnus"
       ? `<div class="identity-grid"><div><span>ATTENDEE TYPE</span><b>Alumnus</b></div><div class="program-detail"><span>PROGRAM / STRAND</span><b title="${escapeHtml(data.program || "N/A")}">${escapeHtml(data.program || "Not specified")}</b></div><div><span>GRADUATION YEAR</span><b>${escapeHtml(data.graduationYear || "Not specified")}</b></div></div>`
       : `<div class="identity-grid employee-details"><div><span>ATTENDEE TYPE</span><b>Employee</b></div><div><span>DEPARTMENT / OFFICE</span><b>${escapeHtml(data.department || "Not specified")}</b></div></div>`;
@@ -428,7 +436,7 @@ updateClock();
 setInterval(updateClock, 1000);
 loadRecentScans();
 checkInKiosk();
-setInterval(checkInKiosk, 90_000);
+setInterval(checkInKiosk, 30_000);
 document.addEventListener("keydown", () => {
   lastKioskActivity = Date.now();
 });

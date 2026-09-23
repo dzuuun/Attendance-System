@@ -234,12 +234,33 @@ exports.saveScreenshot = async (req, res) => {
     !match
   )
     return res.status(400).json({ message: "Invalid screenshot." });
+  const command = await model.getDispatchedCommand(
+    kioskId,
+    commandId,
+    "screenshot",
+  );
+  if (!command)
+    return res.status(404).json({ message: "Screenshot command not found." });
   const image = Buffer.from(match[2], "base64");
   if (!image.length || image.length > 8 * 1024 * 1024)
     return res
       .status(413)
       .json({ message: "Screenshot must be smaller than 8 MB." });
   const extension = match[1] === "jpeg" ? "jpg" : "png";
+  const validSignature =
+    (extension === "jpg" &&
+      image[0] === 0xff &&
+      image[1] === 0xd8 &&
+      image[2] === 0xff) ||
+    (extension === "png" &&
+      image.length >= 8 &&
+      image
+        .subarray(0, 8)
+        .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])));
+  if (!validSignature)
+    return res
+      .status(400)
+      .json({ message: "Screenshot image data is invalid." });
   const filename = `${kioskId}-${commandId}-${Date.now()}.${extension}`;
   const folder = path.join(__dirname, "../../uploads/kiosk-screenshots");
   await fs.mkdir(folder, { recursive: true });
@@ -251,8 +272,10 @@ exports.saveScreenshot = async (req, res) => {
     "Completed",
     `Screenshot captured: ${url}`,
   );
-  if (!saved)
+  if (!saved) {
+    await fs.unlink(path.join(folder, filename)).catch(() => {});
     return res.status(404).json({ message: "Screenshot command not found." });
+  }
   res.status(201).json({ url });
 };
 

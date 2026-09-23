@@ -60,11 +60,12 @@
               placeholder="Example: Administrator"
           /></label>
           <div class="full">
-            <p
-              class="mb-2 text-xs font-extrabold tracking-wider text-[#52635b]"
-            >
-              MODULE ACCESS
-            </p>
+            <div class="permission-access-heading">
+              <p>MODULE ACCESS</p>
+              <label
+                ><input id="selectAllAccess" type="checkbox" />Select all</label
+              >
+            </div>
             <div class="permission-module-grid">
               <label
                 class="flex items-center justify-between rounded-xl border border-[#d8e3dd] bg-[#f7faf8] p-4"
@@ -142,6 +143,116 @@
                   class="relative !h-6 !w-11 appearance-none !rounded-full !border-0 !bg-[#cbd8d2] !p-0 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition checked:!bg-[#087247] checked:after:translate-x-5"
               /></label>
             </div>
+            <section
+              class="maintenance-permission-panel"
+              id="maintenanceModulePanel"
+            >
+              <header>
+                <span
+                  ><strong>Maintenance areas</strong
+                  ><small
+                    >Choose only the records this permission can manage.</small
+                  ></span
+                >
+                <label
+                  ><input id="selectAllMaintenance" type="checkbox" />Select all
+                  maintenance</label
+                >
+              </header>
+              <div class="maintenance-permission-grid">
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="students"
+                  />Students</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="alumni"
+                  />Alumni</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="employees"
+                  />Employees</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="schools"
+                  />Schools</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="colleges"
+                  />Colleges</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="departments"
+                  />Departments</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="employeeDepartments"
+                  />Employee departments</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="programs"
+                  />Programs</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="sections"
+                  />Sections</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="gates"
+                  />Gates</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="kiosks"
+                  />Kiosk management</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="academicPeriods"
+                  />Academic periods</label
+                >
+                <label
+                  ><input
+                    class="maintenance-module"
+                    type="checkbox"
+                    value="settings"
+                  />System settings</label
+                >
+              </div>
+            </section>
           </div>
           <label class="full"
             ><span

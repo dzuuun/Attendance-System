@@ -1,6 +1,7 @@
 (function () {
   const $ = (selector, root = document) => root.querySelector(selector);
   const path = location.pathname.split("/").filter(Boolean).pop();
+  const sectionType = path === "sections";
   const academic = ["school", "college", "department", "program"].includes(
     path,
   );
@@ -11,9 +12,11 @@
         ? "alumni"
         : path === "employee"
           ? "employee"
-          : academic
-            ? path
-            : null;
+          : sectionType
+            ? "section"
+            : academic
+              ? path
+              : null;
   if (!type) return;
 
   const plural =
@@ -27,21 +30,29 @@
     department: "college",
     program: "department",
   }[type];
-  const required = academic
-    ? ["Name", "Code", ...(parent ? [`${title(parent)}Code`] : [])]
-    : type === "employee"
-      ? ["IDNumber", "FirstName", "LastName", "DepartmentCode"]
-      : type === "alumni"
-        ? ["IDNumber", "FirstName", "LastName", "ProgramCode", "GraduationYear"]
-        : [
-            "IDNumber",
-            "FirstName",
-            "LastName",
-            "ProgramCode",
-            "YearLevel",
-            "Birthday",
-            "Gender",
-          ];
+  const required = sectionType
+    ? ["Name", "YearLevel"]
+    : academic
+      ? ["Name", "Code", ...(parent ? [`${title(parent)}Code`] : [])]
+      : type === "employee"
+        ? ["IDNumber", "FirstName", "LastName", "DepartmentCode"]
+        : type === "alumni"
+          ? [
+              "IDNumber",
+              "FirstName",
+              "LastName",
+              "ProgramCode",
+              "GraduationYear",
+            ]
+          : [
+              "IDNumber",
+              "FirstName",
+              "LastName",
+              "ProgramCode",
+              "YearLevel",
+              "Birthday",
+              "Gender",
+            ];
   const templateColumns =
     type === "student"
       ? [
@@ -51,6 +62,7 @@
           "LastName",
           "ProgramCode",
           "YearLevel",
+          "SectionName",
           "Birthday",
           "InstitutionalEmail",
           "Gender",
@@ -76,6 +88,7 @@
     "4th Year",
     "5th Year",
   ];
+  const sectionYearLevels = studentYearLevels.slice(0, 12);
   let pending = { created: [], updated: [], errors: [] };
 
   const addDialog = $("#dialog"),
@@ -111,7 +124,7 @@
     "attendance-system-modal attendance-system-import-modal";
   $("#importForm").innerHTML = `
     <div class="modal-head"><div><span class="modal-kicker">BULK ACTION</span><h2>Import ${plural}</h2></div><button type="button" class="close-button" data-close aria-label="Close">×</button></div>
-    <div class="attendance-system-modal-body"><label class="attendance-system-file-drop" id="importDrop"><span class="attendance-system-upload-icon material-symbols-rounded" aria-hidden="true">upload_file</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${type === "student" ? ". Optional values: MiddleName, InstitutionalEmail" : type === "alumni" ? ". Optional values: MiddleName, Birthday, InstitutionalEmail, Gender" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="attendance-system-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
+    <div class="attendance-system-modal-body"><label class="attendance-system-file-drop" id="importDrop"><span class="attendance-system-upload-icon material-symbols-rounded" aria-hidden="true">upload_file</span><strong id="importFileText" data-empty-text="Choose an Excel file">Choose an Excel file</strong><small>Template columns: ${templateColumns.join(", ")}${sectionType ? ". YearLevel accepts Grade 1 to Grade 12. Imported sections are made active" : type === "student" ? ". SectionName is required for Grade 1 to Grade 12. Optional values: MiddleName, InstitutionalEmail" : type === "alumni" ? ". Optional values: MiddleName, Birthday, InstitutionalEmail, Gender" : ""}</small><input id="importFile" type="file" accept=".xlsx,.xls"></label><p class="attendance-system-template-copy">Need the format? <button type="button" id="templateBtn">Download template</button></p><p class="form-error" id="importError"></p></div>
     <div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button type="submit" class="primary-button">Validate file</button></div>`;
   const previewDialog = $("#previewDialog");
   previewDialog.className =
@@ -248,7 +261,7 @@
     return new Promise((resolve, reject) => {
       if (window.XLSX) return resolve();
       const s = document.createElement("script");
-      s.src = "/vendor/xlsx/xlsx.full.min.js";
+      s.src = window.taptrackUrl("/vendor/xlsx/xlsx.full.min.js");
       s.onload = resolve;
       s.onerror = () => reject(new Error("Could not load the Excel reader."));
       document.head.append(s);
@@ -258,6 +271,7 @@
     return TapTrack.api(url, options);
   }
   function recordLabel(item) {
+    if (sectionType) return `${item.yearLevel} · ${item.name}`;
     return item.idNumber || item.code || item.name || "Unnamed record";
   }
 
@@ -275,7 +289,8 @@
           LastName: "Dela Cruz",
           DepartmentCode: "MIS",
           ProgramCode: "BSIT",
-          YearLevel: "1st Year",
+          YearLevel: sectionType ? "Grade 7" : "1st Year",
+          SectionName: "",
           Birthday: "2000-01-01",
           InstitutionalEmail: "juan@example.edu",
           Gender: "Male",
@@ -320,7 +335,7 @@
       );
       if (missing.length)
         throw new Error(`Missing template columns: ${missing.join(", ")}.`);
-      const [existing, parents] = await Promise.all([
+      const [existing, parents, sections] = await Promise.all([
         api(`/api/${type}`),
         parent
           ? api(`/api/${parent}`)
@@ -329,8 +344,9 @@
             : type === "employee"
               ? api("/api/employee_department")
               : Promise.resolve([]),
+        type === "student" ? api("/api/section-options") : Promise.resolve([]),
       ]);
-      pending = classify(rows, existing, parents);
+      pending = classify(rows, existing, parents, sections);
       renderPreview();
       $("#importDialog").close();
       $("#previewDialog").showModal();
@@ -339,12 +355,14 @@
     }
   };
 
-  function classify(rows, existing, parents) {
+  function classify(rows, existing, parents, sections = []) {
     const result = { created: [], updated: [], errors: [], fileIdNumbers: [] },
       seen = new Set();
     const existingByKey = new Map(
       existing.map((r) => [
-        `${norm(r.idNumber || r.code).toUpperCase()}${academic && parent ? `|${r.parentId}` : ""}`,
+        sectionType
+          ? `${norm(r.yearLevel).toUpperCase()}|${norm(r.name).toUpperCase()}`
+          : `${norm(r.idNumber || r.code).toUpperCase()}${academic && parent ? `|${r.parentId}` : ""}`,
         r,
       ]),
     );
@@ -359,7 +377,17 @@
         const sourceId = cell(row, "IDNumber").toUpperCase();
         if (sourceId) result.fileIdNumbers.push(sourceId);
       }
-      if (academic)
+      if (sectionType) {
+        const sourceYearLevel = cell(row, "YearLevel");
+        const normalizedYearLevel = sectionYearLevels.find(
+          (level) => level.toLowerCase() === sourceYearLevel.toLowerCase(),
+        );
+        Object.assign(item, {
+          name: cell(row, "Name").replace(/\s+/g, " "),
+          yearLevel: normalizedYearLevel || sourceYearLevel,
+          isActive: true,
+        });
+      } else if (academic)
         Object.assign(item, {
           firstName: cell(row, "FirstName"),
           middleName: cell(row, "MiddleName"),
@@ -383,6 +411,7 @@
           lastName: cell(row, "LastName"),
           programCode: cell(row, "ProgramCode").toUpperCase(),
           yearLevel: cell(row, "YearLevel"),
+          sectionName: cell(row, "SectionName"),
           birthday: normalizeBirthday(cell(row, "Birthday")),
           institutionalEmail: cell(row, "InstitutionalEmail").toLowerCase(),
           gender: cell(row, "Gender"),
@@ -399,7 +428,9 @@
           institutionalEmail: cell(row, "InstitutionalEmail").toLowerCase(),
           gender: cell(row, "Gender"),
         });
-      let key = norm(item.idNumber || item.code).toUpperCase();
+      let key = sectionType
+        ? `${norm(item.yearLevel).toUpperCase()}|${norm(item.name).toUpperCase()}`
+        : norm(item.idNumber || item.code).toUpperCase();
       const errors = [];
       required.forEach((h) => {
         if (!cell(row, h)) errors.push(`${h} is required`);
@@ -412,8 +443,16 @@
         else item.parentId = p.id;
       }
       if (academic && parent) key += `|${item.parentId || "missing"}`;
-      if (!norm(item.idNumber || item.code))
-        errors.push("Record key is missing");
+      if (sectionType) {
+        if (!item.name || item.name.length > 100)
+          errors.push("Name must contain 1 to 100 characters");
+        if (!sectionYearLevels.includes(item.yearLevel))
+          errors.push("YearLevel must be Grade 1 to Grade 12");
+      }
+      const hasRecordKey = sectionType
+        ? Boolean(item.name && item.yearLevel)
+        : Boolean(norm(item.idNumber || item.code));
+      if (!hasRecordKey) errors.push("Record key is missing");
       else if (seen.has(key)) errors.push("Duplicate key in this file");
       seen.add(key);
       if (type === "student") {
@@ -438,6 +477,25 @@
           errors.push(
             "YearLevel must be Grade 1 to Grade 12 or 1st Year to 5th Year",
           );
+        if (/^Grade\s+(?:[1-9]|1[0-2])$/.test(item.yearLevel)) {
+          if (!item.sectionName || item.sectionName.length > 100)
+            errors.push(
+              "SectionName is required for Grade 1 to Grade 12 and must not exceed 100 characters",
+            );
+          else {
+            const section = sections.find(
+              (candidate) =>
+                candidate.isActive &&
+                candidate.yearLevel === item.yearLevel &&
+                candidate.name.toLowerCase() === item.sectionName.toLowerCase(),
+            );
+            if (!section)
+              errors.push(
+                "SectionName does not match an active section for this grade",
+              );
+            else item.sectionId = section.id;
+          }
+        } else item.sectionName = "";
         if (
           !/^\d{4}-\d{2}-\d{2}$/.test(item.birthday) ||
           Number.isNaN(Date.parse(item.birthday))
@@ -531,18 +589,24 @@
       const item = items[i];
       $("#progressHeading").textContent =
         `Importing ${i + 1} of ${items.length}`;
-      const body = academic
-        ? { name: item.name, code: item.code, parentId: item.parentId }
-        : type === "employee"
-          ? {
-              idNumber: item.idNumber,
-              firstName: item.firstName,
-              middleName: item.middleName,
-              lastName: item.lastName,
-              departmentId: item.departmentId,
-              contact: item.contact,
-            }
-          : item;
+      const body = sectionType
+        ? {
+            name: item.name,
+            yearLevel: item.yearLevel,
+            isActive: item.isActive,
+          }
+        : academic
+          ? { name: item.name, code: item.code, parentId: item.parentId }
+          : type === "employee"
+            ? {
+                idNumber: item.idNumber,
+                firstName: item.firstName,
+                middleName: item.middleName,
+                lastName: item.lastName,
+                departmentId: item.departmentId,
+                contact: item.contact,
+              }
+            : item;
       try {
         await api(
           `/api/${type}${item.method === "PUT" ? `/${item.existing.id}` : ""}`,

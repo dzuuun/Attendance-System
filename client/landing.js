@@ -8,7 +8,27 @@
     if (user.attendanceAccess) return "/attendance";
     if (user.specialEventsAccess) return "/events";
     if (user.libraryAccess) return "/library/entrance";
-    if (user.maintenanceAccess) return "/maintenance/student";
+    if (user.maintenanceAccess) {
+      const routes = {
+        students: "/maintenance/student",
+        alumni: "/maintenance/alumni",
+        employees: "/maintenance/employee",
+        schools: "/maintenance/school",
+        colleges: "/maintenance/college",
+        departments: "/maintenance/department",
+        employeeDepartments: "/maintenance/employee-department",
+        programs: "/maintenance/program",
+        sections: "/maintenance/sections",
+        gates: "/maintenance/gates",
+        kiosks: "/maintenance/kiosks",
+        academicPeriods: "/maintenance/academic-periods",
+        settings: "/maintenance/settings",
+      };
+      const maintenancePage = (user.maintenanceModules || [])
+        .map((module) => routes[module])
+        .find(Boolean);
+      if (maintenancePage) return maintenancePage;
+    }
     if (user.usersAccess) return "/user/permissions";
     return null;
   };
@@ -30,9 +50,13 @@
     });
 
   staffLink.addEventListener("click", async (event) => {
-    if (staffLink.getAttribute("href") !== "/login") return;
+    if (
+      new URL(staffLink.href, location.href).pathname !==
+      window.taptrackUrl("/login")
+    )
+      return;
     event.preventDefault();
     await sessionCheck;
-    location.href = staffLink.getAttribute("href");
+    location.href = window.taptrackUrl(staffLink.getAttribute("href"));
   });
 })();

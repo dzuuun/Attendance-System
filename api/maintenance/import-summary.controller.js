@@ -5,6 +5,7 @@ const types = {
   employee_department: "employee departments",
   program: "programs",
   school: "schools",
+  section: "sections",
   student: "students",
   alumni: "alumni",
 };

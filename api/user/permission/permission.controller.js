@@ -1,20 +1,33 @@
 const model = require("./permission.model");
-const payload = (body) => ({
-  name: String(body.name || "").trim(),
-  description: String(body.description || "").trim(),
-  overviewAccess: Boolean(body.overviewAccess),
-  attendanceAccess: Boolean(body.attendanceAccess),
-  specialEventsAccess: Boolean(body.specialEventsAccess),
-  libraryAccess: Boolean(body.libraryAccess),
-  maintenanceAccess: Boolean(body.maintenanceAccess),
-  usersAccess: Boolean(body.usersAccess),
-  isActive: Boolean(body.isActive),
-});
+const payload = (body) => {
+  const maintenanceModules = model.normalizeMaintenanceModules(
+    body.maintenanceModules,
+  );
+  return {
+    name: String(body.name || "").trim(),
+    description: String(body.description || "").trim(),
+    overviewAccess: Boolean(body.overviewAccess),
+    attendanceAccess: Boolean(body.attendanceAccess),
+    specialEventsAccess: Boolean(body.specialEventsAccess),
+    libraryAccess: Boolean(body.libraryAccess),
+    maintenanceAccess:
+      Boolean(body.maintenanceAccess) && maintenanceModules.length > 0,
+    maintenanceModules: Boolean(body.maintenanceAccess)
+      ? maintenanceModules
+      : [],
+    usersAccess: Boolean(body.usersAccess),
+    isActive: Boolean(body.isActive),
+  };
+};
 exports.getAll = async (_req, res) => res.json(await model.getAll());
 exports.create = async (req, res) => {
   const data = payload(req.body);
   if (!data.name)
     return res.status(400).json({ message: "Permission name is required." });
+  if (bodyRequestsEmptyMaintenance(req.body, data))
+    return res.status(400).json({
+      message: "Select at least one maintenance area or turn Maintenance off.",
+    });
   try {
     const result = await model.create(data);
     req.activityLabel = data.name;
@@ -31,6 +44,10 @@ exports.update = async (req, res) => {
   const data = payload(req.body);
   if (!data.name)
     return res.status(400).json({ message: "Permission name is required." });
+  if (bodyRequestsEmptyMaintenance(req.body, data))
+    return res.status(400).json({
+      message: "Select at least one maintenance area or turn Maintenance off.",
+    });
   const existing = await model.findById(req.params.id);
   if (!existing)
     return res.status(404).json({ message: "Permission not found." });
@@ -41,7 +58,8 @@ exports.update = async (req, res) => {
       !data.overviewAccess ||
       !data.specialEventsAccess ||
       !data.libraryAccess ||
-      !data.maintenanceAccess)
+      !data.maintenanceAccess ||
+      data.maintenanceModules.length !== model.MAINTENANCE_MODULES.length)
   )
     return res.status(400).json({
       message:
@@ -61,3 +79,7 @@ exports.update = async (req, res) => {
     throw error;
   }
 };
+
+function bodyRequestsEmptyMaintenance(body, data) {
+  return Boolean(body.maintenanceAccess) && !data.maintenanceModules.length;
+}

@@ -3,19 +3,22 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const model = require("./login.model");
+const permissionModel = require("../user/permission/permission.model");
 const activityModel = require("../user/activity_log/activity_log.model");
+const { cookiePath, publicPath } = require("../../config/public-path");
 const {
   createToken,
   getJwtSecret,
   revokeSession,
+  revokeUserSessions,
 } = require("../../auth/auth_validation");
 const setSessionCookie = (req, res, token) =>
   res.cookie("taptrack_session", token, {
     httpOnly: true,
     sameSite: "strict",
-    secure: req.secure || process.env.NODE_ENV === "production",
+    secure: Boolean(req.secure),
     maxAge: 8 * 60 * 60 * 1000,
-    path: "/",
+    path: cookiePath,
   });
 const googleConfig = (req) => ({
   clientId: String(process.env.GOOGLE_CLIENT_ID || "").trim(),
@@ -25,7 +28,7 @@ const googleConfig = (req) => ({
     .toLowerCase(),
   redirectUri: String(
     process.env.GOOGLE_REDIRECT_URI ||
-      `${req.protocol}://${req.get("host")}/api/auth/google/callback`,
+      `${req.protocol}://${req.get("host")}${publicPath("/api/auth/google/callback")}`,
   ).trim(),
 });
 const googleEnabled = (config) =>
@@ -47,6 +50,10 @@ const sessionFor = (user) => ({
   specialEventsAccess: Boolean(user.specialEventsAccess),
   libraryAccess: Boolean(user.libraryAccess),
   maintenanceAccess: Boolean(user.maintenanceAccess),
+  maintenanceModules: permissionModel.normalizeMaintenanceModules(
+    user.maintenanceModules,
+    Boolean(user.maintenanceAccess),
+  ),
   usersAccess: Boolean(user.usersAccess),
 });
 const logAuth = async (req, user, action, description) => {
@@ -81,18 +88,7 @@ exports.login = async (req, res) => {
       .status(401)
       .json({ success: 0, message: "Invalid username or password." });
   }
-  const session = {
-    id: user.id,
-    fullName: user.fullName,
-    username: user.username,
-    role: user.role,
-    overviewAccess: Boolean(user.overviewAccess),
-    attendanceAccess: Boolean(user.attendanceAccess),
-    specialEventsAccess: Boolean(user.specialEventsAccess),
-    libraryAccess: Boolean(user.libraryAccess),
-    maintenanceAccess: Boolean(user.maintenanceAccess),
-    usersAccess: Boolean(user.usersAccess),
-  };
+  const session = sessionFor(user);
   await logAuth(req, user, "LOGGED_IN", "Signed in to the system.");
   setSessionCookie(req, res, await createToken(session));
   res.json(session);
@@ -110,14 +106,15 @@ exports.googleStart = (req, res) => {
       expiresIn: "10m",
       issuer: "taptrack",
       audience: "taptrack-google-oauth",
-    }),
-    secure = req.secure || process.env.NODE_ENV === "production";
+    });
   res.cookie("taptrack_google_state", nonce, {
     httpOnly: true,
     sameSite: "lax",
-    secure,
+    secure: Boolean(req.secure),
     maxAge: 600000,
-    path: "/api/auth/google",
+    // The callback may be published below an IIS path such as
+    // /attendance-system/api/auth/google/callback.
+    path: cookiePath,
   });
   const client = new OAuth2Client(
     config.clientId,
@@ -137,7 +134,9 @@ exports.googleStart = (req, res) => {
 exports.googleCallback = async (req, res) => {
   const config = googleConfig(req),
     fail = (message) =>
-      res.redirect(`/login?google_error=${encodeURIComponent(message)}`);
+      res.redirect(
+        publicPath(`/login?google_error=${encodeURIComponent(message)}`),
+      );
   if (!googleEnabled(config)) return fail("Google sign-in is not configured.");
   try {
     const state = jwt.verify(String(req.query.state || ""), getJwtSecret(), {
@@ -149,7 +148,7 @@ exports.googleCallback = async (req, res) => {
       state.nonce !== cookieValue(req, "taptrack_google_state")
     )
       return fail("Google sign-in request expired. Please try again.");
-    res.clearCookie("taptrack_google_state", { path: "/api/auth/google" });
+    res.clearCookie("taptrack_google_state", { path: cookiePath });
     const client = new OAuth2Client(
         config.clientId,
         config.clientSecret,
@@ -185,7 +184,7 @@ exports.googleCallback = async (req, res) => {
       "Signed in with Google Workspace.",
     );
     setSessionCookie(req, res, await createToken(session));
-    res.redirect("/overview");
+    res.redirect(publicPath("/overview"));
   } catch (error) {
     console.error("Google sign-in failed:", error.message);
     return fail("Google sign-in could not be completed. Please try again.");
@@ -195,7 +194,7 @@ exports.me = (req, res) => res.json(req.user);
 exports.logout = async (req, res) => {
   await logAuth(req, req.user, "LOGGED_OUT", "Signed out of the system.");
   await revokeSession(req.sessionId);
-  res.clearCookie("taptrack_session", { path: "/" });
+  res.clearCookie("taptrack_session", { path: cookiePath });
   res.status(204).end();
 };
 exports.changePassword = async (req, res) => {
@@ -229,6 +228,8 @@ exports.changePassword = async (req, res) => {
     "PASSWORD_CHANGED",
     "Changed the account password.",
   );
+  await revokeUserSessions(req.user.id);
+  res.clearCookie("taptrack_session", { path: cookiePath });
   res.status(204).end();
 };
 exports.setupStatus = async (_req, res) =>

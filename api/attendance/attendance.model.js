@@ -29,6 +29,7 @@ async function ensurePersonNames() {
       await pool.query(`ALTER TABLE ${table} DROP COLUMN full_name`);
     }
   }
+  await require("../maintenance/section/section.model").ensureSchema();
 }
 async function migrateLegacyTable(table, personColumn) {
   if (!(await tableExists(table))) return;
@@ -247,7 +248,7 @@ exports.findPerson = async (idNumber, audience = "Both") => {
   await ensureSchema();
   const findStudent = () =>
     pool.query(
-      "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name program,p.code programCode,c.name college,s.year_level yearLevel,s.photo_url photoUrl,al.id IS NOT NULL isAlumnus,al.graduation_year graduationYear,'Student' type FROM students s LEFT JOIN alumni al ON al.student_id=s.id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id WHERE s.id_number=? AND s.is_active=TRUE",
+      "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name program,p.code programCode,c.name college,s.year_level yearLevel,x.name sectionName,s.photo_url photoUrl,al.id IS NOT NULL isAlumnus,al.graduation_year graduationYear,'Student' type FROM students s LEFT JOIN alumni al ON al.student_id=s.id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id LEFT JOIN sections x ON x.id=s.section_id WHERE s.id_number=? AND s.is_active=TRUE",
       [idNumber],
     );
   const findEmployee = () =>
@@ -257,7 +258,7 @@ exports.findPerson = async (idNumber, audience = "Both") => {
     );
   const findAlumnus = () =>
     pool.query(
-      "SELECT a.student_id id,a.id alumniId,a.id_number idNumber,TRIM(CONCAT_WS(' ',a.first_name,NULLIF(a.middle_name,''),a.last_name)) name,p.name program,p.code programCode,c.name college,NULL yearLevel,a.graduation_year graduationYear,a.photo_url photoUrl,'Alumnus' type FROM alumni a LEFT JOIN programs p ON p.id=a.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id WHERE a.id_number=? AND a.is_active=TRUE",
+      "SELECT a.student_id id,a.id alumniId,a.id_number idNumber,TRIM(CONCAT_WS(' ',a.first_name,NULLIF(a.middle_name,''),a.last_name)) name,p.name program,p.code programCode,c.name college,NULL yearLevel,NULL sectionName,a.graduation_year graduationYear,a.photo_url photoUrl,'Alumnus' type FROM alumni a LEFT JOIN programs p ON p.id=a.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id WHERE a.id_number=? AND a.is_active=TRUE",
       [idNumber],
     );
   if (audience === "Students") return (await findStudent())[0][0];

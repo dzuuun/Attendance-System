@@ -48,7 +48,7 @@ let sessionStats = { total: 0, in: 0, out: 0 };
 let recentScans = [];
 let recentScansRequest = 0;
 let soundEnabled = localStorage.getItem("taptrack_kiosk_sound") !== "false";
-const fallbackPhotoUrl = "/client/images/NDMU-Logo.png";
+const fallbackPhotoUrl = window.taptrackUrl("/client/images/NDMU-Logo.png");
 const scannerAssignmentKey = "taptrack_kiosk_scanner_assignments";
 const terminalLocationKey = "taptrack_kiosk_terminal_location";
 const terminalGateKey = "taptrack_kiosk_terminal_gate_id";
@@ -585,7 +585,7 @@ function showResult(type, title, detail, previous = "", data = null) {
             </div>
             <div>
               <span>YEAR LEVEL</span>
-              <b>${escapeHtml(data.yearLevel || "Not specified")}</b>
+              <b>${escapeHtml([data.yearLevel, data.sectionName].filter(Boolean).join(" · ") || "Not specified")}</b>
             </div>
           </div>`
         : isAlumnus

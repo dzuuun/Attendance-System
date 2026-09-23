@@ -7,7 +7,10 @@
     <link rel="stylesheet" href="/client/dashboard/style.css" />
     <link rel="stylesheet" href="/client/dashboard/events.css" />
     <link rel="stylesheet" href="/client/page-shell.css" />
-    <link rel="stylesheet" href="/client/maintenance/kiosk/style.css" />
+    <link
+      rel="stylesheet"
+      href="/client/maintenance/kiosk/style.css?v=20260918-3"
+    />
   </head>
   <body>
     <div class="app-shell">
@@ -30,7 +33,16 @@
           <div class="offline">
             <span>OFFLINE</span><strong id="offlineCount">0</strong>
           </div>
-          <button class="secondary-button" id="refreshBtn">Refresh</button>
+          <div class="summary-refresh">
+            <span id="refreshStatus" role="status" aria-live="polite"
+              >Updating live statusâ€¦</span
+            >
+            <button class="secondary-button" id="refreshBtn" type="button">
+              <span class="material-symbols-rounded" aria-hidden="true"
+                >refresh</span
+              ><span>Refresh</span>
+            </button>
+          </div>
         </section>
         <section class="kiosk-layout">
           <article class="table-card kiosk-directory">
@@ -48,12 +60,12 @@
               </div>
             </div>
             <div class="table-wrap">
-              <table>
+              <table aria-label="Registered kiosk devices">
                 <thead>
                   <tr>
-                    <th>LOCATION</th>
-                    <th>DEVICE</th>
-                    <th>STATUS</th>
+                    <th scope="col">LOCATION</th>
+                    <th scope="col">DEVICE</th>
+                    <th scope="col">STATUS</th>
                   </tr>
                 </thead>
                 <tbody id="body"></tbody>
@@ -70,7 +82,33 @@
         </section>
       </main>
     </div>
+    <dialog
+      class="attendance-system-modal kiosk-log-dialog"
+      id="kioskLogsDialog"
+    >
+      <div class="kiosk-log-shell">
+        <div class="modal-head">
+          <div>
+            <span class="section-kicker">COMMAND HISTORY</span>
+            <h2 id="kioskLogsTitle">Kiosk activity</h2>
+            <p id="kioskLogsSummary">Recent commands sent to this device</p>
+          </div>
+          <button
+            class="close-button"
+            id="closeKioskLogs"
+            type="button"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="kiosk-log-list" id="kioskLogList"></div>
+        <div class="modal-actions">
+          <button class="secondary-button" id="doneKioskLogs" type="button">
+            Done
+          </button>
+        </div>
+      </div>
+    </dialog>
     <script src="/client/shared-ui.js"></script>
-    <script src="/client/maintenance/kiosk/script.js"></script>
+    <script src="/client/maintenance/kiosk/script.js?v=20260918-3"></script>
   </body>
 </html>

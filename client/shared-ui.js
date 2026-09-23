@@ -2,7 +2,7 @@
   localStorage.removeItem("taptrack_token");
   if (!document.querySelector("script[data-brand-ui]")) {
     const brandUi = document.createElement("script");
-    brandUi.src = "/client/brand-ui.js?v=20260830-1";
+    brandUi.src = window.taptrackUrl("/client/brand-ui.js?v=20260923-2");
     brandUi.dataset.brandUi = "true";
     document.head.appendChild(brandUi);
   }
@@ -12,14 +12,18 @@
     if (!document.querySelector("link[data-datatables]")) {
       const css = document.createElement("link");
       css.rel = "stylesheet";
-      css.href = "/vendor/datatables/css/dataTables.dataTables.min.css";
+      css.href = window.taptrackUrl(
+        "/vendor/datatables/css/dataTables.dataTables.min.css",
+      );
       css.dataset.datatables = "true";
       document.head.appendChild(css);
     }
     if (window.DataTable) return Promise.resolve(window.DataTable);
     return new Promise((resolve) => {
       const script = document.createElement("script");
-      script.src = "/vendor/datatables/js/dataTables.min.js";
+      script.src = window.taptrackUrl(
+        "/vendor/datatables/js/dataTables.min.js",
+      );
       script.dataset.datatables = "true";
       script.onload = () => resolve(window.DataTable || null);
       script.onerror = () => resolve(null);
@@ -158,7 +162,7 @@
       },
     });
     if (response.status === 401) {
-      location.href = "/login";
+      location.href = window.taptrackUrl("/login");
       throw new Error("Please sign in.");
     }
     if (!response.ok) {
@@ -191,7 +195,7 @@
       body: data,
     });
     if (response.status === 401) {
-      location.href = "/login";
+      location.href = window.taptrackUrl("/login");
       throw new Error("Please sign in.");
     }
     const result = await response.json().catch(() => ({}));
@@ -417,6 +421,40 @@
   }
   async function init(page) {
     const user = await api("/api/auth/me"),
+      maintenanceModules = new Set(user.maintenanceModules || []),
+      maintenancePageModules = {
+        students: "students",
+        alumni: "alumni",
+        employees: "employees",
+        school: "schools",
+        college: "colleges",
+        department: "departments",
+        employee_department: "employeeDepartments",
+        program: "programs",
+        sections: "sections",
+        gates: "gates",
+        kiosks: "kiosks",
+        periods: "academicPeriods",
+        maintenance: "settings",
+      },
+      maintenanceRoutes = {
+        students: "/maintenance/student",
+        alumni: "/maintenance/alumni",
+        employees: "/maintenance/employee",
+        schools: "/maintenance/school",
+        colleges: "/maintenance/college",
+        departments: "/maintenance/department",
+        employeeDepartments: "/maintenance/employee-department",
+        programs: "/maintenance/program",
+        sections: "/maintenance/sections",
+        gates: "/maintenance/gates",
+        kiosks: "/maintenance/kiosks",
+        academicPeriods: "/maintenance/academic-periods",
+        settings: "/maintenance/settings",
+      },
+      maintenanceLanding = [...maintenanceModules]
+        .map((module) => maintenanceRoutes[module])
+        .find(Boolean),
       admin = Boolean(
         user.specialEventsAccess ||
         user.libraryAccess ||
@@ -441,6 +479,7 @@
         department: "maintenanceAccess",
         employee_department: "maintenanceAccess",
         program: "maintenanceAccess",
+        sections: "maintenanceAccess",
         gates: "maintenanceAccess",
         kiosks: "maintenanceAccess",
         periods: "maintenanceAccess",
@@ -449,12 +488,16 @@
         permissions: "usersAccess",
         activity: "usersAccess",
       }[page];
+    const requiredMaintenanceModule = maintenancePageModules[page];
     const hasPageAccess =
       page === "permissions"
         ? user.role === "Superadmin"
         : page === "analytics"
           ? user.overviewAccess && user.attendanceAccess
-          : !pageAccess || user[pageAccess];
+          : (!pageAccess || user[pageAccess]) &&
+            (!requiredMaintenanceModule ||
+              user.role === "Superadmin" ||
+              maintenanceModules.has(requiredMaintenanceModule));
     if (!hasPageAccess && user.role !== "Superadmin") {
       const landing = user.overviewAccess
         ? "/overview"
@@ -464,21 +507,24 @@
             ? "/events"
             : user.libraryAccess
               ? "/library/entrance"
-              : user.maintenanceAccess
-                ? "/maintenance/student"
+              : user.maintenanceAccess && maintenanceLanding
+                ? maintenanceLanding
                 : user.usersAccess
                   ? "/user/user-management"
                   : null;
       if (!landing) {
-        location.href = "/login?error=no_access";
-      } else location.href = landing;
+        location.href = window.taptrackUrl("/login?error=no_access");
+      } else location.href = window.taptrackUrl(landing);
       throw new Error("Administrator access is required.");
     }
-    const sidebar = await fetch("/sidebar.html").then((response) => {
-      if (!response.ok) throw new Error("Unable to load navigation.");
-      return response.text();
-    });
-    $("#sidebarMount").innerHTML = sidebar;
+    const sidebarMountNode = $("#sidebarMount");
+    if (!sidebarMountNode.innerHTML.trim()) {
+      const sidebar = await fetch("/sidebar.html").then((response) => {
+        if (!response.ok) throw new Error("Unable to load navigation.");
+        return response.text();
+      });
+      sidebarMountNode.innerHTML = sidebar;
+    }
     $("#signedInName").textContent = user.fullName;
     $("#signedInRole").textContent = user.role;
     const profileAvatar = $(".profile-avatar");
@@ -507,6 +553,9 @@
       element.classList.toggle("hidden", !admin),
     );
     const sidebarMount = $("#sidebarMount");
+    let sidebarCollapsed = true;
+    let hoverExpanded = false;
+    let hoverCollapseTimer = null;
     const removeRailTooltip = () =>
       document.querySelector(".sidebar-rail-tooltip")?.remove();
     const showRailTooltip = (element, label) => {
@@ -548,7 +597,9 @@
       );
       profileAvatar.addEventListener("mouseleave", removeRailTooltip);
       const expandProfile = () => {
-        if (!document.body.classList.contains("sidebar-collapsed")) return;
+        if (!sidebarCollapsed) return;
+        sidebarCollapsed = false;
+        hoverExpanded = false;
         localStorage.setItem("taptrack_sidebar_collapsed", "false");
         applySidebar(false);
       };
@@ -568,6 +619,15 @@
       if (user.role !== "Superadmin" && !accessKeys.some((key) => user[key]))
         element.remove();
     });
+    sidebarMount
+      .querySelectorAll("[data-maintenance-module]")
+      .forEach((element) => {
+        if (
+          user.role !== "Superadmin" &&
+          !maintenanceModules.has(element.dataset.maintenanceModule)
+        )
+          element.remove();
+      });
     sidebarMount
       .querySelectorAll("[data-superadmin-only]")
       .forEach((element) => {
@@ -609,6 +669,7 @@
           "department",
           "employee_department",
           "program",
+          "sections",
           "gates",
           "kiosks",
           "periods",
@@ -632,9 +693,10 @@
       entry.toggle.classList.toggle("active", isCurrentModule);
       setGroupOpen(entry, isCurrentModule);
       entry.toggle.addEventListener("click", () => {
-        const wasCollapsed =
-          document.body.classList.contains("sidebar-collapsed");
+        const wasCollapsed = sidebarCollapsed;
         if (wasCollapsed) {
+          sidebarCollapsed = false;
+          hoverExpanded = false;
           localStorage.setItem("taptrack_sidebar_collapsed", "false");
           applySidebar(false);
         }
@@ -650,8 +712,9 @@
     localStorage.removeItem("taptrack_users_open");
     localStorage.removeItem("taptrack_library_open");
     const toggle = $("#sidebarToggle"),
-      applySidebar = (collapsed) => {
+      applySidebar = (collapsed, { hovered = false } = {}) => {
         removeRailTooltip();
+        document.body.classList.toggle("sidebar-hover-expanded", hovered);
         document.body.classList.toggle("sidebar-collapsed", collapsed);
         toggle.setAttribute("aria-expanded", String(!collapsed));
         toggle.setAttribute(
@@ -662,15 +725,42 @@
     applySidebar(true);
     requestAnimationFrame(() => document.body.classList.add("sidebar-ready"));
     toggle.addEventListener("click", () => {
-      const collapsed = !document.body.classList.contains("sidebar-collapsed");
-      localStorage.setItem("taptrack_sidebar_collapsed", String(collapsed));
-      applySidebar(collapsed);
+      if (sidebarCollapsed && hoverExpanded) {
+        hoverExpanded = false;
+        clearTimeout(hoverCollapseTimer);
+        applySidebar(true);
+        return;
+      }
+      sidebarCollapsed = !sidebarCollapsed;
+      hoverExpanded = false;
+      clearTimeout(hoverCollapseTimer);
+      localStorage.setItem(
+        "taptrack_sidebar_collapsed",
+        String(sidebarCollapsed),
+      );
+      applySidebar(sidebarCollapsed);
+    });
+    const sidebarElement = sidebarMount.querySelector(".sidebar");
+    sidebarElement?.addEventListener("mouseenter", () => {
+      clearTimeout(hoverCollapseTimer);
+      if (!sidebarCollapsed) return;
+      hoverExpanded = true;
+      applySidebar(false, { hovered: true });
+    });
+    sidebarElement?.addEventListener("mouseleave", () => {
+      if (!hoverExpanded) return;
+      clearTimeout(hoverCollapseTimer);
+      hoverCollapseTimer = setTimeout(() => {
+        if (!sidebarCollapsed || sidebarElement.matches(":hover")) return;
+        hoverExpanded = false;
+        applySidebar(true);
+      }, 120);
     });
     $("#logoutBtn").addEventListener("click", async () => {
       try {
         await api("/api/auth/logout", { method: "POST" });
       } finally {
-        location.href = "/login";
+        location.href = window.taptrackUrl("/login");
       }
     });
     clock();
@@ -693,7 +783,7 @@
         return;
       }
       const script = document.createElement("script");
-      script.src = "/vendor/xlsx/xlsx.full.min.js";
+      script.src = window.taptrackUrl("/vendor/xlsx/xlsx.full.min.js");
       script.dataset.taptrackXlsx = "true";
       script.onload = () => resolve(window.XLSX);
       script.onerror = () =>

@@ -52,6 +52,11 @@ npm start
 
 Run the application behind an HTTPS reverse proxy and a process manager.
 
+For IIS with Application Request Routing, the included `web.config` publishes
+the application at `http://SERVER-IP/attendance-system/`. See
+[docs/iis-reverse-proxy.md](docs/iis-reverse-proxy.md) for the required IIS
+modules and setup steps.
+
 When certificate settings are configured directly in TapTrack, the application
 serves HTTP on `PORT` and HTTPS on `HTTPS_PORT` simultaneously. Use HTTPS for
 camera scanning because browsers block camera access from LAN HTTP origins.

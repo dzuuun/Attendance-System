@@ -5,8 +5,10 @@ const pool = require("../../db/db");
 const loginModel = require("../login/login.model");
 const activityModel = require("../user/activity_log/activity_log.model");
 const { getJwtSecret } = require("../../auth/auth_validation");
+const { cookiePath } = require("../../config/public-path");
 
 const COOKIE_NAME = "taptrack_kiosk_session";
+const DEVICE_COOKIE_PREFIX = `${COOKIE_NAME}_`;
 const validKioskId = (value) =>
   /^[A-Za-z0-9_-]{16,80}$/.test(String(value || ""));
 
@@ -20,9 +22,15 @@ function cookieValue(req, name) {
 
 function tokenFrom(req) {
   const authorization = String(req.get("authorization") || "");
-  return authorization.startsWith("Kiosk ")
-    ? authorization.slice(6).trim()
-    : cookieValue(req, COOKIE_NAME);
+  if (authorization.startsWith("Kiosk ")) return authorization.slice(6).trim();
+  const requestedId = String(
+    req.body?.kioskId || req.query?.kioskId || "",
+  ).trim();
+  return (
+    (validKioskId(requestedId)
+      ? cookieValue(req, `${DEVICE_COOKIE_PREFIX}${requestedId}`)
+      : "") || cookieValue(req, COOKIE_NAME)
+  );
 }
 function kioskIdentityMatches(kioskId, requestedId) {
   return validKioskId(kioskId) && (!requestedId || requestedId === kioskId);
@@ -58,7 +66,18 @@ function signKioskToken(kioskId, jti) {
     audience: "taptrack-kiosk",
   });
 }
-
+function setKioskCookie(req, res, token, kioskId) {
+  const options = {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: Boolean(req.secure),
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: cookiePath,
+  };
+  res.cookie(`${DEVICE_COOKIE_PREFIX}${kioskId}`, token, options);
+  // Retain one generic cookie for profile images and migration from older builds.
+  res.cookie(COOKIE_NAME, token, options);
+}
 async function requireKioskSession(req, res, next) {
   try {
     const token = tokenFrom(req);
@@ -66,22 +85,35 @@ async function requireKioskSession(req, res, next) {
       issuer: "taptrack",
       audience: "taptrack-kiosk",
     });
-    if (decoded.type !== "kiosk" || !decoded.jti || !validKioskId(decoded.sub))
+    if (decoded.type !== "kiosk" || !validKioskId(decoded.sub))
       throw new Error("Invalid kiosk enrollment.");
+    const requestedId = String(
+      req.body?.kioskId || req.query?.kioskId || "",
+    ).trim();
     await ensureSessionSchema();
+    if (!kioskIdentityMatches(decoded.sub, requestedId)) {
+      return res
+        .status(403)
+        .json({ message: "This enrollment belongs to another kiosk." });
+    }
+    if (!decoded.jti) {
+      const existing = await require("../kiosk-management/kiosk.model").getById(
+        decoded.sub,
+      );
+      if (existing?.isEnabled === 0)
+        throw new Error("Kiosk enrollment is revoked.");
+      const migratedToken = await createKioskToken(decoded.sub);
+      req.kioskAuthenticated = true;
+      req.kioskId = decoded.sub;
+      setKioskCookie(req, res, migratedToken, decoded.sub);
+      return next();
+    }
     const [[session]] = await pool.query(
       "SELECT s.jti,k.is_enabled isEnabled FROM kiosk_sessions s LEFT JOIN kiosks k ON k.id=s.kiosk_id WHERE s.jti=? AND s.kiosk_id=? AND s.revoked_at IS NULL AND s.expires_at>NOW() LIMIT 1",
       [decoded.jti, decoded.sub],
     );
     if (!session || session.isEnabled === 0)
       throw new Error("Kiosk enrollment is revoked.");
-    const requestedId = String(
-      req.body?.kioskId || req.query?.kioskId || "",
-    ).trim();
-    if (requestedId && requestedId !== decoded.sub)
-      return res
-        .status(403)
-        .json({ message: "This enrollment belongs to another kiosk." });
     req.kioskAuthenticated = true;
     req.kioskId = decoded.sub;
     const usesHeader = String(req.get("authorization") || "").startsWith(
@@ -94,13 +126,7 @@ async function requireKioskSession(req, res, next) {
     );
     if (!usesHeader) {
       const refreshedToken = signKioskToken(decoded.sub, decoded.jti);
-      res.cookie(COOKIE_NAME, refreshedToken, {
-        httpOnly: true,
-        sameSite: "strict",
-        secure: req.secure || process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: "/",
-      });
+      setKioskCookie(req, res, refreshedToken, decoded.sub);
     }
     next();
   } catch (_error) {
@@ -151,13 +177,7 @@ async function pairKiosk(req, res) {
       .json({ message: "This kiosk has been disabled by an administrator." });
 
   const token = await createKioskToken(kioskId);
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: req.secure || process.env.NODE_ENV === "production",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: "/",
-  });
+  setKioskCookie(req, res, token, kioskId);
   await activityModel.record({
     userId: user.id,
     actorName: user.fullName,

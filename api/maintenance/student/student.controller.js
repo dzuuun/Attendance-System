@@ -43,6 +43,7 @@ function payload(body) {
             .trim()
             .toLowerCase(),
       ) || String(body.yearLevel || "").trim(),
+    sectionId: Number(body.sectionId) || null,
     birthday: normalizeBirthday(body.birthday),
     institutionalEmail: String(body.institutionalEmail || "")
       .trim()
@@ -52,6 +53,8 @@ function payload(body) {
   data.fullName = [data.firstName, data.middleName, data.lastName]
     .filter(Boolean)
     .join(" ");
+  if (!/^Grade\s+(?:[1-9]|1[0-2])$/i.test(data.yearLevel))
+    data.sectionId = null;
   return data;
 }
 function valid(data) {
@@ -62,11 +65,26 @@ function valid(data) {
     data.programId &&
     data.programName &&
     YEAR_LEVELS.has(data.yearLevel) &&
+    (!data.yearLevel.startsWith("Grade ") || data.sectionId) &&
     data.birthday &&
     (!data.institutionalEmail ||
       /^\S+@\S+\.\S+$/.test(data.institutionalEmail)) &&
     ["Male", "Female"].includes(data.gender)
   );
+}
+function validationMessage(data) {
+  if (data.yearLevel.startsWith("Grade ") && !data.sectionId)
+    return "Choose an active section for Grade 1 to Grade 12 students.";
+  return "Complete all required student fields.";
+}
+async function validateSection(data) {
+  if (!data.sectionId) return null;
+  const section = await require("../section/section.model").getById(
+    data.sectionId,
+  );
+  if (!section?.isActive || section.yearLevel !== data.yearLevel) return null;
+  data.sectionName = section.name;
+  return section;
 }
 exports.getAll = async (_req, res) => res.json(await model.getAll());
 exports.cardWriterStatus = (_req, res) => res.json(nfcWriter.status());
@@ -106,9 +124,11 @@ exports.enrollCard = async (req, res) => {
 exports.create = async (req, res) => {
   const data = payload(req.body);
   if (!valid(data))
-    return res
-      .status(400)
-      .json({ message: "Complete all required student fields." });
+    return res.status(400).json({ message: validationMessage(data) });
+  if (data.sectionId && !(await validateSection(data)))
+    return res.status(400).json({
+      message: "Choose an active section assigned to the selected grade level.",
+    });
   if (await model.findId(data.idNumber))
     return res
       .status(409)
@@ -126,9 +146,11 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   const data = payload(req.body);
   if (!valid(data))
-    return res
-      .status(400)
-      .json({ message: "Complete all required student fields." });
+    return res.status(400).json({ message: validationMessage(data) });
+  if (data.sectionId && !(await validateSection(data)))
+    return res.status(400).json({
+      message: "Choose an active section assigned to the selected grade level.",
+    });
   if (await model.findId(data.idNumber, req.params.id))
     return res
       .status(409)

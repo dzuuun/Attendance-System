@@ -79,7 +79,7 @@ function renderCurrentAttendee(record) {
       }, remaining);
   }
   if (!record) {
-    photo.src = "/client/images/NDMU-Logo.png";
+    photo.src = window.taptrackUrl("/client/images/NDMU-Logo.png");
     photo.alt = "Scanned attendee";
     $("#currentAttendeeKicker").textContent = "CURRENT ATTENDEE";
     $("#currentAttendeeName").textContent = "Ready to scan";
@@ -92,9 +92,10 @@ function renderCurrentAttendee(record) {
   const isStudent = record.type === "Student";
   photo.onerror = () => {
     photo.onerror = null;
-    photo.src = "/client/images/NDMU-Logo.png";
+    photo.src = window.taptrackUrl("/client/images/NDMU-Logo.png");
   };
-  photo.src = record.photoUrl || "/client/images/NDMU-Logo.png";
+  photo.src =
+    record.photoUrl || window.taptrackUrl("/client/images/NDMU-Logo.png");
   photo.alt = `${record.name || "Attendee"} photo`;
   $("#currentAttendeeKicker").textContent =
     `LATEST ${String(record.action || "SCAN").toUpperCase()}`;
@@ -472,7 +473,7 @@ document.addEventListener("keydown", (event) => {
 });
 (async () => {
   await init("events");
-  if (!eventId) return location.replace("/events");
+  if (!eventId) return location.replace(window.taptrackUrl("/events"));
   const events = await api("/api/events");
   eventRecord = events.find((item) => Number(item.id) === eventId);
   if (!eventRecord) {

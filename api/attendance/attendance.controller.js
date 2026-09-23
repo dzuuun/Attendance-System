@@ -318,6 +318,7 @@ exports.scan = async (req, res) => {
     programCode: person.type !== "Employee" ? person.programCode : null,
     college: person.type !== "Employee" ? person.college : null,
     yearLevel: person.type === "Student" ? person.yearLevel : null,
+    sectionName: person.type === "Student" ? person.sectionName : null,
     graduationYear: person.type === "Alumnus" ? person.graduationYear : null,
     department: person.type === "Employee" ? person.department : null,
     photoUrl: absoluteAssetUrl(req, person.photoUrl),

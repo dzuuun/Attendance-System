@@ -27,11 +27,7 @@ $("#changePasswordForm").addEventListener("submit", async (event) => {
         confirmPassword: $("#confirmPassword").value,
       }),
     });
-    event.currentTarget.reset();
-    document
-      .querySelectorAll('#changePasswordForm input:not([type="checkbox"])')
-      .forEach((input) => (input.type = "password"));
-    TapTrack.toast("Your password has been changed.", "success");
+    window.location.replace(window.taptrackUrl("/login?password_changed=1"));
   } catch (error) {
     errorNode.textContent = error.message;
   } finally {

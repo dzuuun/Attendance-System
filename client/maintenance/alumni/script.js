@@ -2,6 +2,7 @@ const { $, api, escapeHtml, personCell, emptyRow, init } = TapTrack;
 let alumni = [];
 let currentUser = null;
 let programs = [];
+let sections = [];
 
 function render() {
   const table = $("#body").closest("table");
@@ -137,6 +138,10 @@ document.addEventListener("click", async (event) => {
         )
         .join("");
     $("#reenrollYearLevel").value = "";
+    $("#reenrollSection").innerHTML =
+      '<option value="">Select section</option>';
+    $("#reenrollSectionField").hidden = true;
+    $("#reenrollSection").required = false;
     $("#reenrollError").textContent = "";
     $("#reenrollDialog").showModal();
     return;
@@ -158,6 +163,26 @@ document.addEventListener("click", async (event) => {
     button.disabled = false;
   }
 });
+$("#reenrollYearLevel").addEventListener("change", () => {
+  const isGrade = /^Grade\s+(?:[1-9]|1[0-2])$/.test(
+    $("#reenrollYearLevel").value,
+  );
+  $("#reenrollSectionField").hidden = !isGrade;
+  $("#reenrollSection").required = isGrade;
+  $("#reenrollSection").innerHTML = isGrade
+    ? `<option value="">Select section</option>${sections
+        .filter(
+          (section) =>
+            section.isActive &&
+            section.yearLevel === $("#reenrollYearLevel").value,
+        )
+        .map(
+          (section) =>
+            `<option value="${section.id}">${escapeHtml(section.name)}</option>`,
+        )
+        .join("")}`
+    : '<option value="">Not applicable</option>';
+});
 $("#reenrollForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const id = $("#reenrollAlumnusId").value;
@@ -169,6 +194,7 @@ $("#reenrollForm").addEventListener("submit", async (event) => {
       body: JSON.stringify({
         programId: $("#reenrollProgram").value,
         yearLevel: $("#reenrollYearLevel").value,
+        sectionId: $("#reenrollSection").value,
       }),
     });
     const alumnus = alumni.find((item) => String(item.id) === id);
@@ -222,9 +248,10 @@ $("#form").addEventListener("submit", async (event) => {
 (async () => {
   try {
     ({ user: currentUser } = await init("alumni"));
-    [alumni, programs] = await Promise.all([
+    [alumni, programs, sections] = await Promise.all([
       api("/api/alumni"),
       api("/api/program-options"),
+      api("/api/section-options"),
     ]);
     render();
   } catch (error) {

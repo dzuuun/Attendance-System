@@ -3,11 +3,18 @@ const express = require("express"),
   fs = require("fs"),
   https = require("https"),
   path = require("path");
+const { basePath, publicPath } = require("./config/public-path");
 const {
   checkSession,
+  checkPageSession,
   requireAdmin,
   requireSuperadmin,
   requireAccess,
+  requireMaintenance,
+  requireAnyMaintenance,
+  hasMaintenanceModule,
+  requirePeopleRead,
+  visiblePeopleModules,
   getJwtSecret,
 } = require("./auth/auth_validation");
 const {
@@ -59,6 +66,11 @@ const app = express(),
   httpsPort = Number(process.env.HTTPS_PORT) || 4443,
   client = path.join(__dirname, "client");
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+app.use((req, _res, next) => {
+  if (basePath && (req.url === basePath || req.url.startsWith(`${basePath}/`)))
+    req.url = req.url.slice(basePath.length) || "/";
+  next();
+});
 function secureWebServer() {
   const pfxPath = String(process.env.HTTPS_PFX_PATH || "").trim();
   const certPath = String(process.env.HTTPS_CERT_PATH || "").trim();
@@ -107,6 +119,29 @@ app.use((req, res, next) => {
   return res.status(426).json({ message: "HTTPS is required." });
 });
 app.use(express.json({ limit: "10mb" }));
+app.use((_req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body) => {
+    const prefixUrls = (value) => {
+      if (typeof value === "string")
+        return /^\/(?:uploads|client)\//.test(value)
+          ? publicPath(value)
+          : value;
+      if (Array.isArray(value)) return value.map(prefixUrls);
+      if (
+        value &&
+        typeof value === "object" &&
+        Object.getPrototypeOf(value) === Object.prototype
+      )
+        return Object.fromEntries(
+          Object.entries(value).map(([key, item]) => [key, prefixUrls(item)]),
+        );
+      return value;
+    };
+    return json(prefixUrls(body));
+  };
+  next();
+});
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -142,6 +177,7 @@ const departmentRouter = require("./api/maintenance/department/department.router
 const employeeDepartmentRouter = require("./api/maintenance/employee_department/employee_department.router");
 const gateRouter = require("./api/maintenance/gate/gate.router");
 const programRouter = require("./api/maintenance/program/program.router");
+const sectionRouter = require("./api/maintenance/section/section.router");
 const activityLogRouter = require("./api/user/activity_log/activity_log.router");
 const academicPeriodRouter = require("./api/maintenance/academic_period/academic_period.router");
 const historyRouter = require("./api/history/history.router");
@@ -176,6 +212,14 @@ app.use(
 app.use(
   ["/api/kiosk/scan", "/api/library-kiosk"],
   rateLimit({ windowMs: 60 * 1000, limit: 120 }),
+);
+app.use(
+  "/api/kiosk/screenshots",
+  rateLimit({
+    windowMs: 60 * 1000,
+    limit: 10,
+    message: "Too many screenshot uploads. Try again later.",
+  }),
 );
 app.post("/api/kiosk/heartbeat", asyncHandler(kioskManagement.heartbeat));
 app.get("/api/kiosk/config", asyncHandler(kioskManagement.config));
@@ -253,7 +297,24 @@ app.use("/api", checkSession);
 app.use("/api", require("./api/middleware/activity_log"));
 app.post(
   "/api/bulk-import-summary",
-  requireAccess("maintenanceAccess"),
+  (req, res, next) => {
+    const module = {
+      student: "students",
+      alumni: "alumni",
+      employee: "employees",
+      school: "schools",
+      college: "colleges",
+      department: "departments",
+      program: "programs",
+      section: "sections",
+    }[String(req.body.type || "").toLowerCase()];
+    return module && hasMaintenanceModule(req.user, module)
+      ? next()
+      : res.status(403).json({
+          success: 0,
+          message: "You do not have access to this maintenance area.",
+        });
+  },
   asyncHandler(require("./api/maintenance/import-summary.controller").create),
 );
 app.get(
@@ -286,47 +347,43 @@ app.use(
 );
 app.use(
   "/api/person-logs",
-  requireAccess("maintenanceAccess"),
+  requireAnyMaintenance("students", "alumni", "employees"),
   wrapRouter(personLogsRouter),
 );
 app.use(
   "/api/student",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("students"),
   wrapRouter(studentRouter),
 );
-app.use(
-  "/api/alumni",
-  requireAccess("maintenanceAccess"),
-  wrapRouter(alumniRouter),
-);
+app.use("/api/alumni", requireMaintenance("alumni"), wrapRouter(alumniRouter));
 app.use(
   "/api/employee",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("employees"),
   wrapRouter(employeeRouter),
 );
 app.use(
   "/api/settings",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("settings"),
   wrapRouter(settingsRouter),
 );
 app.use(
   "/api/school",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("schools", { readFor: ["colleges"] }),
   wrapRouter(schoolRouter),
 );
 app.use(
   "/api/college",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("colleges", { readFor: ["departments"] }),
   wrapRouter(collegeRouter),
 );
 app.use(
   "/api/department",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("departments", { readFor: ["programs"] }),
   wrapRouter(departmentRouter),
 );
 app.get(
   "/api/employee_department",
-  requireAccess("maintenanceAccess"),
+  requireAnyMaintenance("employeeDepartments", "employees"),
   asyncHandler(async (_req, res) =>
     res.json(
       await require("./api/maintenance/academic/academic.model").getAll(
@@ -337,7 +394,7 @@ app.get(
 );
 app.use(
   "/api/employee_department",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("employeeDepartments", { readFor: ["employees"] }),
   wrapRouter(employeeDepartmentRouter),
 );
 app.use(
@@ -359,33 +416,45 @@ app.use(
 );
 app.use(
   "/api/gate",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("gates", { readFor: ["kiosks"] }),
   wrapRouter(gateRouter),
 );
 app.use(
   "/api/kiosks",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("kiosks"),
   wrapRouter(kioskManagementRouter),
 );
 app.use(
   "/api/program",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("programs"),
   wrapRouter(programRouter),
 );
 app.use(
+  "/api/section",
+  requireMaintenance("sections"),
+  wrapRouter(sectionRouter),
+);
+app.use(
   "/api/academic-periods",
-  requireAccess("maintenanceAccess"),
+  requireMaintenance("academicPeriods"),
   wrapRouter(academicPeriodRouter),
 );
 app.get(
   "/api/program-options",
-  requireAccess("maintenanceAccess"),
+  requireAnyMaintenance("programs", "students", "alumni"),
   asyncHandler(async (_req, res) =>
     res.json(
       await require("./api/maintenance/academic/academic.model").getAll(
         "program",
       ),
     ),
+  ),
+);
+app.get(
+  "/api/section-options",
+  requireAnyMaintenance("sections", "students", "alumni"),
+  asyncHandler(async (_req, res) =>
+    res.json(await require("./api/maintenance/section/section.model").getAll()),
   ),
 );
 app.use("/api/user", requireAccess("usersAccess"), wrapRouter(userRouter));
@@ -397,19 +466,33 @@ app.use(
 );
 app.get(
   "/api/people",
-  requireAccess("maintenanceAccess"),
-  asyncHandler(async (_req, res) => {
-    const [students, alumni, employees] = await Promise.all([
-      require("./api/maintenance/student/student.model").getAll(),
-      require("./api/maintenance/alumni/alumni.model").getAll(),
-      require("./api/maintenance/employee/employee.model").getAll(),
-    ]);
-    res.json([...students, ...alumni, ...employees]);
+  requirePeopleRead,
+  asyncHandler(async (req, res) => {
+    const loaders = [];
+    const visibleModules = visiblePeopleModules(req.user);
+    if (visibleModules.includes("students"))
+      loaders.push(require("./api/maintenance/student/student.model").getAll());
+    if (visibleModules.includes("alumni"))
+      loaders.push(require("./api/maintenance/alumni/alumni.model").getAll());
+    if (visibleModules.includes("employees"))
+      loaders.push(
+        require("./api/maintenance/employee/employee.model").getAll(),
+      );
+    res.json((await Promise.all(loaders)).flat());
   }),
 );
 app.post(
   "/api/people",
-  requireAccess("maintenanceAccess"),
+  (req, res, next) => {
+    const module = {
+      Student: "students",
+      Alumnus: "alumni",
+      Employee: "employees",
+    }[req.body.type];
+    return module
+      ? requireMaintenance(module)(req, res, next)
+      : res.status(400).json({ message: "Choose a valid person type." });
+  },
   asyncHandler((req, res) => {
     if (req.body.type === "Student")
       return require("./api/maintenance/student/student.controller").create(
@@ -429,12 +512,24 @@ app.post(
 );
 app.delete(
   "/api/people/:type/:id",
-  requireAccess("maintenanceAccess"),
+  (req, res, next) => {
+    const module =
+      req.params.type === "Student"
+        ? "students"
+        : req.params.type === "Alumnus"
+          ? "alumni"
+          : req.params.type === "Employee"
+            ? "employees"
+            : null;
+    return module
+      ? requireMaintenance(module)(req, res, next)
+      : res.status(400).json({ message: "Choose a valid person type." });
+  },
   asyncHandler((req, res) => {
-    return req.params.type === "Student"
+    return ["Student", "Alumnus"].includes(req.params.type)
       ? res.status(405).json({
           message:
-            "Student records cannot be deleted. Deactivate the record instead.",
+            "Student and alumni records cannot be deleted. Deactivate the record instead.",
         })
       : require("./api/maintenance/employee/employee.controller").remove(
           req,
@@ -442,13 +537,15 @@ app.delete(
         );
   }),
 );
-app.get("/api/users", (req, res) => res.redirect(307, "/api/user"));
-app.post("/api/users", (req, res) => res.redirect(307, "/api/user"));
+app.get("/api/users", (req, res) => res.redirect(307, publicPath("/api/user")));
+app.post("/api/users", (req, res) =>
+  res.redirect(307, publicPath("/api/user")),
+);
 app.put("/api/users/:id", (req, res) =>
-  res.redirect(307, `/api/user/${req.params.id}`),
+  res.redirect(307, publicPath(`/api/user/${req.params.id}`)),
 );
 app.patch("/api/users/:id/status", (req, res) =>
-  res.redirect(307, `/api/user/${req.params.id}/status`),
+  res.redirect(307, publicPath(`/api/user/${req.params.id}/status`)),
 );
 app.use("/api", apiNotFound);
 
@@ -496,31 +593,99 @@ app.use(
   "/vendor/material-symbols",
   express.static(path.join(__dirname, "node_modules", "material-symbols")),
 );
-app.get("/", (_req, res) => res.sendFile(path.join(client, "index.html")));
-app.get("/login", (_req, res) =>
-  res.sendFile(path.join(client, "login", "index.html")),
+const pageCache = new Map();
+const sendPage =
+  (file, { sidebar = false } = {}) =>
+  async (_req, res, next) => {
+    try {
+      const filename = path.join(client, file);
+      const cacheKey = `${filename}:${sidebar}`;
+      let html = pageCache.get(cacheKey);
+      if (!html || process.env.NODE_ENV !== "production") {
+        html = await fs.promises.readFile(filename, "utf8");
+        if (sidebar) {
+          const navigation = await fs.promises.readFile(
+            path.join(client, "sidebar.html"),
+            "utf8",
+          );
+          html = html.replace(
+            /<div\s+id="sidebarMount"\s*><\/div>/i,
+            `<div id="sidebarMount">${navigation}</div>`,
+          );
+        }
+        html = html
+          .replace(
+            /\/client\/shared-ui\.js"/g,
+            '/client/shared-ui.js?v=20260923-2"',
+          )
+          .replace(
+            /\b(href|src|action)="\/(?!\/)/gi,
+            (_match, attribute) => `${attribute}="${basePath}/`,
+          )
+          .replace(
+            /<head(\s[^>]*)?>/i,
+            (head) =>
+              `${head}<script src="${publicPath("/client/base-path.js")}"></script>`,
+          );
+        if (process.env.NODE_ENV === "production")
+          pageCache.set(cacheKey, html);
+      }
+      res.type("html").send(html);
+    } catch (error) {
+      next(error);
+    }
+  };
+app.get("/", sendPage("index.html"));
+app.get("/login", sendPage("login/index.html"));
+app.get("/setup", sendPage("login/setup.html"));
+app.get("/kiosk", (_req, res) =>
+  res.redirect(302, publicPath("/kiosk/entrance")),
 );
-app.get("/setup", (_req, res) =>
-  res.sendFile(path.join(client, "login", "setup.html")),
-);
-app.get("/kiosk", (_req, res) => res.redirect(302, "/kiosk/entrance"));
-app.get("/kiosk/entrance", (_req, res) =>
-  res.sendFile(path.join(client, "kiosk", "index.html")),
-);
-app.get("/kiosk/library", (_req, res) =>
-  res.sendFile(path.join(client, "library-kiosk", "index.html")),
-);
-app.get("/kiosk/internet-section", (_req, res) =>
-  res.sendFile(path.join(client, "library-kiosk", "index.html")),
-);
-app.get("/sidebar.html", checkSession, (_req, res) =>
-  res.sendFile(path.join(client, "sidebar.html")),
-);
-const protectedPage = (file) => (req, res, next) =>
-  checkSession(req, res, () =>
-    res.sendFile(path.join(client, file), (error) => error && next(error)),
-  );
+app.get("/kiosk/entrance", sendPage("kiosk/index.html"));
+app.get("/kiosk/library", sendPage("library-kiosk/index.html"));
+app.get("/kiosk/internet-section", sendPage("library-kiosk/index.html"));
+app.get("/sidebar.html", checkSession, sendPage("sidebar.html"));
+const protectedPage = (file) => [
+  checkPageSession,
+  sendPage(file, { sidebar: true }),
+];
 const adminPage = protectedPage;
+const maintenancePage = (module, file) => [
+  checkPageSession,
+  (req, res, next) => {
+    if (hasMaintenanceModule(req.user, module)) return next();
+    const maintenanceRoutes = {
+        students: "/maintenance/student",
+        alumni: "/maintenance/alumni",
+        employees: "/maintenance/employee",
+        schools: "/maintenance/school",
+        colleges: "/maintenance/college",
+        departments: "/maintenance/department",
+        employeeDepartments: "/maintenance/employee-department",
+        programs: "/maintenance/program",
+        sections: "/maintenance/sections",
+        gates: "/maintenance/gates",
+        kiosks: "/maintenance/kiosks",
+        academicPeriods: "/maintenance/academic-periods",
+        settings: "/maintenance/settings",
+      },
+      maintenanceFallback = (req.user.maintenanceModules || [])
+        .map((item) => maintenanceRoutes[item])
+        .find(Boolean),
+      fallback = req.user.overviewAccess
+        ? "/overview"
+        : req.user.attendanceAccess
+          ? "/attendance"
+          : req.user.specialEventsAccess
+            ? "/events"
+            : req.user.libraryAccess
+              ? "/library/entrance"
+              : maintenanceFallback ||
+                (req.user.usersAccess ? "/user/user-management" : "/login");
+    return res.redirect(303, publicPath(fallback));
+  },
+  sendPage(file, { sidebar: true }),
+];
 app.get("/overview", protectedPage("dashboard/index.html"));
 app.get("/analytics", protectedPage("analytics/index.html"));
 app.get("/library/analytics", protectedPage("analytics/index.html"));
@@ -531,37 +696,69 @@ app.get(
 app.get("/attendance", protectedPage("attendance/index.html"));
 app.get(
   "/maintenance/student",
-  protectedPage("maintenance/student/index.html"),
+  maintenancePage("students", "maintenance/student/index.html"),
 );
-app.get("/maintenance/alumni", protectedPage("maintenance/alumni/index.html"));
+app.get(
+  "/maintenance/alumni",
+  maintenancePage("alumni", "maintenance/alumni/index.html"),
+);
 app.get(
   "/maintenance/employee",
-  protectedPage("maintenance/employee/index.html"),
+  maintenancePage("employees", "maintenance/employee/index.html"),
 );
 app.get("/events", adminPage("events/index.html"));
 app.get("/events/:id/scan", adminPage("events/scan/index.html"));
-app.get("/history", (_req, res) => res.redirect(302, "/events/past"));
+app.get("/history", (_req, res) =>
+  res.redirect(302, publicPath("/events/past")),
+);
 app.get("/events/past", adminPage("history/index.html"));
-app.get("/library", (_req, res) => res.redirect("/library/entrance"));
+app.get("/library", (_req, res) =>
+  res.redirect(publicPath("/library/entrance")),
+);
 app.get("/library/entrance", adminPage("library/index.html"));
 app.get("/library/internet-section", adminPage("library/index.html"));
-app.get("/maintenance/settings", adminPage("maintenance/settings/index.html"));
-app.get("/maintenance/school", adminPage("maintenance/school/index.html"));
-app.get("/maintenance/college", adminPage("maintenance/college/index.html"));
+app.get(
+  "/maintenance/settings",
+  maintenancePage("settings", "maintenance/settings/index.html"),
+);
+app.get(
+  "/maintenance/school",
+  maintenancePage("schools", "maintenance/school/index.html"),
+);
+app.get(
+  "/maintenance/college",
+  maintenancePage("colleges", "maintenance/college/index.html"),
+);
 app.get(
   "/maintenance/department",
-  adminPage("maintenance/department/index.html"),
+  maintenancePage("departments", "maintenance/department/index.html"),
 );
 app.get(
   "/maintenance/employee-department",
-  adminPage("maintenance/employee_department/index.html"),
+  maintenancePage(
+    "employeeDepartments",
+    "maintenance/employee_department/index.html",
+  ),
 );
-app.get("/maintenance/gates", adminPage("maintenance/gate/index.html"));
-app.get("/maintenance/kiosks", adminPage("maintenance/kiosk/index.html"));
-app.get("/maintenance/program", adminPage("maintenance/program/index.html"));
+app.get(
+  "/maintenance/gates",
+  maintenancePage("gates", "maintenance/gate/index.html"),
+);
+app.get(
+  "/maintenance/kiosks",
+  maintenancePage("kiosks", "maintenance/kiosk/index.html"),
+);
+app.get(
+  "/maintenance/program",
+  maintenancePage("programs", "maintenance/program/index.html"),
+);
+app.get(
+  "/maintenance/sections",
+  maintenancePage("sections", "maintenance/section/index.html"),
+);
 app.get(
   "/maintenance/academic-periods",
-  adminPage("maintenance/academic_period/index.html"),
+  maintenancePage("academicPeriods", "maintenance/academic_period/index.html"),
 );
 app.get("/user/user-management", adminPage("user/user_management/index.html"));
 app.get("/user/permissions", adminPage("user/permission/index.html"));

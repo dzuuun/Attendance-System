@@ -1,6 +1,7 @@
 const sql = require("mssql");
 const pool = require("../../../db/db");
 const model = require("./student.model");
+const profilePhotos = require("../profile-photo");
 
 const YEAR_LEVELS = new Set([
   ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`),
@@ -26,6 +27,36 @@ const dateValue = (value) =>
   value instanceof Date
     ? value.toISOString().slice(0, 10)
     : clean(value).slice(0, 10);
+
+function sourcePhoto(value) {
+  if (value === null || value === undefined || value === "") return {};
+  if ((Buffer.isBuffer(value) || value instanceof Uint8Array) && !value.length)
+    return {};
+  let buffer;
+  if (Buffer.isBuffer(value)) buffer = value;
+  else if (value instanceof Uint8Array) buffer = Buffer.from(value);
+  else if (typeof value === "string") {
+    const input = value.trim();
+    const dataUrl = input.match(
+      /^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/i,
+    );
+    const encoded = dataUrl?.[1] || input;
+    if (/^[A-Za-z0-9+/=\s]+$/.test(encoded)) {
+      try {
+        buffer = Buffer.from(encoded.replace(/\s+/g, ""), "base64");
+      } catch (_error) {
+        buffer = null;
+      }
+    }
+  }
+  if (!buffer?.length || !profilePhotos.photoType(buffer))
+    return {
+      warning:
+        "Photo is not valid JPEG, PNG, or WebP image data and will be skipped",
+    };
+  return { buffer };
+}
+
 function normalizeYearLevel(value) {
   const input = clean(value).replace(/\s+/g, " ");
   const existing = [...YEAR_LEVELS].find(
@@ -73,7 +104,24 @@ function viewName() {
   return parts.map((part) => `[${part}]`).join(".");
 }
 
-async function readSource(sourcePeriod) {
+function studentTableName() {
+  const parts = clean(process.env.MSSQL_STUDENT_TABLE || "dbo.Student").split(
+    ".",
+  );
+  if (
+    parts.length !== 2 ||
+    parts.some((part) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(part))
+  ) {
+    const error = new Error(
+      "Set MSSQL_STUDENT_TABLE to a trusted two-part table name, for example dbo.Student.",
+    );
+    error.status = 500;
+    throw error;
+  }
+  return parts.map((part) => `[${part}]`).join(".");
+}
+
+async function openSourceConnection({ photos = false } = {}) {
   const settings = {
     server: clean(process.env.MSSQL_SERVER),
     database: clean(process.env.MSSQL_DATABASE),
@@ -87,7 +135,7 @@ async function readSource(sourcePeriod) {
     error.status = 503;
     throw error;
   }
-  const connection = await new sql.ConnectionPool({
+  return new sql.ConnectionPool({
     ...settings,
     port: Number(process.env.MSSQL_PORT || 1433),
     options: {
@@ -96,16 +144,76 @@ async function readSource(sourcePeriod) {
         process.env.MSSQL_TRUST_SERVER_CERTIFICATE === "true",
     },
     connectionTimeout: 15000,
-    requestTimeout: 60000,
+    requestTimeout: Number(
+      process.env.MSSQL_REQUEST_TIMEOUT || (photos ? 300000 : 60000),
+    ),
   }).connect();
+}
+
+async function readSource(sourcePeriod, { includePhotos = false } = {}) {
+  const connection = await openSourceConnection();
   try {
-    const result = await connection
-      .request()
-      .input("schoolYear", sql.VarChar(20), sourcePeriod.schoolYear)
-      .input("semester", sql.Int, sourcePeriod.semester)
-      .query(`SELECT ${REQUIRED_COLUMNS.map((column) => `[${column}]`).join(", ")}, [InstitutionalEmail]
-        FROM ${viewName()} WHERE [SchoolYear]=@schoolYear AND [Semester]=@semester
-        ORDER BY [LastName], [FirstName], [MiddleName], [SchoolID]`);
+    const querySource = (
+      photoFromStudentTable = false,
+      sectionFromView = true,
+    ) => {
+      const photoOwner = photoFromStudentTable
+        ? "StudentSource"
+        : "ImportSource";
+      const photoSelection = includePhotos
+        ? `CASE WHEN DATALENGTH(${photoOwner}.[Photo]) > 0 THEN 1 ELSE 0 END AS [HasPhoto]`
+        : "CAST(0 AS bit) AS [HasPhoto]";
+      const sectionSelection = sectionFromView
+        ? "ImportSource.[SectionName]"
+        : "CAST(NULL AS varchar(100)) AS [SectionName]";
+      const join =
+        includePhotos && photoFromStudentTable
+          ? `LEFT JOIN ${studentTableName()} AS StudentSource
+          ON LTRIM(RTRIM(CONVERT(varchar(100), StudentSource.[StudentID]))) = ImportSource.[SchoolID]`
+          : "";
+      return connection
+        .request()
+        .input("schoolYear", sql.VarChar(20), sourcePeriod.schoolYear)
+        .input("semester", sql.Int, sourcePeriod.semester)
+        .query(`SELECT ${REQUIRED_COLUMNS.map((column) => `ImportSource.[${column}]`).join(", ")}, ImportSource.[InstitutionalEmail], ${sectionSelection}, ${photoSelection}
+          FROM ${viewName()} AS ImportSource
+          ${join}
+          WHERE ImportSource.[SchoolYear]=@schoolYear AND ImportSource.[Semester]=@semester
+          ORDER BY ImportSource.[LastName], ImportSource.[FirstName], ImportSource.[MiddleName], ImportSource.[SchoolID]`);
+    };
+    let result,
+      photoFromStudentTable = false,
+      sectionFromView = true;
+    while (!result) {
+      try {
+        result = await querySource(photoFromStudentTable, sectionFromView);
+      } catch (error) {
+        if (
+          sectionFromView &&
+          error.number === 207 &&
+          /SectionName/i.test(error.message)
+        ) {
+          sectionFromView = false;
+          continue;
+        }
+        if (
+          includePhotos &&
+          !photoFromStudentTable &&
+          error.number === 207 &&
+          /(?:column name\s+['"]?Photo|\[Photo\])/i.test(error.message)
+        ) {
+          photoFromStudentTable = true;
+          continue;
+        }
+        if (!includePhotos || !photoFromStudentTable) throw error;
+        const configurationError = new Error(
+          "The SQL Server view does not expose Photo, and TapTrack cannot read dbo.Student.Photo. Add S.Photo AS Photo to the configured view, or grant the import account SELECT access to StudentID and Photo in the configured student table.",
+        );
+        configurationError.status = 503;
+        configurationError.cause = error;
+        throw configurationError;
+      }
+    }
     return result.recordset.map((row) => ({
       idNumber: clean(row.SchoolID).toUpperCase(),
       firstName: clean(row.FirstName),
@@ -113,19 +221,22 @@ async function readSource(sourcePeriod) {
       lastName: clean(row.LastName),
       programCode: clean(row.CourseCode).toUpperCase(),
       yearLevel: normalizeYearLevel(row.YearLevel),
+      sectionName: clean(row.SectionName).replace(/\s+/g, " "),
       birthday: dateValue(row.BirthDate),
       gender: clean(row.Gender),
       institutionalEmail: clean(row.InstitutionalEmail).toLowerCase(),
+      hasPhoto: Boolean(row.HasPhoto),
     }));
   } finally {
     await connection.close();
   }
 }
 
-async function review(sourcePeriod) {
-  const [rows, programs, students, employeeRows] = await Promise.all([
-    readSource(sourcePeriod),
+async function review(sourcePeriod, { includePhotos = false } = {}) {
+  const [rows, programs, sections, students, employeeRows] = await Promise.all([
+    readSource(sourcePeriod, { includePhotos }),
     require("../academic/academic.model").getAll("program"),
+    require("../section/section.model").getAll(),
     model.getAll(),
     pool
       .query("SELECT id_number idNumber FROM employees")
@@ -135,6 +246,14 @@ async function review(sourcePeriod) {
     programs
       .filter((item) => item.isActive)
       .map((item) => [clean(item.code).toUpperCase(), item]),
+  );
+  const sectionByGradeAndName = new Map(
+    sections
+      .filter((item) => item.isActive)
+      .map((item) => [
+        `${item.yearLevel}|${clean(item.name).toLowerCase()}`,
+        item,
+      ]),
   );
   const studentById = new Map(
     students.map((item) => [clean(item.idNumber).toUpperCase(), item]),
@@ -166,6 +285,27 @@ async function review(sourcePeriod) {
       messages.push("CourseCode does not match an active TapTrack program");
     if (!YEAR_LEVELS.has(row.yearLevel)) messages.push("YearLevel is invalid");
     if (
+      /^Grade\s+(?:[1-9]|1[0-2])$/.test(row.yearLevel) &&
+      (!row.sectionName || row.sectionName.length > 100)
+    )
+      messages.push(
+        "SectionName is required for Grade 1 to Grade 12 and must not exceed 100 characters",
+      );
+    const section = row.sectionName
+      ? sectionByGradeAndName.get(
+          `${row.yearLevel}|${row.sectionName.toLowerCase()}`,
+        )
+      : null;
+    if (
+      /^Grade\s+(?:[1-9]|1[0-2])$/.test(row.yearLevel) &&
+      row.sectionName &&
+      !section
+    )
+      messages.push(
+        "SectionName does not match an active section for this grade",
+      );
+    if (!row.yearLevel.startsWith("Grade ")) row.sectionName = "";
+    if (
       !/^\d{4}-\d{2}-\d{2}$/.test(row.birthday) ||
       Number.isNaN(Date.parse(row.birthday))
     )
@@ -182,6 +322,7 @@ async function review(sourcePeriod) {
       row: index + 1,
       programId: program?.id,
       programName: program?.name,
+      sectionId: section?.id || null,
       existing: studentById.get(row.idNumber),
       messages,
     };
@@ -195,7 +336,7 @@ async function review(sourcePeriod) {
   };
 }
 
-function preview(result, offset = 0) {
+function preview(result, offset = 0, importPhotos = false) {
   const records = (items, kind) =>
     items.map((item) => ({
       kind,
@@ -207,9 +348,14 @@ function preview(result, offset = 0) {
       programCode: item.programCode,
       message:
         item.messages?.join("; ") ||
-        (kind === "new"
-          ? "Student will be created."
-          : "Student record will be updated."),
+        [
+          kind === "new"
+            ? "Student will be created."
+            : "Student record will be updated.",
+          importPhotos && item.hasPhoto ? "Photo will be imported." : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
     }));
   const created = result.items.filter((item) => !item.existing),
     updated = result.items.filter((item) => item.existing);
@@ -253,8 +399,107 @@ async function deactivationCount(sourceIds, connection = pool) {
     .length;
 }
 
+async function importPhotos(targets) {
+  const imported = [];
+  const failed = [];
+  const batchSize = 8;
+  for (let offset = 0; offset < targets.length; offset += batchSize) {
+    const batch = targets.slice(offset, offset + batchSize);
+    const results = await Promise.all(
+      batch.map(async (target) => {
+        try {
+          const photoUrl = await profilePhotos.saveBuffer(
+            "student",
+            target.idNumber,
+            target.photo,
+            { versioned: true },
+          );
+          await pool.query("UPDATE students SET photo_url=? WHERE id=?", [
+            photoUrl,
+            target.studentId,
+          ]);
+          return { idNumber: target.idNumber, photoUrl };
+        } catch (error) {
+          return { idNumber: target.idNumber, error: error.message };
+        }
+      }),
+    );
+    results.forEach((item) =>
+      item.error ? failed.push(item) : imported.push(item),
+    );
+  }
+  return { imported, failed };
+}
+
+async function importSourcePhotos(targets) {
+  const imported = [];
+  const failed = [];
+  if (!targets.length) return { imported, failed };
+  const connection = await openSourceConnection({ photos: true });
+  const batchSize = 8;
+  try {
+    for (let offset = 0; offset < targets.length; offset += batchSize) {
+      const batch = targets.slice(offset, offset + batchSize);
+      const request = connection.request();
+      const parameters = batch.map((target, index) => {
+        request.input(`schoolId${index}`, sql.VarChar(100), target.idNumber);
+        return `@schoolId${index}`;
+      });
+      let rows;
+      try {
+        const result = await request.query(
+          `SELECT LTRIM(RTRIM(CONVERT(varchar(100), [StudentID]))) AS [SchoolID], [Photo]
+           FROM ${studentTableName()}
+           WHERE LTRIM(RTRIM(CONVERT(varchar(100), [StudentID]))) IN (${parameters.join(",")})`,
+        );
+        rows = result.recordset;
+      } catch (error) {
+        failed.push(
+          ...batch.map((target) => ({
+            idNumber: target.idNumber,
+            error: `Photo could not be read from SQL Server: ${error.message}`,
+          })),
+        );
+        continue;
+      }
+      const targetById = new Map(
+        batch.map((target) => [target.idNumber, target]),
+      );
+      const ready = [];
+      for (const row of rows) {
+        const idNumber = clean(row.SchoolID).toUpperCase();
+        const target = targetById.get(idNumber);
+        if (!target) continue;
+        targetById.delete(idNumber);
+        const photo = sourcePhoto(row.Photo);
+        if (photo.buffer) ready.push({ ...target, photo: photo.buffer });
+        else
+          failed.push({
+            idNumber,
+            error: photo.warning || "Photo is empty and was skipped",
+          });
+      }
+      failed.push(
+        ...[...targetById.values()].map((target) => ({
+          idNumber: target.idNumber,
+          error: "Photo could not be found in the SQL Server Student table",
+        })),
+      );
+      const saved = await importPhotos(ready);
+      imported.push(...saved.imported);
+      failed.push(...saved.failed);
+    }
+  } finally {
+    await connection.close();
+  }
+  return { imported, failed };
+}
+
 exports.preview = async (req, res) => {
-  const result = await review(period(req.query));
+  const importPhotos = req.query.importPhotos === "true";
+  const result = await review(period(req.query), {
+    includePhotos: importPhotos,
+  });
   const offset = Number(req.query.offset || 0);
   if (!Number.isInteger(offset) || offset < 0) {
     const error = new Error(
@@ -265,28 +510,41 @@ exports.preview = async (req, res) => {
   }
   res.json({
     period: period(req.query),
+    importPhotos,
     deactivate: await deactivationCount(result.sourceIds),
-    ...preview(result, offset),
+    ...preview(result, offset, importPhotos),
   });
 };
 
 exports.import = async (req, res) => {
   const sourcePeriod = period(req.body);
-  const result = await review(sourcePeriod);
+  if (
+    req.body.importPhotos !== undefined &&
+    typeof req.body.importPhotos !== "boolean"
+  ) {
+    const error = new Error("The photo import option must be true or false.");
+    error.status = 400;
+    throw error;
+  }
+  const importPhotos = req.body.importPhotos === true;
+  const result = await review(sourcePeriod, { includePhotos: importPhotos });
   if (!result.items.length)
     return res.status(400).json({
       message: "No valid student rows are available from the SQL Server view.",
-      ...preview(result),
+      importPhotos,
+      ...preview(result, 0, importPhotos),
     });
   const connection = await pool.getConnection();
+  const photoTargets = [];
+  let inserted = 0,
+    updated = 0,
+    deactivated = 0;
   try {
     await connection.beginTransaction();
     const pendingDeactivations = await deactivationCount(
       result.sourceIds,
       connection,
     );
-    let inserted = 0,
-      updated = 0;
     for (const item of result.items) {
       const values = [
         item.idNumber,
@@ -296,25 +554,33 @@ exports.import = async (req, res) => {
         item.lastName,
         item.programId,
         item.yearLevel,
+        item.sectionId || null,
         item.birthday,
         item.institutionalEmail || null,
         item.gender,
       ];
+      let studentId;
       if (item.existing) {
         await connection.query(
-          "UPDATE students SET contact=?,first_name=?,middle_name=?,last_name=?,program_id=?,year_level=?,birthday=?,institutional_email=?,gender=?,is_active=TRUE WHERE id=?",
+          "UPDATE students SET contact=?,first_name=?,middle_name=?,last_name=?,program_id=?,year_level=?,section_id=?,birthday=?,institutional_email=?,gender=?,is_active=TRUE WHERE id=?",
           [...values.slice(1), item.existing.id],
         );
+        studentId = item.existing.id;
         updated++;
       } else {
-        await connection.query(
-          "INSERT INTO students (id_number,contact,first_name,middle_name,last_name,program_id,year_level,birthday,institutional_email,gender,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,TRUE)",
+        const [status] = await connection.query(
+          "INSERT INTO students (id_number,contact,first_name,middle_name,last_name,program_id,year_level,section_id,birthday,institutional_email,gender,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,TRUE)",
           values,
         );
+        studentId = status.insertId;
         inserted++;
       }
+      if (importPhotos && item.hasPhoto)
+        photoTargets.push({
+          studentId,
+          idNumber: item.idNumber,
+        });
     }
-    let deactivated = 0;
     if (req.body.confirmDeactivation === true && pendingDeactivations) {
       const placeholders = result.sourceIds.map(() => "?").join(",");
       const [status] = await connection.query(
@@ -324,26 +590,51 @@ exports.import = async (req, res) => {
       deactivated = status.affectedRows;
     }
     await connection.commit();
-    req.activityAction = "MSSQL_IMPORTED";
-    const semesterLabel = {
-      1: "First Semester",
-      2: "Second Semester",
-      3: "Summer",
-    }[sourcePeriod.semester];
-    req.activityDescription = `Imported ${inserted + updated} students from SQL Server for ${sourcePeriod.schoolYear}, ${semesterLabel}: ${inserted} added, ${updated} updated, ${deactivated} deactivated.`;
-    res.json({
-      message: `${inserted + updated} students imported from SQL Server.${deactivated ? ` ${deactivated} students not enrolled in the selected term were deactivated.` : " No other students were deactivated."}`,
-      period: sourcePeriod,
-      inserted,
-      updated,
-      deactivated,
-      invalid: result.errors.length,
-      errors: result.errors.slice(0, 50),
-    });
   } catch (error) {
     await connection.rollback();
     throw error;
   } finally {
     connection.release();
   }
+  let photos = { imported: [], failed: [] };
+  if (importPhotos) {
+    try {
+      photos = await importSourcePhotos(photoTargets);
+    } catch (error) {
+      photos = {
+        imported: [],
+        failed: photoTargets.map((target) => ({
+          idNumber: target.idNumber,
+          error: `Photo import could not connect to SQL Server: ${error.message}`,
+        })),
+      };
+    }
+  }
+  const photoErrors = photos.failed;
+  req.activityAction = "MSSQL_IMPORTED";
+  const semesterLabel = {
+    1: "First Semester",
+    2: "Second Semester",
+    3: "Summer",
+  }[sourcePeriod.semester];
+  const photoActivity = importPhotos
+    ? `${photos.imported.length} photos imported, ${photoErrors.length} photos skipped`
+    : "photo import not requested";
+  req.activityDescription = `Imported ${inserted + updated} students from SQL Server for ${sourcePeriod.schoolYear}, ${semesterLabel}: ${inserted} added, ${updated} updated, ${photoActivity}, ${deactivated} deactivated.`;
+  const photoMessage = importPhotos
+    ? ` ${photos.imported.length} profile photo${photos.imported.length === 1 ? " was" : "s were"} imported.${photoErrors.length ? ` ${photoErrors.length} source photo${photoErrors.length === 1 ? " was" : "s were"} skipped.` : ""}`
+    : " Student photos were not imported.";
+  res.json({
+    message: `${inserted + updated} students imported from SQL Server.${photoMessage}${deactivated ? ` ${deactivated} students not enrolled in the selected term were deactivated.` : " No other students were deactivated."}`,
+    period: sourcePeriod,
+    importPhotos,
+    inserted,
+    updated,
+    photosImported: photos.imported.length,
+    photosSkipped: photoErrors.length,
+    photoErrors: photoErrors.slice(0, 50),
+    deactivated,
+    invalid: result.errors.length,
+    errors: result.errors.slice(0, 50),
+  });
 };

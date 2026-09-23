@@ -1,11 +1,51 @@
 const pool = require("../../../db/db");
 const schema = require("../../../db/schema");
+const MAINTENANCE_MODULES = [
+  "students",
+  "alumni",
+  "employees",
+  "schools",
+  "colleges",
+  "departments",
+  "employeeDepartments",
+  "programs",
+  "sections",
+  "gates",
+  "kiosks",
+  "academicPeriods",
+  "settings",
+];
+const normalizeMaintenanceModules = (value, defaultAll = false) => {
+  let modules = value;
+  if (Buffer.isBuffer(modules)) modules = modules.toString("utf8");
+  if (typeof modules === "string") {
+    try {
+      modules = JSON.parse(modules);
+    } catch (_error) {
+      modules = [];
+    }
+  }
+  if (!Array.isArray(modules)) modules = defaultAll ? MAINTENANCE_MODULES : [];
+  return [
+    ...new Set(
+      modules.filter((module) => MAINTENANCE_MODULES.includes(module)),
+    ),
+  ];
+};
+const hydrate = (row) =>
+  row && {
+    ...row,
+    maintenanceModules: normalizeMaintenanceModules(
+      row.maintenanceModules,
+      Boolean(row.maintenanceAccess),
+    ),
+  };
 let ready;
 async function ensureSchema() {
   if (!ready)
     ready = (async () => {
       await pool.query(
-        `CREATE TABLE IF NOT EXISTS permissions (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(80) NOT NULL UNIQUE,description VARCHAR(255),overview_access BOOLEAN NOT NULL DEFAULT FALSE,attendance_access BOOLEAN NOT NULL DEFAULT FALSE,special_events_access BOOLEAN NOT NULL DEFAULT FALSE,library_access BOOLEAN NOT NULL DEFAULT FALSE,maintenance_access BOOLEAN NOT NULL DEFAULT FALSE,users_access BOOLEAN NOT NULL DEFAULT FALSE,is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
+        `CREATE TABLE IF NOT EXISTS permissions (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(80) NOT NULL UNIQUE,description VARCHAR(255),overview_access BOOLEAN NOT NULL DEFAULT FALSE,attendance_access BOOLEAN NOT NULL DEFAULT FALSE,special_events_access BOOLEAN NOT NULL DEFAULT FALSE,library_access BOOLEAN NOT NULL DEFAULT FALSE,maintenance_access BOOLEAN NOT NULL DEFAULT FALSE,maintenance_modules TEXT NULL,users_access BOOLEAN NOT NULL DEFAULT FALSE,is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
       );
       await schema.addColumns("permissions", [
         ["overview_access", "BOOLEAN NOT NULL DEFAULT FALSE AFTER description"],
@@ -25,9 +65,10 @@ async function ensureSchema() {
           "maintenance_access",
           "BOOLEAN NOT NULL DEFAULT FALSE AFTER library_access",
         ],
+        ["maintenance_modules", "TEXT NULL AFTER maintenance_access"],
         [
           "users_access",
-          "BOOLEAN NOT NULL DEFAULT FALSE AFTER maintenance_access",
+          "BOOLEAN NOT NULL DEFAULT FALSE AFTER maintenance_modules",
         ],
       ]);
       await schema.dropColumn("permissions", "people_access");
@@ -49,6 +90,13 @@ async function ensureSchema() {
       );
       await pool.query(
         "UPDATE permissions SET overview_access=TRUE WHERE name IN ('Superadmin','Administrator','Staff','Student Organizations')",
+      );
+      await pool.query(
+        "UPDATE permissions SET maintenance_modules=? WHERE maintenance_access=TRUE AND (maintenance_modules IS NULL OR maintenance_modules='')",
+        [JSON.stringify(MAINTENANCE_MODULES)],
+      );
+      await pool.query(
+        "UPDATE permissions SET maintenance_modules='[]' WHERE maintenance_access=FALSE AND maintenance_modules IS NULL",
       );
       await schema.addColumn("users", "permission_id", "INT UNSIGNED NULL");
       const [roleColumns] = await pool.query(
@@ -80,21 +128,25 @@ async function ensureSchema() {
   return ready;
 }
 exports.ensureSchema = ensureSchema;
+exports.MAINTENANCE_MODULES = MAINTENANCE_MODULES;
+exports.normalizeMaintenanceModules = normalizeMaintenanceModules;
 const select =
-  "SELECT id,name,description,overview_access overviewAccess,attendance_access attendanceAccess,special_events_access specialEventsAccess,library_access libraryAccess,maintenance_access maintenanceAccess,users_access usersAccess,is_active isActive,created_at createdAt FROM permissions";
+  "SELECT id,name,description,overview_access overviewAccess,attendance_access attendanceAccess,special_events_access specialEventsAccess,library_access libraryAccess,maintenance_access maintenanceAccess,maintenance_modules maintenanceModules,users_access usersAccess,is_active isActive,created_at createdAt FROM permissions";
 exports.getAll = async () => {
   await ensureSchema();
-  return (await pool.query(`${select} ORDER BY description,name`))[0];
+  return (await pool.query(`${select} ORDER BY description,name`))[0].map(
+    hydrate,
+  );
 };
 exports.findById = async (id) => {
   await ensureSchema();
-  return (await pool.query(`${select} WHERE id=?`, [id]))[0][0];
+  return hydrate((await pool.query(`${select} WHERE id=?`, [id]))[0][0]);
 };
 exports.create = async (data) => {
   await ensureSchema();
   return (
     await pool.query(
-      "INSERT INTO permissions (name,description,overview_access,attendance_access,special_events_access,library_access,maintenance_access,users_access,is_active) VALUES (?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO permissions (name,description,overview_access,attendance_access,special_events_access,library_access,maintenance_access,maintenance_modules,users_access,is_active) VALUES (?,?,?,?,?,?,?,?,?,?)",
       [
         data.name,
         data.description || null,
@@ -103,6 +155,7 @@ exports.create = async (data) => {
         data.specialEventsAccess,
         data.libraryAccess,
         data.maintenanceAccess,
+        JSON.stringify(data.maintenanceModules),
         data.usersAccess,
         data.isActive,
       ],
@@ -113,7 +166,7 @@ exports.update = async (id, data) => {
   await ensureSchema();
   return (
     await pool.query(
-      "UPDATE permissions SET name=?,description=?,overview_access=?,attendance_access=?,special_events_access=?,library_access=?,maintenance_access=?,users_access=?,is_active=? WHERE id=?",
+      "UPDATE permissions SET name=?,description=?,overview_access=?,attendance_access=?,special_events_access=?,library_access=?,maintenance_access=?,maintenance_modules=?,users_access=?,is_active=? WHERE id=?",
       [
         data.name,
         data.description || null,
@@ -122,6 +175,7 @@ exports.update = async (id, data) => {
         data.specialEventsAccess,
         data.libraryAccess,
         data.maintenanceAccess,
+        JSON.stringify(data.maintenanceModules),
         data.usersAccess,
         data.isActive,
         id,

@@ -99,13 +99,16 @@ exports.getById = async (id) => {
 
 exports.getAll = async () => {
   await ensureTable();
+  await require("../middleware/kiosk_auth").ensureSessionSchema();
   const [rows] = await pool.query(
     `SELECT id,kiosk_type kioskType,location,display_name displayName,is_enabled isEnabled,
       user_agent userAgent,ip_address ipAddress,hostname,uptime_seconds uptimeSeconds,browser_status browserStatus,current_page currentPage,mac_address macAddress,operating_system operatingSystem,agent_last_seen_at agentLastSeenAt,
-      last_seen_at lastSeenAt,created_at createdAt,
-      last_seen_at >= DATE_SUB(NOW(), INTERVAL 3 MINUTE) isOnline,
+      GREATEST(k.last_seen_at,COALESCE(ks.session_last_seen,k.last_seen_at)) lastSeenAt,k.created_at createdAt,
+      GREATEST(k.last_seen_at,COALESCE(ks.session_last_seen,k.last_seen_at)) >= DATE_SUB(NOW(), INTERVAL 3 MINUTE) isOnline,
       agent_last_seen_at >= DATE_SUB(NOW(), INTERVAL 3 MINUTE) agentOnline
-     FROM kiosks ORDER BY isOnline DESC,last_seen_at DESC,location`,
+     FROM kiosks k
+     LEFT JOIN (SELECT kiosk_id,MAX(last_seen_at) session_last_seen FROM kiosk_sessions WHERE revoked_at IS NULL AND expires_at>NOW() GROUP BY kiosk_id) ks ON ks.kiosk_id=k.id
+     ORDER BY isOnline DESC,lastSeenAt DESC,location`,
   );
   return rows;
 };
@@ -164,6 +167,15 @@ exports.getRecentCommands = async (kioskId) => {
   return rows;
 };
 
+exports.getDispatchedCommand = async (kioskId, commandId, command) => {
+  await ensureTable();
+  const [rows] = await pool.query(
+    "SELECT id FROM kiosk_commands WHERE id=? AND kiosk_id=? AND command=? AND status='Dispatched' LIMIT 1",
+    [commandId, kioskId, command],
+  );
+  return rows[0] || null;
+};
+
 exports.setEnabled = async (id, isEnabled) => {
   await ensureTable();
   const [result] = await pool.query(
@@ -183,7 +195,7 @@ exports.setEnabled = async (id, isEnabled) => {
 exports.assertEnabled = async (id) => {
   if (!id) return true; // Permits legacy terminals until they receive this update.
   const kiosk = await exports.getById(id);
-  return kiosk?.isEnabled !== false;
+  return Boolean(kiosk?.isEnabled);
 };
 
 exports.ensureTable = ensureTable;

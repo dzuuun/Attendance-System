@@ -8,6 +8,8 @@ async function main() {
     [constraintRows],
     [securityTableRows],
     [integrityRows],
+    [kioskSessionRows],
+    [kioskActivityRows],
   ] = await Promise.all([
     pool.query(
       "SELECT birthday FROM students WHERE birthday IS NOT NULL LIMIT 1",
@@ -29,6 +31,12 @@ async function main() {
         (SELECT COUNT(*) FROM library_entrance_logs WHERE (student_id IS NULL)=(employee_id IS NULL)) +
         (SELECT COUNT(*) FROM internet_section_entrance_logs WHERE (student_id IS NULL)=(employee_id IS NULL)) invalidIdentities`,
     ),
+    pool.query(
+      "SELECT kiosk_id kioskId,COUNT(*) sessions,MAX(created_at) newest,MAX(last_seen_at) lastSeen,MAX(expires_at) expiresAt,SUM(revoked_at IS NULL) active FROM kiosk_sessions GROUP BY kiosk_id ORDER BY newest DESC LIMIT 20",
+    ),
+    pool.query(
+      "SELECT action,actor_username actor,description,created_at createdAt FROM activity_logs WHERE action IN ('KIOSK_VERIFIED','KIOSK_VERIFICATION_FAILED') ORDER BY id DESC LIMIT 20",
+    ),
   ]);
   console.log(
     JSON.stringify(
@@ -40,6 +48,8 @@ async function main() {
         securityTables: securityTableRows.map((row) => row.tableName),
         constraints: constraintRows,
         invalidLogIdentities: Number(integrityRows[0]?.invalidIdentities || 0),
+        kioskSessions: kioskSessionRows,
+        kioskVerificationActivity: kioskActivityRows,
       },
       null,
       2,

@@ -10,12 +10,14 @@
     document.head.appendChild(favicon);
   }
   favicon.type = "image/png";
-  favicon.href = "/client/images/NDMU-Logo.png";
+  favicon.href = window.taptrackUrl("/client/images/NDMU-Logo.png");
 
   if (!document.querySelector("link[data-material-symbols]")) {
     const materialSymbols = document.createElement("link");
     materialSymbols.rel = "stylesheet";
-    materialSymbols.href = "/vendor/material-symbols/rounded.css";
+    materialSymbols.href = window.taptrackUrl(
+      "/vendor/material-symbols/rounded.css",
+    );
     materialSymbols.dataset.materialSymbols = "true";
     document.head.appendChild(materialSymbols);
   }
@@ -47,7 +49,7 @@
   if (!document.querySelector("link[data-tailwind-local]")) {
     const localTailwind = document.createElement("link");
     localTailwind.rel = "stylesheet";
-    localTailwind.href = "/client/tailwind.css";
+    localTailwind.href = window.taptrackUrl("/client/tailwind.css");
     localTailwind.dataset.tailwindLocal = "true";
     document.head.prepend(localTailwind);
   }
@@ -229,7 +231,7 @@
       if (brand.querySelector(".ndmu-brand-seal")) return;
       brand.querySelector(".brand-mark,i")?.remove();
       const image = document.createElement("img");
-      image.src = "/client/images/NDMU-Logo.png";
+      image.src = window.taptrackUrl("/client/images/NDMU-Logo.png");
       image.alt = "";
       image.className =
         "ndmu-brand-seal h-10 w-10 rounded-full bg-white p-0.5 object-contain";
@@ -311,7 +313,7 @@
     };
     const header = document.createElement("header");
     header.className = "attendance-system-site-header";
-    header.innerHTML = `<div class="attendance-system-header-brand"><button type="button" class="attendance-system-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="attendance-system-header-identity" href="/overview"><img src="/client/images/NDMU-Logo.png" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="attendance-system-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
+    header.innerHTML = `<div class="attendance-system-header-brand"><button type="button" class="attendance-system-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="attendance-system-header-identity" href="${window.taptrackUrl("/overview")}"><img src="${window.taptrackUrl("/client/images/NDMU-Logo.png")}" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="attendance-system-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
     header
       .querySelector(".attendance-system-menu-button")
       .addEventListener("click", () =>

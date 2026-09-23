@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const multer = require("multer");
 
 const root = path.join(__dirname, "..", "..", "uploads", "profile-photos");
@@ -35,40 +36,119 @@ const safeId = (value) =>
     .toUpperCase()
     .replace(/[^A-Z0-9_-]/g, "");
 
-async function save(type, idNumber, file) {
-  const handle = await fs.promises.open(file.path, "r");
-  const signature = Buffer.alloc(12);
+function photoType(buffer) {
+  if (!Buffer.isBuffer(buffer) || !buffer.length) return null;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff)
+    return { mimeType: "image/jpeg", extension: ".jpg" };
+  if (
+    buffer.length >= 8 &&
+    buffer
+      .subarray(0, 8)
+      .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  )
+    return { mimeType: "image/png", extension: ".png" };
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString() === "RIFF" &&
+    buffer.subarray(8, 12).toString() === "WEBP"
+  )
+    return { mimeType: "image/webp", extension: ".webp" };
+  return null;
+}
+
+function photoMetadata(buffer) {
+  const detected = photoType(buffer);
+  if (!detected) return null;
+  return {
+    mimeType: detected.mimeType,
+    size: buffer.length,
+    fingerprint: crypto.createHash("sha256").update(buffer).digest("hex"),
+  };
+}
+
+function samePhoto(left, right) {
+  return Boolean(
+    left &&
+    right &&
+    left.mimeType === right.mimeType &&
+    left.size === right.size &&
+    left.fingerprint === right.fingerprint,
+  );
+}
+
+async function storedPhotoMetadata(photoUrl) {
+  if (!photoUrl) return null;
+  let pathname;
   try {
-    await handle.read(signature, 0, signature.length, 0);
-  } finally {
-    await handle.close();
+    pathname = new URL(String(photoUrl), "http://taptrack.local").pathname;
+  } catch (_error) {
+    return null;
   }
-  const valid =
-    (file.mimetype === "image/jpeg" &&
-      signature[0] === 0xff &&
-      signature[1] === 0xd8 &&
-      signature[2] === 0xff) ||
-    (file.mimetype === "image/png" &&
-      signature
-        .subarray(0, 8)
-        .equals(
-          Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-        )) ||
-    (file.mimetype === "image/webp" &&
-      signature.subarray(0, 4).toString() === "RIFF" &&
-      signature.subarray(8, 12).toString() === "WEBP");
-  if (!valid) {
+  const prefix = "/uploads/profile-photos/";
+  if (!pathname.startsWith(prefix)) return null;
+  const candidate = path.resolve(
+    root,
+    decodeURIComponent(pathname.slice(prefix.length)),
+  );
+  const relative = path.relative(root, candidate);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative))
+    return null;
+  try {
+    return photoMetadata(await fs.promises.readFile(candidate));
+  } catch (_error) {
+    return null;
+  }
+}
+
+async function saveBuffer(type, idNumber, buffer, options = {}) {
+  const detected = photoType(buffer);
+  if (!detected)
+    throw new Error(
+      "Profile photos must contain valid JPEG, PNG, or WebP image data.",
+    );
+  const identifier = safeId(idNumber);
+  if (!identifier)
+    throw new Error("A valid ID number is required for a photo.");
+  const directory = path.join(root, type);
+  await fs.promises.mkdir(directory, { recursive: true });
+  const version = options.versioned
+    ? `-${crypto.createHash("sha256").update(buffer).digest("hex").slice(0, 12)}`
+    : "";
+  const filename = `${identifier}${version}${detected.extension}`;
+  const destination = path.join(directory, filename);
+  const temporary = path.join(
+    directory,
+    `.import-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
+  await fs.promises.writeFile(temporary, buffer);
+  try {
+    await fs.promises.copyFile(
+      temporary,
+      destination,
+      options.versioned ? fs.constants.COPYFILE_EXCL : 0,
+    );
+  } catch (error) {
+    if (!(options.versioned && error.code === "EEXIST")) throw error;
+  } finally {
+    await fs.promises.unlink(temporary).catch(() => {});
+  }
+  return `/uploads/profile-photos/${type}/${filename}`;
+}
+
+async function save(type, idNumber, file) {
+  const buffer = await fs.promises.readFile(file.path);
+  const detected = photoType(buffer);
+  if (!detected || detected.mimeType !== file.mimetype) {
     await fs.promises.unlink(file.path).catch(() => {});
     throw new Error(
       "Profile photos must contain valid JPEG, PNG, or WebP image data.",
     );
   }
-  const directory = path.join(root, type);
-  await fs.promises.mkdir(directory, { recursive: true });
-  const filename = `${safeId(idNumber)}${allowedTypes.get(file.mimetype)}`;
-  await fs.promises.copyFile(file.path, path.join(directory, filename));
-  await fs.promises.unlink(file.path);
-  return `/uploads/profile-photos/${type}/${filename}`;
+  try {
+    return await saveBuffer(type, idNumber, buffer);
+  } finally {
+    await fs.promises.unlink(file.path).catch(() => {});
+  }
 }
 
 function handlers(type, model) {
@@ -98,6 +178,7 @@ function handlers(type, model) {
         people.map((person) => [safeId(person.idNumber), person]),
       );
       const updated = [];
+      const unchanged = [];
       const unmatched = [];
       try {
         for (const file of req.files) {
@@ -105,6 +186,20 @@ function handlers(type, model) {
           const person = byIdNumber.get(filenameId);
           if (!person) {
             unmatched.push(file.originalname);
+            await fs.promises.unlink(file.path).catch(() => {});
+            continue;
+          }
+          const [incomingMetadata, currentMetadata] = await Promise.all([
+            fs.promises.readFile(file.path).then(photoMetadata),
+            storedPhotoMetadata(person.photoUrl),
+          ]);
+          if (samePhoto(incomingMetadata, currentMetadata)) {
+            unchanged.push({
+              id: person.id,
+              idNumber: person.idNumber,
+              name: person.name,
+              photoUrl: person.photoUrl,
+            });
             await fs.promises.unlink(file.path).catch(() => {});
             continue;
           }
@@ -124,10 +219,17 @@ function handlers(type, model) {
           ),
         );
       }
-      req.activityDescription = `Bulk updated ${updated.length} ${type} profile photo${updated.length === 1 ? "" : "s"}.`;
-      res.json({ updated, unmatched });
+      req.activityDescription = `Bulk processed ${updated.length + unchanged.length} ${type} profile photo${updated.length + unchanged.length === 1 ? "" : "s"}: ${updated.length} updated, ${unchanged.length} unchanged.`;
+      res.json({ updated, unchanged, unmatched });
     },
   };
 }
 
-module.exports = { handlers };
+module.exports = {
+  handlers,
+  photoType,
+  photoMetadata,
+  samePhoto,
+  storedPhotoMetadata,
+  saveBuffer,
+};

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Section Maintenance — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">ACADEMIC PLACEMENT</p>
+            <h1>Sections</h1>
+          </div>
+          <div class="live-time">
+            <span id="liveTime"></span><small id="liveDate"></small>
+          </div>
+        </header>
+        <div class="section-header">
+          <p>
+            Reusable Grade 1–12 section names used by student records and
+            imports.
+          </p>
+          <div class="event-actions">
+            <label class="directory-toggle" for="showInactive"
+              ><span>Show inactive</span
+              ><input id="showInactive" type="checkbox" /></label
+            ><button class="primary-button" id="addBtn">
+              <span class="material-symbols-rounded" aria-hidden="true"
+                >add</span
+              >Add section
+            </button>
+          </div>
+        </div>
+        <article class="table-card">
+          <div class="filter-row">
+            <div class="search-box">
+              <span class="material-symbols-rounded" aria-hidden="true"
+                >search</span
+              ><input id="search" placeholder="Search sections" />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>SECTION</th>
+                  <th>GRADE LEVEL</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <form id="form">
+        <input type="hidden" id="recordId" />
+        <div class="modal-head">
+          <div>
+            <span class="section-kicker">SECTION RECORD</span>
+            <h2 id="dialogTitle">Add section</h2>
+          </div>
+          <button
+            type="button"
+            class="close-button"
+            data-close
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="form-grid">
+          <label class="full"
+            >Section name<input
+              id="name"
+              maxlength="100"
+              placeholder="e.g. St. Anne"
+              required /></label
+          ><label class="full"
+            >Grade level<select id="yearLevel" required>
+              <option value="">Select grade level</option>
+              <option>Grade 1</option>
+              <option>Grade 2</option>
+              <option>Grade 3</option>
+              <option>Grade 4</option>
+              <option>Grade 5</option>
+              <option>Grade 6</option>
+              <option>Grade 7</option>
+              <option>Grade 8</option>
+              <option>Grade 9</option>
+              <option>Grade 10</option>
+              <option>Grade 11</option>
+              <option>Grade 12</option>
+            </select></label
+          ><label class="full status-toggle-field"
+            ><span
+              ><strong>Active section</strong
+              ><small>Available for student assignment and imports</small></span
+            ><input id="isActive" type="checkbox" checked
+          /></label>
+        </div>
+        <p id="error" class="form-error"></p>
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" data-close>
+            Cancel</button
+          ><button type="submit" class="primary-button">Save section</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js"></script>
+    <script src="/client/maintenance/section/script.js"></script>
+    <script src="/client/maintenance/import.js?v=3"></script>
+  </body>
+</html>

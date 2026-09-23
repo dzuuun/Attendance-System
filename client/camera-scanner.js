@@ -2,7 +2,7 @@
   if (!document.querySelector("link[data-camera-feedback]")) {
     const stylesheet = document.createElement("link");
     stylesheet.rel = "stylesheet";
-    stylesheet.href = "/client/camera-scanner-feedback.css";
+    stylesheet.href = window.taptrackUrl("/client/camera-scanner-feedback.css");
     stylesheet.dataset.cameraFeedback = "true";
     document.head.appendChild(stylesheet);
   }
@@ -157,7 +157,7 @@
         return;
       }
       const script = document.createElement("script");
-      script.src = "/vendor/zxing/zxing-browser.min.js";
+      script.src = window.taptrackUrl("/vendor/zxing/zxing-browser.min.js");
       script.dataset.zxingBrowser = "true";
       script.onload = () => resolve(window.ZXingBrowser);
       script.onerror = reject;

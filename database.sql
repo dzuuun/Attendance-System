@@ -15,6 +15,16 @@ USE attendance_system;
 SET NAMES utf8 COLLATE utf8_general_ci;
 SET default_storage_engine = InnoDB;
 SET FOREIGN_KEY_CHECKS = 0;
+CREATE TABLE IF NOT EXISTS sections (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  year_level VARCHAR(40) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_sections_year_name (year_level, name),
+  INDEX idx_sections_active_year (is_active, year_level, name)
+);
+
 CREATE TABLE IF NOT EXISTS students (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,
@@ -24,6 +34,7 @@ CREATE TABLE IF NOT EXISTS students (
   last_name VARCHAR(80) NOT NULL,
   program_id INT UNSIGNED NULL,
   year_level VARCHAR(40),
+  section_id INT UNSIGNED NULL,
   birthday DATE NULL,
   institutional_email VARCHAR(150),
   photo_url VARCHAR(500),
@@ -32,7 +43,9 @@ CREATE TABLE IF NOT EXISTS students (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_students_name (last_name, first_name),
   INDEX idx_students_program (program_id),
-  INDEX idx_students_active_name (is_active, last_name, first_name)
+  INDEX idx_students_active_name (is_active, last_name, first_name),
+  INDEX idx_students_section (section_id),
+  CONSTRAINT fk_students_section FOREIGN KEY (section_id) REFERENCES sections(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS employee_departments (
@@ -4813,18 +4826,19 @@ CREATE TABLE IF NOT EXISTS permissions (
   special_events_access BOOLEAN NOT NULL DEFAULT FALSE,
   library_access BOOLEAN NOT NULL DEFAULT FALSE,
   maintenance_access BOOLEAN NOT NULL DEFAULT FALSE,
+  maintenance_modules TEXT NULL,
   users_access BOOLEAN NOT NULL DEFAULT FALSE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO permissions (id, name, description, overview_access, attendance_access, special_events_access, library_access, maintenance_access, users_access, is_active) VALUES
-(1, 'Administrator', 'Administrative access', TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
-(2, 'Event Staff', 'Standard attendance access', FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE),
-(3, 'Student Organizations', NULL, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE),
-(4, 'Superadmin', 'Full system access', TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
-(156, 'Human Resources', NULL, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE),
-(157, 'Attendance Access', NULL, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE)
+INSERT INTO permissions (id, name, description, overview_access, attendance_access, special_events_access, library_access, maintenance_access, maintenance_modules, users_access, is_active) VALUES
+(1, 'Administrator', 'Administrative access', TRUE, TRUE, TRUE, TRUE, TRUE, '["students","alumni","employees","schools","colleges","departments","employeeDepartments","programs","sections","gates","kiosks","academicPeriods","settings"]', TRUE, TRUE),
+(2, 'Event Staff', 'Standard attendance access', FALSE, FALSE, TRUE, FALSE, FALSE, '[]', FALSE, TRUE),
+(3, 'Student Organizations', NULL, FALSE, FALSE, TRUE, FALSE, FALSE, '[]', FALSE, TRUE),
+(4, 'Superadmin', 'Full system access', TRUE, TRUE, TRUE, TRUE, TRUE, '["students","alumni","employees","schools","colleges","departments","employeeDepartments","programs","sections","gates","kiosks","academicPeriods","settings"]', TRUE, TRUE),
+(156, 'Human Resources', NULL, FALSE, FALSE, TRUE, FALSE, FALSE, '[]', FALSE, TRUE),
+(157, 'Attendance Access', NULL, TRUE, TRUE, FALSE, FALSE, FALSE, '[]', FALSE, TRUE)
 ON DUPLICATE KEY UPDATE
   name = VALUES(name),
   description = VALUES(description),
@@ -4833,6 +4847,7 @@ ON DUPLICATE KEY UPDATE
   special_events_access = VALUES(special_events_access),
   library_access = VALUES(library_access),
   maintenance_access = VALUES(maintenance_access),
+  maintenance_modules = VALUES(maintenance_modules),
   users_access = VALUES(users_access),
   is_active = VALUES(is_active);
 

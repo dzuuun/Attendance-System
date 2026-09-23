@@ -25,7 +25,7 @@ function showAuthToast(message, type = "success") {
 }
 
 function redirectAfterSuccess(path) {
-  setTimeout(() => location.replace(path), 850);
+  setTimeout(() => location.replace(window.taptrackUrl(path)), 850);
 }
 
 async function request(url, body) {
@@ -39,11 +39,25 @@ async function request(url, body) {
   return data;
 }
 const error = document.querySelector("#authError");
+const requestedReturnTo = new URLSearchParams(location.search).get("returnTo");
+const returnTo =
+  requestedReturnTo?.startsWith("/") &&
+  !requestedReturnTo.startsWith("//") &&
+  !requestedReturnTo.startsWith("/login")
+    ? requestedReturnTo
+    : "/overview";
 const googleError = new URLSearchParams(location.search).get("google_error");
+const passwordChanged =
+  new URLSearchParams(location.search).get("password_changed") === "1";
 if (googleError) {
   error.textContent = googleError;
   showAuthToast(googleError, "error");
-  history.replaceState(null, "", "/login");
+  history.replaceState(null, "", window.taptrackUrl("/login"));
+} else if (passwordChanged) {
+  showAuthToast(
+    "Your password was changed. Sign in again with your new password.",
+  );
+  history.replaceState(null, "", window.taptrackUrl("/login"));
 }
 request("/api/auth/google/status")
   .then(({ enabled }) => {
@@ -78,7 +92,7 @@ document
         password: document.querySelector("#password").value,
       });
       showAuthToast(`Welcome back, ${session.fullName || session.username}.`);
-      redirectAfterSuccess("/overview");
+      redirectAfterSuccess(returnTo);
     } catch (failure) {
       error.textContent = failure.message;
       showAuthToast(failure.message, "error");
@@ -98,7 +112,7 @@ document
         username: document.querySelector("#username").value,
         password: document.querySelector("#password").value,
       });
-      location.href = "/overview";
+      location.href = window.taptrackUrl("/overview");
     } catch (failure) {
       error.textContent = failure.message;
     }
@@ -106,6 +120,6 @@ document
 if (document.querySelector("#setupForm"))
   request("/api/auth/setup-status")
     .then((status) => {
-      if (!status.required) location.href = "/login";
+      if (!status.required) location.href = window.taptrackUrl("/login");
     })
     .catch((failure) => (error.textContent = failure.message));

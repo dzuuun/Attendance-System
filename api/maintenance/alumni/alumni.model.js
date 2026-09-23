@@ -5,6 +5,7 @@ let ready;
 async function ensureSchema() {
   if (!ready)
     ready = (async () => {
+      await require("../section/section.model").ensureSchema();
       await pool.query(`CREATE TABLE IF NOT EXISTS alumni (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
       student_id INT UNSIGNED NULL UNIQUE,
@@ -118,12 +119,12 @@ exports.setStatus = async (id, isActive) => {
     await pool.query("UPDATE alumni SET is_active=? WHERE id=?", [isActive, id])
   )[0];
 };
-exports.reenroll = async (id, programId, yearLevel) => {
+exports.reenroll = async (id, programId, yearLevel, sectionId) => {
   await ensureSchema();
   return (
     await pool.query(
-      `UPDATE students s INNER JOIN alumni a ON a.student_id=s.id SET s.program_id=?,s.year_level=?,s.is_active=TRUE WHERE a.id=?`,
-      [programId, yearLevel, id],
+      `UPDATE students s INNER JOIN alumni a ON a.student_id=s.id SET s.program_id=?,s.year_level=?,s.section_id=?,s.is_active=TRUE WHERE a.id=?`,
+      [programId, yearLevel, sectionId || null, id],
     )
   )[0];
 };

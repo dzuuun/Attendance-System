@@ -113,14 +113,19 @@ exports.reenroll = async (req, res) => {
   if (!alumnus) return res.status(404).json({ message: "Alumnus not found." });
   const programId = Number(req.body.programId);
   const yearLevel = String(req.body.yearLevel || "").trim();
+  const isGrade = /^Grade\s+(?:[1-9]|1[0-2])$/.test(yearLevel);
+  const sectionId = isGrade ? Number(req.body.sectionId) || null : null;
   if (
     !Number.isInteger(programId) ||
     programId < 1 ||
-    !YEAR_LEVELS.has(yearLevel)
+    !YEAR_LEVELS.has(yearLevel) ||
+    (isGrade && !sectionId)
   )
-    return res
-      .status(400)
-      .json({ message: "Choose a valid program and year level." });
+    return res.status(400).json({
+      message: isGrade
+        ? "Choose a valid program, year level, and section name."
+        : "Choose a valid program and year level.",
+    });
   const programs = await require("../academic/academic.model").getAll(
     "program",
   );
@@ -130,7 +135,22 @@ exports.reenroll = async (req, res) => {
     )
   )
     return res.status(400).json({ message: "Choose an active program." });
-  const result = await model.reenroll(alumnus.id, programId, yearLevel);
+  if (sectionId) {
+    const section = await require("../section/section.model").getById(
+      sectionId,
+    );
+    if (!section?.isActive || section.yearLevel !== yearLevel)
+      return res.status(400).json({
+        message:
+          "Choose an active section assigned to the selected grade level.",
+      });
+  }
+  const result = await model.reenroll(
+    alumnus.id,
+    programId,
+    yearLevel,
+    sectionId,
+  );
   if (!result.affectedRows)
     return res
       .status(409)
