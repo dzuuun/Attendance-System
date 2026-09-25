@@ -1,5 +1,16 @@
 @import url("./tailwind.css");
 
+/* `dvh` follows the visible browser viewport on modern mobile Safari and
+   Chromium. Older browsers retain the reliable `vh` fallback. */
+:root {
+  --attendance-system-viewport-height: 100vh;
+}
+@supports (height: 100dvh) {
+  :root {
+    --attendance-system-viewport-height: 100dvh;
+  }
+}
+
 .sidebar a.nav-item {
   text-decoration: none;
 }
@@ -178,11 +189,22 @@
 /* attendance-system drawer shell */
 .app-shell {
   grid-template-columns: 280px minmax(0, 1fr) !important;
+  grid-template-rows: 80px minmax(0, 1fr);
+}
+.app-shell > #sidebarMount {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
 }
 .sidebar {
   width: 280px !important;
   min-width: 280px !important;
-  height: 100vh !important;
+  height: calc(var(--attendance-system-viewport-height) - 80px) !important;
+  position: sticky !important;
+  top: 80px !important;
+  align-self: start;
+  grid-column: 1;
+  grid-row: 2;
   z-index: 10001 !important;
   padding: 0 !important;
   display: block !important;
@@ -193,20 +215,7 @@
   width: 280px;
   height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-}
-.sidebar-header {
-  height: 80px;
-  min-height: 80px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.sidebar-header .brand {
-  margin: 0 !important;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 .sidebar .ndmu-brand-seal {
   width: 44px !important;
@@ -234,7 +243,33 @@
   margin: 0 !important;
   padding: 23px 14px !important;
   display: block !important;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(190, 222, 208, 0.32) transparent;
+}
+.sidebar .nav:hover,
+.sidebar .nav:focus-within {
+  scrollbar-color: rgba(190, 222, 208, 0.58) transparent;
+}
+.sidebar .nav::-webkit-scrollbar {
+  width: 8px;
+}
+.sidebar .nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar .nav::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(190, 222, 208, 0.32);
+  background-clip: padding-box;
+}
+.sidebar .nav:hover::-webkit-scrollbar-thumb,
+.sidebar .nav:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(190, 222, 208, 0.58);
+  background-clip: padding-box;
 }
 .nav-section-label {
   margin: 0 9px 13px;
@@ -286,6 +321,8 @@
   font-size: 11px !important;
 }
 .sidebar-foot {
+  display: block !important;
+  min-height: 0;
   padding: 16px !important;
 }
 .profile-card {
@@ -469,6 +506,18 @@
   }
 }
 @media (min-width: 901px) {
+  /* The navigation expands over the content; it never reflows the workspace. */
+  body:not(.sidebar-collapsed) .app-shell {
+    grid-template-columns: 74px minmax(0, 1fr) !important;
+  }
+  body:not(.sidebar-collapsed) .sidebar {
+    position: fixed !important;
+    top: 80px !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: calc(var(--attendance-system-viewport-height) - 80px) !important;
+    box-shadow: 18px 0 38px rgba(3, 31, 22, 0.22) !important;
+  }
   body.sidebar-collapsed .app-shell {
     grid-template-columns: 74px minmax(0, 1fr) !important;
   }
@@ -482,21 +531,6 @@
   body.sidebar-collapsed .sidebar-inner {
     width: 74px;
     visibility: visible !important;
-  }
-  body.sidebar-collapsed .sidebar-header {
-    height: 80px;
-    min-height: 80px;
-    padding: 12px 10px;
-    justify-content: center;
-  }
-  body.sidebar-collapsed .sidebar-header .brand {
-    width: 44px;
-    justify-content: center !important;
-  }
-  body.sidebar-collapsed .sidebar .ndmu-brand-seal {
-    width: 44px !important;
-    height: 44px !important;
-    flex-basis: 44px;
   }
   body.sidebar-collapsed .sidebar-toggle,
   body.sidebar-collapsed .brand > span:last-child,
@@ -513,15 +547,6 @@
     padding: 10px 9px !important;
     overflow-x: hidden;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(197, 220, 210, 0.42) transparent;
-  }
-  body.sidebar-collapsed .sidebar .nav::-webkit-scrollbar {
-    width: 5px;
-  }
-  body.sidebar-collapsed .sidebar .nav::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(197, 220, 210, 0.42);
   }
   body.sidebar-collapsed .sidebar .nav-item {
     width: 52px !important;
@@ -636,7 +661,10 @@
   }
   .sidebar {
     position: fixed !important;
-    inset: 0 auto 0 0;
+    top: 80px !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: calc(var(--attendance-system-viewport-height) - 80px) !important;
     z-index: 80;
     box-shadow: 20px 0 50px rgba(3, 31, 22, 0.25) !important;
   }
@@ -656,7 +684,9 @@
   }
   body.sidebar-hover-expanded .sidebar {
     position: fixed !important;
-    inset: 0 auto 0 0;
+    top: 80px !important;
+    bottom: 0 !important;
+    left: 0 !important;
     box-shadow: 18px 0 38px rgba(3, 31, 22, 0.22) !important;
   }
 }
@@ -668,6 +698,8 @@
   max-width: none !important;
   padding: 0 !important;
   min-width: 0;
+  grid-column: 2;
+  grid-row: 2;
   background:
     radial-gradient(
       circle at 82% 8%,
@@ -684,6 +716,8 @@
   padding: 54px 40px;
 }
 .attendance-system-site-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
   min-height: 80px;
   padding: 12px 40px;
   display: flex;
@@ -692,7 +726,7 @@
   gap: 20px;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 10002;
   color: #fff;
   background: #043b2a !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -750,16 +784,74 @@
   place-items: center;
   flex: 0 0 auto;
   color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 11px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
 }
-.attendance-system-menu-button svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
+.attendance-system-menu-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.attendance-system-menu-button:active {
+  transform: scale(0.96);
+}
+.attendance-system-menu-button:focus-visible {
+  outline: 2px solid #f3c94d;
+  outline-offset: 3px;
+}
+body:not(.sidebar-collapsed) .attendance-system-menu-button {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+.attendance-system-menu-icon {
+  position: relative;
+  width: 18px;
+  height: 16px;
+  display: block;
+}
+.attendance-system-menu-icon i {
+  position: absolute;
+  left: 0;
+  width: 18px;
+  height: 2px;
+  display: block;
+  background: currentColor;
+  border-radius: 999px;
+  transition:
+    top 180ms ease,
+    transform 180ms ease,
+    opacity 140ms ease;
+}
+.attendance-system-menu-icon i:nth-child(1) {
+  top: 1px;
+}
+.attendance-system-menu-icon i:nth-child(2) {
+  top: 7px;
+}
+.attendance-system-menu-icon i:nth-child(3) {
+  top: 13px;
+}
+body:not(.sidebar-collapsed) .attendance-system-menu-icon i:nth-child(1) {
+  top: 7px;
+  transform: rotate(45deg);
+}
+body:not(.sidebar-collapsed) .attendance-system-menu-icon i:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0.4);
+}
+body:not(.sidebar-collapsed) .attendance-system-menu-icon i:nth-child(3) {
+  top: 7px;
+  transform: rotate(-45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .attendance-system-menu-icon i {
+    transition: none;
+  }
 }
 .attendance-system-site-footer {
   margin-top: auto;
@@ -2029,6 +2121,50 @@ div.dt-container .dt-paging .ellipsis {
   border-radius: 0 0 12px 12px;
 }
 
+/* DataTables Responsive keeps priority columns visible and exposes hidden
+   fields in an accessible detail row instead of forcing page-wide overflow. */
+table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control::before,
+table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control::before {
+  margin-right: 8px;
+  color: #087247;
+  border-color: #087247;
+  background-color: transparent;
+}
+table.dataTable > tbody > tr.child ul.dtr-details {
+  width: 100%;
+}
+table.dataTable > tbody > tr.child span.dtr-title {
+  min-width: 104px;
+  color: #65736c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+table.dataTable > tbody > tr.child span.dtr-data {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  body[data-type="Student"] .table-wrap table th:last-child,
+  body[data-type="Student"] .table-wrap table td:last-child,
+  body[data-type="Employee"] .table-wrap table th:last-child,
+  body[data-type="Employee"] .table-wrap table td:last-child {
+    position: static;
+    width: auto;
+    min-width: 0;
+    box-shadow: none;
+  }
+  .table-wrap table.dataTable > thead > tr > th,
+  .table-wrap table.dataTable > tbody > tr > td {
+    padding-right: 8px !important;
+    padding-left: 8px !important;
+  }
+  .table-wrap .person-cell {
+    gap: 8px;
+  }
+}
+
 body[data-type="Student"] .table-wrap table th:last-child,
 body[data-type="Student"] .table-wrap table td:last-child,
 body[data-type="Employee"] .table-wrap table th:last-child,
@@ -2405,16 +2541,24 @@ select option {
 }
 
 @media (max-width: 900px) {
-  .directory-card-header {
-    align-items: flex-start;
-    flex-direction: column;
+  .table-card > .directory-card-header {
+    height: auto !important;
+    min-height: 0 !important;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    align-items: start;
+    justify-content: start;
+    gap: 16px;
   }
 
   .directory-actions {
     display: flex;
     width: 100%;
     flex-wrap: wrap;
+    align-self: start;
     justify-content: flex-start;
+    margin-left: 0 !important;
   }
 
   .directory-card-header > div:first-child {
@@ -2484,6 +2628,180 @@ select option {
   }
   .brand-workspace .section-header {
     padding: 22px 20px 14px !important;
+  }
+}
+
+/* Unified-shell responsiveness: preserve the primary controls and let each
+   page's own table wrapper handle wide data instead of widening the viewport. */
+body {
+  overflow-x: hidden;
+}
+.attendance-system-header-brand {
+  overflow: hidden;
+}
+.attendance-system-header-identity span,
+.attendance-system-header-context {
+  overflow: hidden;
+}
+.attendance-system-header-identity strong,
+.attendance-system-header-identity small,
+.attendance-system-header-context span,
+.attendance-system-header-context strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1200px) {
+  .brand-workspace {
+    padding: 46px 32px;
+  }
+  .attendance-system-site-header,
+  .attendance-system-site-footer {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .brand-workspace .topbar h1 {
+    font-size: clamp(38px, 5vw, 56px) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .attendance-system-site-header {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .attendance-system-header-context {
+    max-width: 34%;
+  }
+  .brand-workspace {
+    padding: 38px 24px;
+  }
+  .attendance-system-breadcrumb {
+    display: none;
+  }
+  .sidebar,
+  .sidebar-inner {
+    width: min(300px, calc(100vw - 24px)) !important;
+    min-width: min(300px, calc(100vw - 24px)) !important;
+  }
+  .sidebar .nav {
+    padding: 18px 12px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    grid-template-rows: 72px minmax(0, 1fr);
+  }
+  .attendance-system-site-header {
+    min-height: 72px;
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  .attendance-system-header-brand,
+  .attendance-system-header-identity {
+    gap: 10px;
+  }
+  .attendance-system-header-brand {
+    width: 100%;
+  }
+  .attendance-system-header-identity {
+    flex: 1;
+    overflow: hidden;
+  }
+  .attendance-system-header-identity span {
+    display: grid;
+    min-width: 0;
+  }
+  .attendance-system-header-identity strong {
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+  }
+  .attendance-system-header-identity small {
+    overflow: hidden;
+    font-size: 8px !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .attendance-system-header-identity img {
+    width: 40px !important;
+    height: 40px !important;
+    flex-basis: 40px;
+  }
+  .attendance-system-menu-button {
+    width: 40px;
+    height: 40px;
+  }
+  body.sidebar-collapsed .sidebar,
+  body:not(.sidebar-collapsed) .sidebar {
+    top: 72px !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: min(300px, calc(100vw - 24px)) !important;
+    min-width: min(300px, calc(100vw - 24px)) !important;
+    height: calc(var(--attendance-system-viewport-height) - 72px) !important;
+  }
+  .brand-workspace {
+    padding: 30px 16px;
+  }
+  .brand-workspace .topbar {
+    margin-bottom: 22px !important;
+  }
+  .brand-workspace .topbar h1 {
+    font-size: clamp(34px, 11vw, 44px) !important;
+  }
+  .attendance-system-page-description {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .attendance-system-site-footer {
+    padding: 14px 16px;
+    justify-content: center;
+    text-align: center;
+  }
+  .sidebar-foot {
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .attendance-system-site-header {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .brand-workspace {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .attendance-system-header-identity small {
+    display: none;
+  }
+  body.sidebar-collapsed .sidebar,
+  body:not(.sidebar-collapsed) .sidebar,
+  .sidebar-inner {
+    width: calc(100vw - 16px) !important;
+    min-width: calc(100vw - 16px) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  /* A fixed drawer with top and bottom insets avoids iOS Safari's address-bar
+     resize issue, while desktop continues to use the viewport-height fallback. */
+  .sidebar {
+    height: auto !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .attendance-system-site-header {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .brand-workspace,
+  .attendance-system-site-footer {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
   }
 }
 .event-actions {

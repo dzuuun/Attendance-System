@@ -286,6 +286,7 @@
   function installAppShell() {
     const main = document.querySelector(".app-shell > .main");
     if (!main || main.dataset.attendanceSystemShell === "true") return;
+    const shell = main.parentElement;
     main.dataset.attendanceSystemShell = "true";
     const pageTitle =
       main.querySelector(".topbar h1")?.textContent?.trim() || "Attendance";
@@ -313,12 +314,24 @@
     };
     const header = document.createElement("header");
     header.className = "attendance-system-site-header";
-    header.innerHTML = `<div class="attendance-system-header-brand"><button type="button" class="attendance-system-menu-button" aria-label="Toggle navigation"><span class="material-symbols-rounded" aria-hidden="true">menu</span></button><a class="attendance-system-header-identity" href="${window.taptrackUrl("/overview")}"><img src="${window.taptrackUrl("/client/images/NDMU-Logo.png")}" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="attendance-system-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
-    header
-      .querySelector(".attendance-system-menu-button")
-      .addEventListener("click", () =>
-        document.getElementById("sidebarToggle")?.click(),
+    header.innerHTML = `<div class="attendance-system-header-brand"><button type="button" class="attendance-system-menu-button" aria-label="Open navigation" aria-expanded="false"><span class="attendance-system-menu-icon" aria-hidden="true"><i></i><i></i><i></i></span></button><a class="attendance-system-header-identity" href="${window.taptrackUrl("/overview")}"><img src="${window.taptrackUrl("/client/images/NDMU-Logo.png")}" alt=""><span><strong>Notre Dame of Marbel University</strong><small>TapTrack Attendance System</small></span></a></div><div class="attendance-system-header-context"><span>${pageArea}</span><strong>${pageTitle}</strong></div>`;
+    const menuButton = header.querySelector(".attendance-system-menu-button");
+    const syncMenuButton = () => {
+      const expanded = !document.body.classList.contains("sidebar-collapsed");
+      menuButton.setAttribute("aria-expanded", String(expanded));
+      menuButton.setAttribute(
+        "aria-label",
+        expanded ? "Close navigation" : "Open navigation",
       );
+    };
+    menuButton.addEventListener("click", () =>
+      document.getElementById("sidebarToggle")?.click(),
+    );
+    new MutationObserver(syncMenuButton).observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    syncMenuButton();
     const workspace = document.createElement("div");
     workspace.className = "brand-workspace";
     while (main.firstChild) workspace.appendChild(main.firstChild);
@@ -423,8 +436,10 @@
     footer.innerHTML = `<p>&copy; <span class="attendance-system-year"></span> Notre Dame of Marbel University</p><span></span><p>Developed by the MIS Department</p>`;
     footer.querySelector(".attendance-system-year").textContent =
       new Date().getFullYear();
-    main.append(header, workspace, footer);
+    main.append(workspace, footer);
+    shell.prepend(header);
     main.classList.add("flex", "min-h-screen", "flex-col");
+    installBrand(header);
     installBrand(main);
   }
 

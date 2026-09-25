@@ -580,6 +580,12 @@ app.use(
   express.static(path.join(__dirname, "node_modules", "datatables.net-dt")),
 );
 app.use(
+  "/vendor/datatables-responsive",
+  express.static(
+    path.join(__dirname, "node_modules", "datatables.net-responsive-dt"),
+  ),
+);
+app.use(
   "/vendor/xlsx",
   express.static(path.join(__dirname, "node_modules", "xlsx", "dist")),
 );
@@ -615,8 +621,12 @@ const sendPage =
         }
         html = html
           .replace(
+            /\/client\/page-shell\.css"/g,
+            '/client/page-shell.css?v=20260925-5"',
+          )
+          .replace(
             /\/client\/shared-ui\.js"/g,
-            '/client/shared-ui.js?v=20260923-2"',
+            '/client/shared-ui.js?v=20260925-4"',
           )
           .replace(
             /\b(href|src|action)="\/(?!\/)/gi,

@@ -2,13 +2,13 @@
   localStorage.removeItem("taptrack_token");
   if (!document.querySelector("script[data-brand-ui]")) {
     const brandUi = document.createElement("script");
-    brandUi.src = window.taptrackUrl("/client/brand-ui.js?v=20260923-2");
+    brandUi.src = window.taptrackUrl("/client/brand-ui.js?v=20260925-3");
     brandUi.dataset.brandUi = "true";
     document.head.appendChild(brandUi);
   }
   const $ = (selector) => document.querySelector(selector),
     $$ = (selector) => [...document.querySelectorAll(selector)];
-  const dataTablesReady = (() => {
+  const dataTablesReady = (async () => {
     if (!document.querySelector("link[data-datatables]")) {
       const css = document.createElement("link");
       css.rel = "stylesheet";
@@ -18,17 +18,33 @@
       css.dataset.datatables = "true";
       document.head.appendChild(css);
     }
-    if (window.DataTable) return Promise.resolve(window.DataTable);
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = window.taptrackUrl(
-        "/vendor/datatables/js/dataTables.min.js",
+    if (!document.querySelector("link[data-datatables-responsive]")) {
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = window.taptrackUrl(
+        "/vendor/datatables-responsive/css/responsive.dataTables.min.css",
       );
-      script.dataset.datatables = "true";
-      script.onload = () => resolve(window.DataTable || null);
-      script.onerror = () => resolve(null);
-      document.head.appendChild(script);
-    });
+      css.dataset.datatablesResponsive = "true";
+      document.head.appendChild(css);
+    }
+    const loadScript = (src, dataAttribute) =>
+      new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = window.taptrackUrl(src);
+        script.dataset[dataAttribute] = "true";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+      });
+    if (!window.DataTable)
+      await loadScript("/vendor/datatables/js/dataTables.min.js", "datatables");
+    if (!window.DataTable) return null;
+    if (!window.DataTable.Responsive)
+      await loadScript(
+        "/vendor/datatables-responsive/js/responsive.dataTables.min.js",
+        "datatablesResponsive",
+      );
+    return window.DataTable;
   })();
   function toast(message, type = "success") {
     let container = document.querySelector("#toastContainer");
@@ -121,6 +137,19 @@
           ".filter-row input[type='search'], .filter-row input#search",
         ),
     );
+    const {
+      columnDefs: optionColumnDefs = [],
+      responsive: responsiveOptions,
+      ...dataTableOptions
+    } = options;
+    const responsiveColumnDefs = [
+      {
+        targets: nameIndex >= 0 ? nameIndex : 0,
+        responsivePriority: 1,
+      },
+      { targets: -1, responsivePriority: 1, orderable: false, searchable: false },
+    ];
+    if (idIndex >= 0) responsiveColumnDefs.push({ targets: idIndex, responsivePriority: 2 });
     return dataTablesReady.then((DataTable) => {
       if (
         !DataTable ||
@@ -135,6 +164,7 @@
         lengthMenu: [10, 25, 50, 100],
         order: nameIndex >= 0 ? [[nameIndex, "asc"]] : [],
         autoWidth: false,
+        responsive: true,
         language: {
           search: "",
           searchPlaceholder: "Search records…",
@@ -148,8 +178,14 @@
           bottomStart: "info",
           bottomEnd: "paging",
         },
-        columnDefs: [{ targets: -1, orderable: false, searchable: false }],
-        ...options,
+        responsive:
+          responsiveOptions === false
+            ? false
+            : responsiveOptions || {
+                details: { type: "column", target: nameIndex >= 0 ? nameIndex : 0 },
+              },
+        columnDefs: [...responsiveColumnDefs, ...optionColumnDefs],
+        ...dataTableOptions,
       });
     });
   }
@@ -740,6 +776,20 @@
       );
       applySidebar(sidebarCollapsed);
     });
+    document.querySelector(".app-shell > .main")?.addEventListener(
+      "click",
+      (event) => {
+        if (sidebarCollapsed && !hoverExpanded) return;
+        event.preventDefault();
+        event.stopPropagation();
+        sidebarCollapsed = true;
+        hoverExpanded = false;
+        clearTimeout(hoverCollapseTimer);
+        localStorage.setItem("taptrack_sidebar_collapsed", "true");
+        applySidebar(true);
+      },
+      true,
+    );
     const sidebarElement = sidebarMount.querySelector(".sidebar");
     sidebarElement?.addEventListener("mouseenter", () => {
       clearTimeout(hoverCollapseTimer);
