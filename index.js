@@ -558,7 +558,8 @@ app.use(
 app.use(
   "/uploads/profile-photos",
   (req, res, next) =>
-    String(req.get("cookie") || "").includes("taptrack_kiosk_session=")
+    String(req.get("cookie") || "").includes("taptrack_kiosk_session=") ||
+    String(req.get("authorization") || "").startsWith("Kiosk ")
       ? requireKioskSession(req, res, next)
       : checkSession(req, res, next),
   express.static(path.join(__dirname, "uploads", "profile-photos"), {

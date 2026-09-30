@@ -11,8 +11,10 @@ import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.nfc.NfcAdapter
+import android.nfc.NdefRecord
 import android.nfc.Tag
 import android.nfc.tech.MifareClassic
+import android.nfc.tech.Ndef
 import android.nfc.tech.NfcA
 import android.os.Bundle
 import android.os.Build
@@ -28,6 +30,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.BaseAdapter
 import android.widget.Button
@@ -39,7 +42,6 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
-import com.google.zxing.integration.android.IntentIntegrator
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.OutputStreamWriter
@@ -53,7 +55,10 @@ import java.util.Locale
 import java.util.concurrent.Executors
 import java.time.Instant
 import java.nio.charset.StandardCharsets
+import java.nio.charset.Charset
 import java.util.UUID
+
+private class KioskRequestException(val statusCode: Int, message: String) : IllegalStateException(message)
 
 class MainActivity : Activity() {
     private val executor = Executors.newSingleThreadExecutor()
@@ -85,6 +90,7 @@ class MainActivity : Activity() {
     private val recentlyAccepted = mutableMapOf<String, Long>()
     private val nfcAdapter: NfcAdapter? by lazy { NfcAdapter.getDefaultAdapter(this) }
     private var kioskEnabled = true
+    private var verificationDialogShowing = false
     private val kioskId: String by lazy {
         preferences.getString("kiosk_id", null) ?: UUID.randomUUID().toString().also {
             preferences.edit().putString("kiosk_id", it).apply()
@@ -111,6 +117,11 @@ class MainActivity : Activity() {
                         showFailure("This kiosk has been disabled by central management.")
                     }
                     pollBrowserCommands(server)
+                }.onFailure { error ->
+                    if (error is Exception && isKioskVerificationError(error)) mainHandler.post {
+                        preferences.edit().remove("kiosk_token").apply()
+                        showKioskVerification("This kiosk must be verified by a Superadmin.")
+                    }
                 }
             }
             mainHandler.postDelayed(this, 90_000L)
@@ -140,7 +151,7 @@ class MainActivity : Activity() {
         }
         setContentView(buildScreen())
         clockUpdater.run()
-        loadGates()
+        if (baseUrl().isBlank()) loadGates() else ensureKioskVerified()
         mainHandler.postDelayed(kioskHeartbeat, 2_000L)
     }
 
@@ -159,7 +170,9 @@ class MainActivity : Activity() {
         adapter.enableReaderMode(
             this,
             { tag -> readTapTrackCard(tag) },
-            NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+            // NDEF discovery is needed as a compatibility fallback for cards
+            // enrolled by standard NTAG215/NDEF writer applications.
+            NfcAdapter.FLAG_READER_NFC_A,
             null,
         )
     }
@@ -403,7 +416,7 @@ class MainActivity : Activity() {
             setPadding(dp(14), 0, dp(14), 0)
             setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    submitScan(idInput.text.toString())
+                    submitScan(idInput.text.toString(), dismissKeyboard = true)
                     true
                 } else false
             }
@@ -411,7 +424,7 @@ class MainActivity : Activity() {
         addView(idInput, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46)))
 
         scanButton = button("Record attendance")
-        scanButton.setOnClickListener { submitScan(idInput.text.toString()) }
+        scanButton.setOnClickListener { submitScan(idInput.text.toString(), dismissKeyboard = true) }
         addView(scanButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46)).apply { topMargin = dp(8) })
         cameraButton = button("Scan barcode with camera")
         cameraButton.background = roundedBackground(Color.rgb(6, 94, 63), 12, Color.rgb(32, 145, 101), 1)
@@ -514,14 +527,108 @@ class MainActivity : Activity() {
             .setView(input)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->
-                preferences.edit().putString("server_url", normalizeUrl(input.text.toString())).apply()
-                loadGates()
+                val server = normalizeUrl(input.text.toString())
+                val changed = server != baseUrl()
+                preferences.edit().apply {
+                    putString("server_url", server)
+                    // Enrollment tokens are valid only for the server that issued them.
+                    if (changed) remove("kiosk_token")
+                    apply()
+                }
+                ensureKioskVerified()
             }
             .show()
     }
 
     private fun baseUrl(): String = preferences.getString("server_url", "") ?: ""
     private fun normalizeUrl(value: String) = value.trim().trimEnd('/')
+    private fun kioskToken(): String = preferences.getString("kiosk_token", "") ?: ""
+
+    private fun ensureKioskVerified() {
+        if (baseUrl().isBlank()) {
+            loadGates()
+        } else if (kioskToken().isBlank()) {
+            showKioskVerification()
+        } else {
+            loadGates()
+        }
+    }
+
+    private fun showKioskVerification(message: String? = null) {
+        if (verificationDialogShowing || isFinishing) return
+        verificationDialogShowing = true
+        val padding = (22 * resources.displayMetrics.density).toInt()
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, 0, padding, 0)
+        }
+        val username = EditText(this).apply {
+            hint = "Superadmin username"
+            inputType = InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
+        }
+        val password = EditText(this).apply {
+            hint = "Superadmin password"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
+        }
+        fields.addView(username)
+        fields.addView(password)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Authorize this kiosk")
+            .setMessage(message ?: "A Superadmin must verify this device once. It remains authorized on succeeding uses.")
+            .setView(fields)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Verify kiosk", null)
+            .create()
+        dialog.setOnDismissListener { verificationDialogShowing = false }
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val enteredUsername = username.text.toString().trim()
+                val enteredPassword = password.text.toString()
+                if (enteredUsername.isBlank() || enteredPassword.isBlank()) {
+                    password.error = "Enter the Superadmin username and password."
+                    return@setOnClickListener
+                }
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).isEnabled = false
+                executor.execute {
+                    try {
+                        val response = request(
+                            "POST",
+                            "${baseUrl()}/api/kiosk/pair",
+                            JSONObject().apply {
+                                put("kioskId", kioskId)
+                                put("username", enteredUsername)
+                                put("password", enteredPassword)
+                                put("agent", true)
+                            },
+                            includeKioskAuthorization = false,
+                        ) as JSONObject
+                        val token = response.optString("token")
+                        if (!response.optBoolean("verified") || token.isBlank())
+                            throw IllegalStateException("The server did not return a kiosk enrollment token.")
+                        preferences.edit().putString("kiosk_token", token).apply()
+                        mainHandler.post {
+                            password.text.clear()
+                            dialog.dismiss()
+                            loadGates()
+                        }
+                    } catch (error: Exception) {
+                        mainHandler.post {
+                            password.text.clear()
+                            password.error = error.message ?: "Kiosk verification failed."
+                            password.requestFocus()
+                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).isEnabled = true
+                        }
+                    }
+                }
+            }
+            username.requestFocus()
+        }
+        dialog.show()
+    }
 
     private fun loadGates() {
         val server = baseUrl()
@@ -531,6 +638,11 @@ class MainActivity : Activity() {
             return
         }
         showGateMessage("Loading gates…")
+        if (kioskToken().isBlank()) {
+            showGateMessage("Kiosk verification required")
+            showKioskVerification()
+            return
+        }
         setLoading(true)
         executor.execute {
             try {
@@ -568,6 +680,11 @@ class MainActivity : Activity() {
                 }
             } catch (error: Exception) {
                 mainHandler.post {
+                    if (isKioskVerificationError(error)) {
+                        preferences.edit().remove("kiosk_token").apply()
+                        showKioskVerification("This kiosk must be verified by a Superadmin.")
+                        return@post
+                    }
                     showGateMessage("Unable to load gates — check server settings")
                     setLoading(false)
                     showFailure(error.message ?: "Unable to load gates.")
@@ -625,12 +742,13 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun submitScan(rawId: String) {
+    private fun submitScan(rawId: String, dismissKeyboard: Boolean = false) {
         val idNumber = rawId.trim().uppercase(Locale.US)
         val gate = (gateSpinner.adapter as? GateSpinnerAdapter)?.gateAt(gateSpinner.selectedItemPosition)
         if (idNumber.isBlank()) { showFailure("Enter or scan an ID number."); return }
         if (!kioskEnabled) { showFailure("This kiosk has been disabled by central management."); return }
         if (gate == null) { showFailure("Select an assigned gate first."); return }
+        if (dismissKeyboard) hideSoftKeyboard()
         val previous = recentlyAccepted[idNumber] ?: 0L
         if (System.currentTimeMillis() - previous < 5_000L) return
         if (isScanning) return
@@ -653,19 +771,32 @@ class MainActivity : Activity() {
                     idInput.requestFocus()
                 }
             } catch (error: Exception) {
-                mainHandler.post { showFailure(error.message ?: "Scan not recorded."); idInput.requestFocus() }
+                mainHandler.post {
+                    if (isKioskVerificationError(error)) {
+                        preferences.edit().remove("kiosk_token").apply()
+                        showKioskVerification("This kiosk must be verified by a Superadmin.")
+                    } else showFailure(error.message ?: "Scan not recorded.")
+                    idInput.requestFocus()
+                }
             } finally {
                 mainHandler.post { isScanning = false; setLoading(false) }
             }
         }
     }
 
-    private fun request(method: String, endpoint: String, body: JSONObject? = null): Any {
+    private fun request(
+        method: String,
+        endpoint: String,
+        body: JSONObject? = null,
+        includeKioskAuthorization: Boolean = true,
+    ): Any {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 8_000
             readTimeout = 12_000
             setRequestProperty("Accept", "application/json")
+            if (includeKioskAuthorization && kioskToken().isNotBlank())
+                setRequestProperty("Authorization", "Kiosk ${kioskToken()}")
             if (body != null) {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
@@ -675,21 +806,33 @@ class MainActivity : Activity() {
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
         val payload = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        if (includeKioskAuthorization) connection.getHeaderField("X-Kiosk-Token")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { preferences.edit().putString("kiosk_token", it).apply() }
         connection.disconnect()
         if (code !in 200..299) {
             val message = runCatching { JSONObject(payload).optString("message") }.getOrDefault("")
-            throw IllegalStateException(message.ifBlank { "Server returned $code." })
+            throw KioskRequestException(code, message.ifBlank { "Server returned $code." })
         }
         return if (payload.trim().startsWith("[")) JSONArray(payload) else JSONObject(payload)
+    }
+
+    private fun isKioskVerificationError(error: Exception): Boolean =
+        (error as? KioskRequestException)?.statusCode == HttpURLConnection.HTTP_UNAUTHORIZED
+
+    private fun hideSoftKeyboard() {
+        getSystemService(InputMethodManager::class.java)
+            ?.hideSoftInputFromWindow(idInput.windowToken, 0)
     }
 
     private fun loadPhoto(photoUrl: String): Bitmap? {
         if (photoUrl.isBlank()) return null
         val normalized = photoUrl.trim().replace('\\', '/')
         val candidates = buildList {
-            val path = runCatching { URI(normalized).rawPath }.getOrNull()
-            if (!path.isNullOrBlank()) add(URL(URL("${baseUrl()}/"), path))
-            runCatching { add(URL(URL("${baseUrl()}/"), normalized)) }
+            runCatching { URI(normalized) }.getOrNull()?.takeIf { it.isAbsolute }?.let {
+                runCatching { add(it.toURL()) }
+            }
+            runCatching { add(URL(URL("${baseUrl()}/"), normalized.removePrefix("/"))) }
         }.distinctBy { it.toString() }
 
         for (resolvedUrl in candidates) {
@@ -867,18 +1010,17 @@ class MainActivity : Activity() {
             showFailure("This device does not have an available camera.")
             return
         }
-        runCatching {
-            IntentIntegrator(this).apply {
-                captureActivity = PortraitCaptureActivity::class.java
-                setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES)
-                setPrompt("Scan TapTrack ID barcode")
-                setBeepEnabled(true)
-                setOrientationLocked(true)
-                initiateScan()
-            }
-        }.onFailure { error ->
-            showFailure(error.message ?: "Unable to open the barcode camera.")
+        val gate = (gateSpinner.adapter as? GateSpinnerAdapter)?.gateAt(gateSpinner.selectedItemPosition)
+        if (gate == null) {
+            showFailure("Select an assigned gate first.")
+            return
         }
+        startActivity(android.content.Intent(this, CameraScanActivity::class.java).apply {
+            putExtra(CameraScanActivity.EXTRA_SERVER, baseUrl())
+            putExtra(CameraScanActivity.EXTRA_KIOSK_ID, kioskId)
+            putExtra(CameraScanActivity.EXTRA_LOCATION, gate.location)
+            putExtra(CameraScanActivity.EXTRA_KIOSK_TOKEN, kioskToken())
+        })
     }
 
     private fun readTapTrackCard(tag: Tag) {
@@ -887,7 +1029,11 @@ class MainActivity : Activity() {
             // and MIFARE Classic cards (sector 1, block 4, factory key).
             val raw = MifareClassic.get(tag)?.let(::readMifareClassicCard)
                 ?: readType2Card(tag)
-            val idNumber = decodeCardIdentifier(raw)
+            // Some NTAG215 enrollment tools write the ID as an NDEF text record
+            // instead of directly to pages 4-7. Keep the original TapTrack
+            // layout first, then support that standard representation too.
+            val idNumber = runCatching { decodeCardIdentifier(raw) }
+                .getOrElse { error -> readNdefIdentifier(tag) ?: throw error }
             mainHandler.post { submitScan(idNumber) }
         } catch (error: Exception) {
             mainHandler.post {
@@ -933,18 +1079,38 @@ class MainActivity : Activity() {
             return idNumber
     }
 
-    companion object {
-        private const val MIFARE_CLASSIC_SECTOR = 1
+    private fun readNdefIdentifier(tag: Tag): String? {
+        val technology = Ndef.get(tag) ?: return null
+        return try {
+            technology.connect()
+            technology.ndefMessage?.records
+                ?.firstNotNullOfOrNull(::identifierFromNdefRecord)
+        } finally {
+            runCatching { technology.close() }
+        }
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
-        val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
-        if (result != null) {
-            result.contents?.let { submitScan(it) }
-            return
+    private fun identifierFromNdefRecord(record: NdefRecord): String? {
+        val payload = record.payload ?: return null
+        val text = if (
+            record.tnf == NdefRecord.TNF_WELL_KNOWN &&
+            record.type.contentEquals(NdefRecord.RTD_TEXT)
+        ) {
+            if (payload.isEmpty()) return null
+            val status = payload[0].toInt() and 0xFF
+            val languageLength = status and 0x3F
+            if (payload.size <= languageLength + 1) return null
+            val charset = if ((status and 0x80) == 0) StandardCharsets.UTF_8 else Charset.forName("UTF-16")
+            String(payload, languageLength + 1, payload.size - languageLength - 1, charset)
+        } else {
+            String(payload, StandardCharsets.UTF_8)
         }
-        super.onActivityResult(requestCode, resultCode, data)
+        return TAPTRACK_IDENTIFIER.find(text.uppercase(Locale.US))?.value
+    }
+
+    companion object {
+        private const val MIFARE_CLASSIC_SECTOR = 1
+        private val TAPTRACK_IDENTIFIER = Regex("(?<![A-Z0-9])(?:\\d{12}|P\\d{7,8}|\\d{7,8})(?![A-Z0-9])")
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {

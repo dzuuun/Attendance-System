@@ -124,7 +124,11 @@ async function requireKioskSession(req, res, next) {
       "UPDATE kiosk_sessions SET last_seen_at=NOW(),expires_at=? WHERE jti=?",
       [rollingExpiry, decoded.jti],
     );
-    if (!usesHeader) {
+    if (usesHeader) {
+      // Native kiosks retain the enrollment token themselves rather than a
+      // browser cookie, so return its rolling renewal in a response header.
+      res.set("X-Kiosk-Token", signKioskToken(decoded.sub, decoded.jti));
+    } else {
       const refreshedToken = signKioskToken(decoded.sub, decoded.jti);
       setKioskCookie(req, res, refreshedToken, decoded.sub);
     }

@@ -1,6 +1,7 @@
 const model = require("./attendance.model");
 const eventModel = require("../events/event.model");
 const periodModel = require("../maintenance/academic_period/academic_period.model");
+const { publicPath } = require("../../config/public-path");
 const ENTRANCE_DUPLICATE_WINDOW_SECONDS = 5;
 const entranceScansInProgress = new Set();
 
@@ -24,12 +25,12 @@ const absoluteAssetUrl = (req, value) => {
       const parsed = new URL(assetUrl);
       if (!["localhost", "127.0.0.1", "::1"].includes(parsed.hostname))
         return assetUrl;
-      return `${req.protocol}://${req.get("host")}${parsed.pathname}${parsed.search}`;
+      return `${req.protocol}://${req.get("host")}${publicPath(parsed.pathname)}${parsed.search}`;
     } catch {
       return null;
     }
   }
-  return `${req.protocol}://${req.get("host")}${assetUrl.startsWith("/") ? "" : "/"}${assetUrl}`;
+  return `${req.protocol}://${req.get("host")}${publicPath(assetUrl)}`;
 };
 
 exports.getAll = async (req, res) => {
