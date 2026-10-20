@@ -363,7 +363,7 @@ function scan(raw) {
       };
     } finally {
       input.value = "";
-      input.focus();
+      if (!document.querySelector(".kiosk-verification-backdrop")) input.focus();
     }
   });
   scanQueue = request.catch(() => {});
@@ -404,7 +404,7 @@ document.addEventListener("keydown", (event) => {
   const isEditingAnotherControl = activeElement?.matches?.(
     "input, textarea, select, [contenteditable='true']",
   );
-  const hasOpenDialog = document.querySelector("dialog[open]");
+  const hasOpenDialog = document.querySelector("dialog[open], .kiosk-verification-backdrop");
   if (
     !input ||
     isEditingAnotherControl ||

@@ -870,7 +870,7 @@ async function performScan(idNumber, actionOverride) {
   } finally {
     if (input) {
       input.value = "";
-      input.focus();
+      if (!document.querySelector('.kiosk-verification-backdrop')) input.focus();
     }
   }
 }
@@ -1145,7 +1145,7 @@ document.addEventListener("keydown", (event) => {
     "input, textarea, select, [contenteditable='true']",
   );
   const hasOpenOverlay = document.querySelector(
-    "dialog[open], .scanner-modal-backdrop.open",
+    "dialog[open], .scanner-modal-backdrop.open, .kiosk-verification-backdrop",
   );
   if (
     !input ||
@@ -1176,6 +1176,7 @@ document.addEventListener("keydown", (event) => {
 // Keep autofocus on input when clicking around background
 document.addEventListener("click", (event) => {
   if (
+    document.querySelector(".kiosk-verification-backdrop") ||
     event.target.closest("button") ||
     event.target.closest("a") ||
     event.target.closest(".scanner-modal")
@@ -1227,7 +1228,7 @@ function toggleScannerModal(open) {
       .catch(() => {});
   } else {
     scannerModalBackdrop.classList.remove("open");
-    input?.focus();
+    if (!document.querySelector(".kiosk-verification-backdrop")) input?.focus();
   }
 }
 

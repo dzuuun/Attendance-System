@@ -35,6 +35,7 @@
       const form = backdrop.querySelector("form");
       const error = backdrop.querySelector(".kiosk-verification-error");
       const button = backdrop.querySelector("button");
+      form.elements.username.focus();
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         error.textContent = "";
