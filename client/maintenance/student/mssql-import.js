@@ -2,7 +2,7 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const api = (url, options) => TapTrack.api(url, options);
   const dialog = document.createElement("dialog");
-  dialog.className = "attendance-system-modal attendance-system-review-modal";
+  dialog.className = "attendance-system-modal attendance-system-review-modal mssql-import-modal";
 
   const close = () => dialog.close();
   const bindCloseButtons = () =>
@@ -13,10 +13,21 @@
   function renderImportForm() {
     dialog.innerHTML = `<form id="mssqlImportForm">
       <div class="modal-head"><div><span class="modal-kicker">SQL SERVER IMPORT</span><h2>Import enrolled students</h2></div><button type="button" class="close-button" data-close aria-label="Close">×</button></div>
-      <div class="attendance-system-modal-body"><p class="attendance-system-review-intro">Preview records from the configured registrar view before synchronizing them with TapTrack.</p><div class="form-grid"><label>School year<input id="mssqlSchoolYear" placeholder="2026-2027" pattern="\\d{4}-\\d{4}" required></label><label>Semester<select id="mssqlSemester" required><option value="">Select semester</option><option value="1">First Semester</option><option value="2">Second Semester</option><option value="3">Summer</option></select></label><label class="full status-toggle-field mssql-photo-choice"><span><strong>Import student photos</strong><small>Also copy available photos from the SQL Server Student table. Leave this off for a faster student-data-only import.</small></span><input id="mssqlImportPhotos" type="checkbox" aria-label="Import student photos"></label></div><div class="mssql-preview-loading" id="mssqlPreviewLoading" hidden role="status" aria-live="polite"><span class="mssql-preview-spinner" aria-hidden="true"></span><div><strong>Preparing student preview</strong><p id="mssqlPreviewLoadingText">Connecting to SQL Server and validating student records. Please keep this window open.</p></div></div><p class="form-error" id="mssqlError"></p></div>
-      <div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button class="primary-button" id="mssqlPreviewBtn">Preview import</button></div>
+      <div class="attendance-system-modal-body"><p class="attendance-system-review-intro">Preview records from the configured registrar view before synchronizing them with TapTrack.</p><div class="form-grid"><div class="full mssql-current-period"><span>Current academic period</span><strong id="mssqlCurrentPeriod" role="status">Loading academic period...</strong></div><label class="full status-toggle-field mssql-photo-choice"><span><strong>Import student photos</strong><small>Also copy available photos from the SQL Server Student table. Leave this off for a faster student-data-only import.</small></span><input id="mssqlImportPhotos" type="checkbox" aria-label="Import student photos"></label></div><div class="mssql-preview-loading" id="mssqlPreviewLoading" hidden role="status" aria-live="polite"><span class="mssql-preview-spinner" aria-hidden="true"></span><div><strong>Preparing student preview</strong><p id="mssqlPreviewLoadingText">Connecting to SQL Server and validating student records. Please keep this window open.</p></div></div><p class="form-error" id="mssqlError"></p></div>
+      <div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancel</button><button class="primary-button" id="mssqlPreviewBtn" disabled>Preview import</button></div>
     </form>`;
     bindCloseButtons();
+    const formElement = $("#mssqlImportForm", dialog);
+    api("/api/current-academic-period").then((period) => {
+      if (!formElement.isConnected) return;
+      if (!period) throw new Error("Set a current academic period before importing students.");
+      $("#mssqlCurrentPeriod", formElement).textContent = `${period.schoolYear} - ${period.term}`;
+      $("#mssqlPreviewBtn", formElement).disabled = false;
+    }).catch((error) => {
+      if (!formElement.isConnected) return;
+      $("#mssqlCurrentPeriod", formElement).textContent = "Academic period unavailable";
+      $("#mssqlError", formElement).textContent = error.message;
+    });
     $("#mssqlImportForm", dialog).addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -24,13 +35,9 @@
       error.textContent = "";
       const button = $("#mssqlPreviewBtn", dialog);
       const loading = $("#mssqlPreviewLoading", dialog);
-      const schoolYearInput = $("#mssqlSchoolYear", dialog);
-      const semesterInput = $("#mssqlSemester", dialog);
       const importPhotosInput = $("#mssqlImportPhotos", dialog);
       button.disabled = true;
       button.textContent = "Preparing preview…";
-      schoolYearInput.disabled = true;
-      semesterInput.disabled = true;
       importPhotosInput.disabled = true;
       loading.hidden = false;
       form.setAttribute("aria-busy", "true");
@@ -41,11 +48,7 @@
             "Still working — the registrar returned a large enrollment list and TapTrack is validating it.";
       }, 8000);
       try {
-        const schoolYear = schoolYearInput.value.trim();
-        const semester = Number(semesterInput.value);
         const query = new URLSearchParams({
-          schoolYear,
-          semester: String(semester),
           importPhotos: String(importPhotosInput.checked),
         });
         const preview = await api(`/api/student/mssql-import/preview?${query}`);
@@ -56,8 +59,6 @@
         error.textContent = requestError.message;
         button.disabled = false;
         button.textContent = "Preview import";
-        schoolYearInput.disabled = false;
-        semesterInput.disabled = false;
         importPhotosInput.disabled = false;
         loading.hidden = true;
         form.removeAttribute("aria-busy");
@@ -67,9 +68,6 @@
 
   const recordMarkup = (record) =>
     `<p><small>${TapTrack.escapeHtml(record.idNumber || `Row ${record.row}`)}</small><span>${TapTrack.escapeHtml(record.name || "Unnamed record")}</span><em>${TapTrack.escapeHtml(record.message)}</em></p>`;
-  const semesterLabel = (semester) =>
-    ({ 1: "First Semester", 2: "Second Semester", 3: "Summer" })[semester] ||
-    `Semester ${semester}`;
 
   function showImportProgress(data) {
     const loadingDialog = $("#studentLoadingDialog");
@@ -121,7 +119,7 @@
   function renderPreview(data) {
     dialog.innerHTML = `<div class="mssql-review-shell">
       <div class="modal-head"><div><span class="modal-kicker">VALIDATION COMPLETE</span><h2>Review student import</h2></div><button type="button" class="close-button" data-close aria-label="Close">×</button></div>
-      <p class="attendance-system-review-intro">${TapTrack.escapeHtml(data.period.schoolYear)} · ${semesterLabel(data.period.semester)} · ${data.total.toLocaleString()} source rows · ${data.importPhotos ? "Photos included" : "Photos not included"}</p>
+      <p class="attendance-system-review-intro">${TapTrack.escapeHtml(data.period.schoolYear)} · ${TapTrack.escapeHtml(data.period.term)} · ${data.total.toLocaleString()} source rows · ${data.importPhotos ? "Photos included" : "Photos not included"}</p>
       <div class="attendance-system-review-body">
         ${groupMarkup("new", "New students", "created", data.groups.new)}
         ${groupMarkup("update", "Updates", "updated", data.groups.update)}
@@ -146,8 +144,7 @@
         button.textContent = "Loading…";
         try {
           const query = new URLSearchParams({
-            schoolYear: data.period.schoolYear,
-            semester: String(data.period.semester),
+            periodId: String(data.period.id),
             offset: String(group.nextOffset),
             importPhotos: String(data.importPhotos),
           });

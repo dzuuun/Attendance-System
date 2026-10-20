@@ -2,6 +2,7 @@ const sql = require("mssql");
 const pool = require("../../../db/db");
 const model = require("./student.model");
 const profilePhotos = require("../profile-photo");
+const academicPeriods = require("../academic_period/academic_period.model");
 
 const YEAR_LEVELS = new Set([
   ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`),
@@ -74,17 +75,23 @@ function normalizeYearLevel(value) {
   return input;
 }
 
-function period(source) {
-  const schoolYear = clean(source?.schoolYear);
-  const semester = Number(source?.semester);
-  if (!/^\d{4}-\d{4}$/.test(schoolYear) || ![1, 2, 3].includes(semester)) {
-    const error = new Error(
-      "Choose a school year in YYYY-YYYY format and a valid semester.",
-    );
+async function currentPeriod(expectedId) {
+  const active = await academicPeriods.getCurrent();
+  const semesters = {
+    "First Semester": 1, "Second Semester": 2, Summer: 3,
+    "First Term": 1, "Second Term": 2, "Third Term": 3,
+  };
+  if (!active || !semesters[active.term]) {
+    const error = new Error("Set a current academic period before importing students.");
     error.status = 400;
     throw error;
   }
-  return { schoolYear, semester };
+  if (expectedId !== undefined && String(expectedId) !== String(active.id)) {
+    const error = new Error("The current academic period changed. Close this window and preview the import again.");
+    error.status = 409;
+    throw error;
+  }
+  return { id: active.id, schoolYear: active.schoolYear, semester: semesters[active.term], term: active.term };
 }
 
 function viewName() {
@@ -497,7 +504,8 @@ async function importSourcePhotos(targets) {
 
 exports.preview = async (req, res) => {
   const importPhotos = req.query.importPhotos === "true";
-  const result = await review(period(req.query), {
+  const sourcePeriod = await currentPeriod(req.query.periodId);
+  const result = await review(sourcePeriod, {
     includePhotos: importPhotos,
   });
   const offset = Number(req.query.offset || 0);
@@ -509,7 +517,7 @@ exports.preview = async (req, res) => {
     throw error;
   }
   res.json({
-    period: period(req.query),
+    period: sourcePeriod,
     importPhotos,
     deactivate: await deactivationCount(result.sourceIds),
     ...preview(result, offset, importPhotos),
@@ -517,7 +525,12 @@ exports.preview = async (req, res) => {
 };
 
 exports.import = async (req, res) => {
-  const sourcePeriod = period(req.body);
+  const sourcePeriod = await currentPeriod(req.body.id);
+  if (req.body.id === undefined || req.body.schoolYear !== sourcePeriod.schoolYear || Number(req.body.semester) !== sourcePeriod.semester || req.body.term !== sourcePeriod.term) {
+    const error = new Error("The current academic period changed or the preview is missing. Preview the import again.");
+    error.status = 409;
+    throw error;
+  }
   if (
     req.body.importPhotos !== undefined &&
     typeof req.body.importPhotos !== "boolean"

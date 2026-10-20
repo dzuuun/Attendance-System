@@ -1686,6 +1686,32 @@ div.dt-container .dt-paging .ellipsis {
   padding: 7px 13px !important;
   font-size: 11px;
 }
+.mssql-import-modal .attendance-system-modal-body {
+  padding: 0 25px 24px;
+}
+.mssql-import-modal .attendance-system-review-intro {
+  padding: 18px 0;
+}
+#mssqlImportForm .form-grid {
+  gap: 16px;
+  padding-top: 20px;
+}
+.mssql-current-period {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mssql-current-period span {
+  color: #65736c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.mssql-current-period strong {
+  color: #183128;
+  font-size: 15px;
+}
 .mssql-preview-loading {
   margin: 18px 0 0;
   padding: 14px 16px;

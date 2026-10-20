@@ -116,7 +116,7 @@ Use the import action and the current template. Match the required columns and r
 Only a **Superadmin** or **Administrator** can see and use **Import SQL Server**.
 
 1. Open **Add student**, then select the SQL Server import option.
-2. Enter the school year in `YYYY-YYYY` format and choose the full semester name, such as **First Semester**.
+2. The import uses the current active academic period automatically.
 3. Select **Preview import**. A processing message remains visible while TapTrack reads and validates the registrar view.
 4. Review **New students**, **Updates**, and **Invalid rows** separately. Each group displays its own records; use its load-more control to view the next batch.
 5. Correct invalid registrar data before importing. Supported gender values are **Male** and **Female**.
