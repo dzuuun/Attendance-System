@@ -3,8 +3,36 @@ let alumni = [];
 let currentUser = null;
 let programs = [];
 let sections = [];
+let managePopup = null;
+let manageTrigger = null;
+const openCardEnrollment = TapTrack.initCardEnrollmentDialog({ personType: "alumni", onSave: render });
+
+function closeManagePopup() {
+  manageTrigger?.setAttribute("aria-expanded", "false");
+  managePopup?.remove();
+  managePopup = null;
+  manageTrigger = null;
+}
+
+function openManagePopup(trigger) {
+  closeManagePopup();
+  const item = alumni.find((person) => String(person.id) === trigger.dataset.id);
+  if (!item) return;
+  const admin = ["Superadmin", "Administrator"].includes(currentUser?.role);
+  const popup = document.createElement("div");
+  popup.className = "event-action-options event-action-popup";
+  popup.innerHTML = `${admin ? `<button class="edit" data-id="${item.id}">Edit</button>` : ""}<button class="card-enroll" data-id="${item.id}">Enroll card</button>${admin ? `<button class="reenroll" data-id="${item.id}" ${item.studentIsActive ? "disabled" : ""}>${item.studentIsActive ? "Student active" : "Re-enroll"}</button>` : ""}<button class="person-log-export" data-person-id="${item.id}" data-person-type="alumnus" data-person-name="${escapeHtml(item.name)}" data-id-number="${escapeHtml(item.idNumber)}">Export</button>${admin ? `<button class="status" data-id="${item.id}">${item.isActive ? "Disable" : "Enable"}</button>` : ""}`;
+  document.body.appendChild(popup);
+  const rect = trigger.getBoundingClientRect();
+  popup.style.left = `${Math.max(8, Math.min(rect.right - 172, innerWidth - 180))}px`;
+  popup.style.top = `${rect.bottom + popup.offsetHeight + 8 <= innerHeight ? rect.bottom + 6 : Math.max(8, rect.top - popup.offsetHeight - 6)}px`;
+  trigger.setAttribute("aria-expanded", "true");
+  managePopup = popup;
+  manageTrigger = trigger;
+}
 
 function render() {
+  closeManagePopup();
   const table = $("#body").closest("table");
   TapTrack.destroyDataTable(table);
   const query = $("#search").value.trim().toLowerCase();
@@ -21,10 +49,10 @@ function render() {
     : "Active alumni";
   $("#body").innerHTML = "";
   if (!rows.length) {
-    $("#body").innerHTML = emptyRow(6, "No alumni records found.");
+    $("#body").innerHTML = emptyRow(7, "No alumni records found.");
     return;
   }
-  TapTrack.initDataTable(table, {
+  return TapTrack.initDataTable(table, {
     data: rows,
     layout: {
       topStart: null,
@@ -58,6 +86,10 @@ function render() {
       },
       { data: "graduationYear" },
       {
+        data: "cardId",
+        render: (value, mode) => mode === "display" ? (value ? `<span class="status-pill" title="${escapeHtml(value)}">Enrolled</span>` : "Not enrolled") : (value || ""),
+      },
+      {
         data: "isActive",
         render: (value, type) =>
           type === "display"
@@ -70,7 +102,7 @@ function render() {
         searchable: false,
         render: (_value, type, item) =>
           type === "display"
-            ? `<div class="table-actions">${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="edit secondary-button" data-id="${item.id}">Edit</button><button class="reenroll secondary-button" data-id="${item.id}" ${item.studentIsActive ? "disabled" : ""}>${item.studentIsActive ? "Student active" : "Re-enroll"}</button>` : ""}<button class="person-log-export secondary-button" data-person-id="${item.id}" data-person-type="alumnus" data-person-name="${escapeHtml(item.name)}" data-id-number="${escapeHtml(item.idNumber)}">Export</button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="status secondary-button" data-id="${item.id}">${item.isActive ? "Disable" : "Enable"}</button>` : ""}</div>`
+            ? `<button class="event-action-trigger person-manage-trigger" data-id="${item.id}" aria-expanded="false">Manage <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button>`
             : "",
       },
     ],
@@ -110,6 +142,13 @@ function openForm(item = null) {
 $("#search").addEventListener("input", render);
 $("#showInactive").addEventListener("change", render);
 document.addEventListener("click", async (event) => {
+  const manage = event.target.closest(".person-manage-trigger");
+  if (manage) {
+    if (manage === manageTrigger) closeManagePopup();
+    else openManagePopup(manage);
+    return;
+  }
+  if (managePopup && (!managePopup.contains(event.target) || event.target.closest("button"))) closeManagePopup();
   if (event.target.closest('.close-button,button[value="cancel"]')) {
     event.preventDefault();
     event.target.closest("dialog").close();
@@ -118,6 +157,11 @@ document.addEventListener("click", async (event) => {
   const edit = event.target.closest(".edit");
   if (edit) {
     openForm(alumni.find((item) => String(item.id) === edit.dataset.id));
+    return;
+  }
+  const enroll = event.target.closest(".card-enroll");
+  if (enroll) {
+    openCardEnrollment(alumni.find((item) => String(item.id) === enroll.dataset.id));
     return;
   }
   const reenroll = event.target.closest(".reenroll");

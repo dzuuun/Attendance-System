@@ -2,7 +2,6 @@ node_modules/
 .env
 npm-debug.log*
 .DS_Store
-scanner/scanner-devices.json
 scanner/.kiosk-session.json
 uploads/profile-photos/
 certificates/

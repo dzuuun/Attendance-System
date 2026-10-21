@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Bitmap
@@ -11,16 +12,14 @@ import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.nfc.NfcAdapter
-import android.nfc.NdefRecord
+import android.nfc.NfcManager
 import android.nfc.Tag
-import android.nfc.tech.MifareClassic
-import android.nfc.tech.Ndef
-import android.nfc.tech.NfcA
 import android.os.Bundle
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
 import android.view.KeyEvent
@@ -54,8 +53,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 import java.time.Instant
-import java.nio.charset.StandardCharsets
-import java.nio.charset.Charset
 import java.util.UUID
 
 private class KioskRequestException(val statusCode: Int, message: String) : IllegalStateException(message)
@@ -72,6 +69,8 @@ class MainActivity : Activity() {
     private lateinit var dateText: TextView
     private lateinit var scanButton: Button
     private lateinit var cameraButton: Button
+    private lateinit var nfcStatus: TextView
+    private lateinit var lastCardUid: TextView
     private lateinit var resultTitle: TextView
     private lateinit var resultDetail: TextView
     private lateinit var resultPhoto: ImageView
@@ -81,16 +80,18 @@ class MainActivity : Activity() {
     private lateinit var previousLogNotice: TextView
     private lateinit var resetProgress: ProgressBar
     private lateinit var statusPill: TextView
-    private lateinit var nfcStatus: TextView
     private lateinit var progress: ProgressBar
     private var gates: List<Gate> = emptyList()
     private var isScanning = false
     private var resultReset: Runnable? = null
     private var resetAnimator: ObjectAnimator? = null
     private val recentlyAccepted = mutableMapOf<String, Long>()
-    private val nfcAdapter: NfcAdapter? by lazy { NfcAdapter.getDefaultAdapter(this) }
     private var kioskEnabled = true
     private var verificationDialogShowing = false
+    private var nfcResumed = false
+    private val nfcAdapter: NfcAdapter? by lazy {
+        (getSystemService(Context.NFC_SERVICE) as? NfcManager)?.defaultAdapter
+    }
     private val kioskId: String by lazy {
         preferences.getString("kiosk_id", null) ?: UUID.randomUUID().toString().also {
             preferences.edit().putString("kiosk_id", it).apply()
@@ -155,33 +156,6 @@ class MainActivity : Activity() {
         mainHandler.postDelayed(kioskHeartbeat, 2_000L)
     }
 
-    override fun onResume() {
-        super.onResume()
-        val adapter = nfcAdapter
-        if (adapter == null) {
-            nfcStatus.text = "NFC is not available on this device."
-            return
-        }
-        if (!adapter.isEnabled) {
-            nfcStatus.text = "Turn on NFC to scan TapTrack cards."
-            return
-        }
-        nfcStatus.text = "Native NFC ready — tap a TapTrack card."
-        adapter.enableReaderMode(
-            this,
-            { tag -> readTapTrackCard(tag) },
-            // NDEF discovery is needed as a compatibility fallback for cards
-            // enrolled by standard NTAG215/NDEF writer applications.
-            NfcAdapter.FLAG_READER_NFC_A,
-            null,
-        )
-    }
-
-    override fun onPause() {
-        nfcAdapter?.disableReaderMode(this)
-        super.onPause()
-    }
-
     override fun onDestroy() {
         mainHandler.removeCallbacks(clockUpdater)
         mainHandler.removeCallbacks(kioskHeartbeat)
@@ -189,6 +163,64 @@ class MainActivity : Activity() {
         resetAnimator?.cancel()
         executor.shutdownNow()
         super.onDestroy()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        nfcResumed = true
+        enableCardReader()
+    }
+
+    override fun onPause() {
+        nfcResumed = false
+        runCatching { nfcAdapter?.disableReaderMode(this) }
+        super.onPause()
+    }
+
+    private fun enableCardReader() {
+        val adapter = nfcAdapter
+        nfcStatus.text = when {
+            adapter == null -> "Use a USB/Bluetooth HID reader on this device."
+            !adapter.isEnabled -> "NFC is off. Tap here to enable card scanning."
+            else -> "Tap a card to scan its HID card number."
+        }
+        if (adapter == null || !adapter.isEnabled) return
+        runCatching {
+            adapter.enableReaderMode(
+                this,
+                NfcAdapter.ReaderCallback { tag -> onCardDiscovered(tag) },
+                NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or
+                    NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V or
+                    NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+                Bundle().apply { putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250) },
+            )
+        }.onFailure {
+            nfcStatus.text = "Card reader unavailable. Use the HID reader or reopen the app."
+        }
+    }
+
+    private fun onCardDiscovered(tag: Tag) {
+        val uid = tag.id.copyOf()
+        // Read only the tag identifier; no NDEF payload or card contents are used.
+        mainHandler.post {
+            if (!nfcResumed || isFinishing || isDestroyed || verificationDialogShowing) return@post
+            if (!hasWindowFocus()) return@post
+            if (isScanning) {
+                nfcStatus.text = "Saving the previous scan. Remove this card and tap again when ready."
+                return@post
+            }
+            if (uid.isEmpty()) {
+                showFailure("This card does not provide a UID. Use its ID number or the HID reader.")
+                return@post
+            }
+            val rawUid = CardUid.hex(uid)
+            lastCardUid.text = "UID: $rawUid"
+            lastCardUid.visibility = View.VISIBLE
+            nfcStatus.text = "Card UID read. Remove the card before tapping again."
+            // A card held against the device must not create another attendance record.
+            runCatching { nfcAdapter?.ignore(tag, 750, null, null) }
+            submitScan("", dismissKeyboard = true, cardUid = rawUid)
+        }
     }
 
     private fun buildScreen(): View {
@@ -404,11 +436,24 @@ class MainActivity : Activity() {
         setPadding(dp(18), dp(14), dp(18), dp(14))
         addView(text("ENTRANCE TERMINAL", 12f, Color.rgb(177, 226, 198), true))
         addView(text("Ready to Scan", 24f, Color.WHITE, true).apply { setPadding(0, dp(2), 0, dp(2)) })
-        addView(text("Scan or enter an ID number.", 12f, Color.rgb(205, 230, 215), false))
+        addView(text("Tap a card, scan, or enter an ID number or card number.", 12f, Color.rgb(205, 230, 215), false))
+        nfcStatus = text("Checking card reader…", 11f, Color.rgb(177, 226, 198), false).apply {
+            setPadding(0, dp(5), 0, dp(3))
+            setOnClickListener {
+                if (nfcAdapter != null && nfcAdapter?.isEnabled == false)
+                    runCatching { startActivity(Intent(Settings.ACTION_NFC_SETTINGS)) }
+            }
+        }
+        addView(nfcStatus)
+        lastCardUid = text("", 11f, Color.rgb(205, 230, 215), false).apply {
+            visibility = View.GONE
+            setTextIsSelectable(true)
+        }
+        addView(lastCardUid)
 
         addView(text("MANUAL ID ENTRY / SCANNER BUFFER", 10f, Color.rgb(177, 226, 198), true).apply { setPadding(0, dp(10), 0, dp(4)) })
         idInput = EditText(this@MainActivity).apply {
-            hint = "Scan or enter ID number"
+            hint = "Scan or enter ID number or card number"
             setSingleLine(true)
             imeOptions = EditorInfo.IME_ACTION_DONE
             inputType = InputType.TYPE_CLASS_TEXT
@@ -430,11 +475,6 @@ class MainActivity : Activity() {
         cameraButton.background = roundedBackground(Color.rgb(6, 94, 63), 12, Color.rgb(32, 145, 101), 1)
         cameraButton.setOnClickListener { openCameraScanner() }
         addView(cameraButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44)).apply { topMargin = dp(6) })
-        nfcStatus = text("Checking NFC…", 12f, Color.rgb(177, 226, 198), false).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(8), 0, 0)
-        }
-        addView(nfcStatus, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
     }
 
     private fun buildResultPanel(
@@ -742,31 +782,35 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun submitScan(rawId: String, dismissKeyboard: Boolean = false) {
+    private fun submitScan(rawId: String, dismissKeyboard: Boolean = false, cardUid: String? = null) {
         val idNumber = rawId.trim().uppercase(Locale.US)
+        val scanKey = cardUid?.let { "UID:$it" } ?: idNumber
         val gate = (gateSpinner.adapter as? GateSpinnerAdapter)?.gateAt(gateSpinner.selectedItemPosition)
-        if (idNumber.isBlank()) { showFailure("Enter or scan an ID number."); return }
+        if (idNumber.isBlank() && cardUid == null) { showFailure("Enter or scan an ID number or card number."); return }
         if (!kioskEnabled) { showFailure("This kiosk has been disabled by central management."); return }
         if (gate == null) { showFailure("Select an assigned gate first."); return }
         if (dismissKeyboard) hideSoftKeyboard()
-        val previous = recentlyAccepted[idNumber] ?: 0L
+        val previous = recentlyAccepted[scanKey] ?: 0L
         if (System.currentTimeMillis() - previous < 5_000L) return
         if (isScanning) return
+        idInput.text.clear()
         isScanning = true
         setLoading(true)
         executor.execute {
             try {
                 val body = JSONObject().apply {
-                    put("idNumber", idNumber)
+                    if (cardUid != null) put("cardUid", cardUid) else put("idNumber", idNumber)
                     put("action", "Auto")
                     put("location", gate.location)
                     put("kioskId", kioskId)
                 }
                 val response = request("POST", "${baseUrl()}/api/kiosk/scan", body) as JSONObject
                 val photo = loadPhoto(response.optString("photoUrl"))
-                recentlyAccepted[idNumber] = System.currentTimeMillis()
+                recentlyAccepted[scanKey] = System.currentTimeMillis()
                 mainHandler.post {
-                    idInput.text.clear()
+                    if (cardUid != null) {
+                        lastCardUid.text = "Card number: ${response.optString("cardNumber")}\nUID: $cardUid"
+                    }
                     showSuccess(response, photo)
                     idInput.requestFocus()
                 }
@@ -1021,96 +1065,6 @@ class MainActivity : Activity() {
             putExtra(CameraScanActivity.EXTRA_LOCATION, gate.location)
             putExtra(CameraScanActivity.EXTRA_KIOSK_TOKEN, kioskToken())
         })
-    }
-
-    private fun readTapTrackCard(tag: Tag) {
-        try {
-            // TapTrack supports both its original NTAG Type 2 layout (pages 4-7)
-            // and MIFARE Classic cards (sector 1, block 4, factory key).
-            val raw = MifareClassic.get(tag)?.let(::readMifareClassicCard)
-                ?: readType2Card(tag)
-            // Some NTAG215 enrollment tools write the ID as an NDEF text record
-            // instead of directly to pages 4-7. Keep the original TapTrack
-            // layout first, then support that standard representation too.
-            val idNumber = runCatching { decodeCardIdentifier(raw) }
-                .getOrElse { error -> readNdefIdentifier(tag) ?: throw error }
-            mainHandler.post { submitScan(idNumber) }
-        } catch (error: Exception) {
-            mainHandler.post {
-                showFailure(error.message ?: "Unable to read the NFC card.")
-                idInput.requestFocus()
-            }
-        }
-    }
-
-    private fun readType2Card(tag: Tag): ByteArray {
-        val technology = NfcA.get(tag)
-            ?: throw IllegalStateException("This is not a supported TapTrack NFC card.")
-        return try {
-            technology.connect()
-            technology.transceive(byteArrayOf(0x30, 0x04))
-        } finally {
-            runCatching { technology.close() }
-        }
-    }
-
-    private fun readMifareClassicCard(technology: MifareClassic): ByteArray {
-        if (technology.size < MifareClassic.SIZE_1K)
-            throw IllegalStateException("This MIFARE card does not have enough memory.")
-        return try {
-            technology.connect()
-            val sector = MIFARE_CLASSIC_SECTOR
-            val authenticated = technology.authenticateSectorWithKeyA(sector, MifareClassic.KEY_DEFAULT) ||
-                technology.authenticateSectorWithKeyB(sector, MifareClassic.KEY_DEFAULT)
-            if (!authenticated)
-                throw IllegalStateException("This MIFARE card is protected or was not enrolled by TapTrack.")
-            technology.readBlock(technology.sectorToBlock(sector))
-        } finally {
-            runCatching { technology.close() }
-        }
-    }
-
-    private fun decodeCardIdentifier(raw: ByteArray): String {
-            val end = raw.indexOfFirst { value -> value == 0.toByte() || value == 0xFF.toByte() }
-                .let { if (it < 0) raw.size else it }
-            val idNumber = String(raw.copyOf(end), StandardCharsets.US_ASCII).trim().uppercase(Locale.US)
-            if (!idNumber.matches(Regex("^(?:\\d{7,8}|\\d{12}|P\\d{7,8})$")))
-                throw IllegalStateException("This card does not contain a valid TapTrack ID.")
-            return idNumber
-    }
-
-    private fun readNdefIdentifier(tag: Tag): String? {
-        val technology = Ndef.get(tag) ?: return null
-        return try {
-            technology.connect()
-            technology.ndefMessage?.records
-                ?.firstNotNullOfOrNull(::identifierFromNdefRecord)
-        } finally {
-            runCatching { technology.close() }
-        }
-    }
-
-    private fun identifierFromNdefRecord(record: NdefRecord): String? {
-        val payload = record.payload ?: return null
-        val text = if (
-            record.tnf == NdefRecord.TNF_WELL_KNOWN &&
-            record.type.contentEquals(NdefRecord.RTD_TEXT)
-        ) {
-            if (payload.isEmpty()) return null
-            val status = payload[0].toInt() and 0xFF
-            val languageLength = status and 0x3F
-            if (payload.size <= languageLength + 1) return null
-            val charset = if ((status and 0x80) == 0) StandardCharsets.UTF_8 else Charset.forName("UTF-16")
-            String(payload, languageLength + 1, payload.size - languageLength - 1, charset)
-        } else {
-            String(payload, StandardCharsets.UTF_8)
-        }
-        return TAPTRACK_IDENTIFIER.find(text.uppercase(Locale.US))?.value
-    }
-
-    companion object {
-        private const val MIFARE_CLASSIC_SECTOR = 1
-        private val TAPTRACK_IDENTIFIER = Regex("(?<![A-Z0-9])(?:\\d{12}|P\\d{7,8}|\\d{7,8})(?![A-Z0-9])")
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {

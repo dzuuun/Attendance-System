@@ -1,4 +1,8 @@
 (() => {
+  // A reader's Enter must never navigate the kiosk page, even during startup.
+  document.addEventListener("submit", (event) => {
+    if (event.target.id === "kioskForm") event.preventDefault();
+  }, true);
   const isEntrance = location.pathname.includes("/kiosk/entrance");
   const kioskIdKey = isEntrance
     ? "taptrack_kiosk_id"
@@ -71,20 +75,41 @@
   }
 
   window.fetch = async (resource, options) => {
-    const response = await nativeFetch(resource, options);
-    const url = typeof resource === "string" ? resource : resource?.url || "";
+    const rawUrl = typeof resource === "string" ? resource : resource?.url || "";
+    const url = new URL(rawUrl, location.href);
+    const basePath = window.taptrackBasePath || "";
+    const apiPath = basePath && url.pathname.startsWith(`${basePath}/`)
+      ? url.pathname.slice(basePath.length) : url.pathname;
     const kioskRequest =
-      url.startsWith("/api/kiosk/") || url.startsWith("/api/library-kiosk/");
+      url.origin === location.origin &&
+      (apiPath.startsWith("/api/kiosk/") || apiPath.startsWith("/api/library-kiosk/"));
+    const isPairing = apiPath.startsWith("/api/kiosk/pair");
+    const method = String(options?.method || resource?.method || "GET").toUpperCase();
+    if (kioskRequest && !isPairing && ["GET", "HEAD"].includes(method)) {
+      // Select this device's cookie even when another kiosk page refreshed the
+      // generic cookie in the same browser profile.
+      url.searchParams.set("kioskId", kioskId);
+      resource = typeof resource === "string"
+        ? `${url.pathname}${url.search}${url.hash}`
+        : new Request(url.href, resource);
+    }
+    const response = await nativeFetch(resource, options);
+    let identityMismatch = false;
+    if (kioskRequest && response.status === 403) {
+      const error = await response.clone().json().catch(() => ({}));
+      identityMismatch = error.code === "KIOSK_IDENTITY_MISMATCH" ||
+        error.message === "This enrollment belongs to another kiosk.";
+    }
     if (
-      response.status !== 401 ||
+      (response.status !== 401 && !identityMismatch) ||
       !kioskRequest ||
-      url.startsWith("/api/kiosk/pair")
+      isPairing
     )
       return response;
     await showPairing();
     const isScanRequest =
-      url === "/api/kiosk/scan" ||
-      /^\/api\/library-kiosk\/[^/]+\/scan(?:\?|$)/.test(url);
+      apiPath === "/api/kiosk/scan" ||
+      /^\/api\/library-kiosk\/[^/]+\/scan$/.test(apiPath);
     if (isScanRequest)
       return new Response(
         JSON.stringify({

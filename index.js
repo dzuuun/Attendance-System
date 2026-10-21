@@ -265,34 +265,12 @@ app.get(
   "/api/library-kiosk/:location/scans",
   asyncHandler(require("./api/library/library.controller").recent),
 );
-app.post("/api/kiosk/scanners/pair", (req, res) => {
-  res.status(410).json({
-    message:
-      "Scanner assignments are configured locally on each kiosk terminal.",
-  });
-});
-app.get("/api/kiosk/scanners/events", (req, res) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  const send = (event, value) =>
-    res.write(`event: ${event}\ndata: ${JSON.stringify(value)}\n\n`);
-  const status = () => send("status", scannerBridge.status());
-  const scan = (value) => send("scan", value);
-  const assigned = (value) => send("assigned", value);
-  const unassigned = (value) => send("unassigned", value);
-  scannerBridge.on("status", status);
-  scannerBridge.on("scan", scan);
-  scannerBridge.on("assigned", assigned);
-  scannerBridge.on("unassigned", unassigned);
-  status();
-  req.on("close", () => {
-    scannerBridge.off("status", status);
-    scannerBridge.off("scan", scan);
-    scannerBridge.off("assigned", assigned);
-    scannerBridge.off("unassigned", unassigned);
-  });
-});
+app.get("/api/kiosk/scanners/events", (req, res) =>
+  require("./scanner/scanner-events").subscribe(scannerBridge, req, res),
+);
+app.get("/api/kiosk/scanners/lookup", (req, res) =>
+  require("./scanner/scanner-events").lookup(scannerBridge, req, res),
+);
 app.use("/api", checkSession);
 app.use("/api", require("./api/middleware/activity_log"));
 app.post(
@@ -349,6 +327,11 @@ app.use(
   "/api/person-logs",
   requireAnyMaintenance("students", "alumni", "employees"),
   wrapRouter(personLogsRouter),
+);
+app.use(
+  "/api/card-enrollment",
+  requireMaintenance("cardEnrollment"),
+  wrapRouter(require("./api/maintenance/student/card-enrollment.router")),
 );
 app.use(
   "/api/student",
@@ -666,6 +649,7 @@ const maintenancePage = (module, file) => [
   (req, res, next) => {
     if (hasMaintenanceModule(req.user, module)) return next();
     const maintenanceRoutes = {
+        cardEnrollment: "/maintenance/card-enrollment",
         students: "/maintenance/student",
         alumni: "/maintenance/alumni",
         employees: "/maintenance/employee",
@@ -705,6 +689,10 @@ app.get(
   protectedPage("account/change-password/index.html"),
 );
 app.get("/attendance", protectedPage("attendance/index.html"));
+app.get(
+  "/maintenance/card-enrollment",
+  maintenancePage("cardEnrollment", "maintenance/card-enrollment/index.html"),
+);
 app.get(
   "/maintenance/student",
   maintenancePage("students", "maintenance/student/index.html"),
@@ -781,22 +769,43 @@ app.get("/auth.js", (_req, res) =>
   res.sendFile(path.join(client, "login", "script.js")),
 );
 app.use(apiErrorHandler);
+const runtimeServers = [];
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  // Let in-flight enrollment writes finish before closing the Python worker.
+  const deadline = setTimeout(() => process.exit(1), 20000);
+  Promise.all(runtimeServers.map((server) => new Promise((resolve) => {
+    server.close(resolve);
+    server.closeIdleConnections?.();
+  }))).then(() => require("./db/db").end()).then(() => {
+    clearTimeout(deadline);
+    process.exit(0);
+  }).catch((error) => {
+    console.error("Shutdown failed:", error.message);
+    process.exit(1);
+  });
+}
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
+process.on("message", (message) => { if (message === "shutdown") shutdown(); });
 require("./api/maintenance/employee/employee.model")
   .ensureSchema()
   .then(() => require("./api/maintenance/alumni/alumni.model").ensureSchema())
   .then(() => require("./db/indexes").ensureIndexes())
   .then(() => {
     getJwtSecret();
-    app.listen(port, () =>
+    runtimeServers.push(app.listen(port, () =>
       console.log(`TapTrack HTTP running at http://localhost:${port}`),
-    );
+    ));
     const secureServer = secureWebServer();
     if (secureServer) {
       if (httpsPort === port)
         throw new Error("HTTPS_PORT must be different from PORT.");
-      secureServer.listen(httpsPort, () =>
+      runtimeServers.push(secureServer.listen(httpsPort, () =>
         console.log(`TapTrack HTTPS running at https://localhost:${httpsPort}`),
-      );
+      ));
     }
   })
   .catch((error) => {

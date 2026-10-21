@@ -6,6 +6,7 @@ let students = [],
 let managePopup = null;
 let manageTrigger = null;
 let bulkGraduateIds = [];
+const openCardEnrollment = TapTrack.initCardEnrollmentDialog({ personType: "student", onSave: render });
 
 function closeManagePopup() {
   if (manageTrigger) manageTrigger.setAttribute("aria-expanded", "false");
@@ -22,7 +23,7 @@ function openManagePopup(trigger) {
   if (!student) return;
   const popup = document.createElement("div");
   popup.className = "event-action-options event-action-popup";
-  popup.innerHTML = `<button class="edit" data-id="${student.id}">Edit</button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="card-enroll" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Enroll card</button><button class="graduate" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Move to Alumni</button>` : ""}<button class="person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button>`;
+  popup.innerHTML = `<button class="edit" data-id="${student.id}">Edit</button><button class="card-enroll" data-id="${student.id}">Enroll card</button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="graduate" data-id="${student.id}" ${student.isActive ? "" : "disabled"}>Move to Alumni</button>` : ""}<button class="person-log-export" data-person-id="${student.id}" data-person-type="student" data-person-name="${escapeHtml(student.name)}" data-id-number="${escapeHtml(student.idNumber)}">Export</button>`;
   document.body.appendChild(popup);
   const rect = trigger.getBoundingClientRect();
   const width = 172;
@@ -151,7 +152,7 @@ function render() {
     : "Active students";
   $("#body").innerHTML = "";
   if (!rows.length) {
-    $("#body").innerHTML = emptyRow(6, "No student records found.");
+    $("#body").innerHTML = emptyRow(7, "No student records found.");
     return Promise.resolve(null);
   }
   const display = (value) => escapeHtml(value || "—");
@@ -192,6 +193,10 @@ function render() {
           type === "display"
             ? `<span class="student-placement">${display(value)}${student.sectionName ? `<small>${escapeHtml(student.sectionName)}</small>` : ""}</span>`
             : `${value || ""} ${student.sectionName || ""}`.trim(),
+      },
+      {
+        data: "cardId",
+        render: (value, type) => type === "display" ? (value ? `<span class="status-pill" title="${escapeHtml(value)}">Enrolled</span>` : "Not enrolled") : (value || ""),
       },
       {
         data: "isActive",
@@ -292,85 +297,6 @@ function open(student = null) {
   $("#error").textContent = "";
   $("#dialog").showModal();
 }
-let cardEnrollmentStudent = null;
-let enrollmentCardRead = false;
-async function openCardEnrollment(student) {
-  cardEnrollmentStudent = student;
-  enrollmentCardRead = false;
-  $("#cardEnrollmentName").textContent = TapTrack.personName(student);
-  $("#cardEnrollmentId").textContent = `ID number: ${student.idNumber}`;
-  $("#cardEnrollmentError").textContent = "";
-  $("#cardEnrollmentStatus").textContent = "Checking the local NFC writer…";
-  $("#cardCurrentValue").textContent = "Current card text: Not read";
-  $("#readCardBtn").disabled = true;
-  $("#writeCardBtn").disabled = true;
-  $("#cardEnrollmentDialog").showModal();
-  try {
-    const status = await TapTrackNfc.status();
-    $("#cardEnrollmentStatus").textContent = status.message;
-    $("#readCardBtn").disabled = !status.available || status.busy;
-  } catch (error) {
-    $("#cardEnrollmentStatus").textContent = "NFC writer unavailable.";
-    $("#cardEnrollmentError").textContent = error.message;
-  }
-}
-$("#readCardBtn").addEventListener("click", async () => {
-  const button = $("#readCardBtn");
-  button.disabled = true;
-  button.textContent = "Reading…";
-  $("#writeCardBtn").disabled = true;
-  $("#cardEnrollmentError").textContent = "";
-  try {
-    const result = await TapTrackNfc.read();
-    enrollmentCardRead = true;
-    $("#cardCurrentValue").textContent =
-      `Current card text: ${result.value || "Blank card"}`;
-    $("#cardEnrollmentStatus").textContent =
-      "Card read successfully. Keep the same card in place to write.";
-    $("#writeCardBtn").disabled = false;
-  } catch (error) {
-    enrollmentCardRead = false;
-    $("#cardEnrollmentError").textContent = error.message;
-  } finally {
-    button.textContent = "Read card";
-    button.disabled = false;
-  }
-});
-$("#cardEnrollmentForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!cardEnrollmentStudent) return;
-  const button = $("#writeCardBtn");
-  button.disabled = true;
-  button.textContent = "Writing… keep card in place";
-  $("#cardEnrollmentError").textContent = "";
-  try {
-    const authorization = await api(
-      `/api/student/${cardEnrollmentStudent.id}/card-enrollment`,
-      {
-        method: "POST",
-        body: JSON.stringify({ validateOnly: true }),
-      },
-    );
-    await TapTrackNfc.write(authorization.idNumber);
-    await api(`/api/student/${cardEnrollmentStudent.id}/card-enrollment`, {
-      method: "POST",
-      body: JSON.stringify({ localVerified: true }),
-    });
-    $("#cardEnrollmentDialog").close();
-    TapTrack.toast(
-      `Card enrolled and verified for ${cardEnrollmentStudent.idNumber}.`,
-      "success",
-    );
-  } catch (error) {
-    enrollmentCardRead = false;
-    $("#cardEnrollmentError").textContent = error.message;
-    $("#cardEnrollmentStatus").textContent =
-      "Read the card again before another write attempt.";
-  } finally {
-    button.textContent = "Write and verify card";
-    button.disabled = !enrollmentCardRead;
-  }
-});
 $("#search").addEventListener("input", render);
 $("#showInactive").addEventListener("change", render);
 $("#exportStudentsBtn").addEventListener("click", async () => {
@@ -441,8 +367,9 @@ document.addEventListener("click", async (event) => {
   );
   if (!student) return;
   if (event.target.classList.contains("edit")) open(student);
-  if (event.target.classList.contains("card-enroll"))
+  if (event.target.classList.contains("card-enroll")) {
     openCardEnrollment(student);
+  }
   if (event.target.classList.contains("graduate")) {
     $("#graduateStudentId").value = student.id;
     $("#graduateStudentName").textContent =

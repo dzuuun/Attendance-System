@@ -15,8 +15,6 @@ const isToday = (timestamp, now = new Date()) => {
   );
 };
 
-const visible = (rows) => rows;
-
 const absoluteAssetUrl = (req, value) => {
   const assetUrl = String(value || "").trim();
   if (!assetUrl) return null;
@@ -37,13 +35,12 @@ exports.getAll = async (req, res) => {
   const periodId = req.query.periodId ? Number(req.query.periodId) : null;
   if (req.query.periodId && (!Number.isInteger(periodId) || periodId < 1))
     return res.status(400).json({ message: "Select a valid academic period." });
-  res.json(visible(await model.getAll(periodId), req.user));
+  res.json(await model.getAll(periodId));
 };
 
 exports.getPeriods = async (_req, res) => res.json(await periodModel.getAll());
 
-exports.getToday = async (req, res) =>
-  res.json(visible(await model.getToday(), req.user));
+exports.getToday = async (_req, res) => res.json(await model.getToday());
 
 exports.getEventScans = async (req, res) => {
   const event = await eventModel.getById(req.params.id);
@@ -53,7 +50,7 @@ exports.getEventScans = async (req, res) => {
     return res
       .status(403)
       .json({ message: "You do not have permission to view this event." });
-  res.json(visible(await model.getByEvent(req.params.id), req.user));
+  res.json(await model.getByEvent(req.params.id));
 };
 
 const canCorrectEvent = (user, event) =>
@@ -148,6 +145,10 @@ exports.scan = async (req, res) => {
   const idNumber = String(req.body.idNumber || "")
     .trim()
     .toUpperCase();
+  const hasCardUid = req.body.cardUid !== undefined;
+  const cardUid = hasCardUid ? req.body.cardUid : null;
+  if (hasCardUid && (typeof cardUid !== "string" || !/^(?:[0-9a-f]{2}){1,32}$/i.test(cardUid)))
+    return res.status(400).json({ message: "The scanned card UID is invalid. Tap the card again." });
   const eventId = req.body.eventId ? Number(req.body.eventId) : null;
   let action = String(req.body.action || "").trim();
   const location =
@@ -167,8 +168,8 @@ exports.scan = async (req, res) => {
         message: "This kiosk has been disabled by central management.",
       });
   }
-  if (!idNumber)
-    return res.status(400).json({ message: "Enter an ID number." });
+  if (!idNumber && !hasCardUid)
+    return res.status(400).json({ message: "Enter an ID number or card number." });
   if (!["Time In", "Time Out", "Auto"].includes(action))
     return res.status(400).json({
       message: "Choose whether this device records Time In or Time Out.",
@@ -199,8 +200,12 @@ exports.scan = async (req, res) => {
   }
 
   const lookupAudience = event?.targetAudience || "Both";
-  const person = await model.findPerson(idNumber, lookupAudience);
+  const person = hasCardUid
+    ? await model.findPersonByCardUid(cardUid, lookupAudience)
+    : await model.findPerson(idNumber, lookupAudience);
   if (!person) {
+    if (hasCardUid)
+      return res.status(404).json({ message: "This card is not enrolled to an active student, employee, or alumnus eligible for this kiosk." });
     const inactiveStudent = await model.findInactiveStudent(idNumber);
     if (inactiveStudent)
       return res.status(403).json({
@@ -258,79 +263,85 @@ exports.scan = async (req, res) => {
         "Another scan for this person is still processing. Please try again.",
       duplicate: true,
     });
-  res.once("finish", releaseDatabaseLock);
-  res.once("close", releaseDatabaseLock);
+  // Keep the lock and all protected queries on the same connection. Reserving
+  // one pool slot for the lock and then borrowing another can exhaust the pool.
+  try {
+    const connection = releaseDatabaseLock.connection;
+    const latest = await model.findLatest(person, eventId, connection);
+    // Daily entrance attendance starts a new in/out cycle every calendar day.
+    // Keep the timestamp check here as a safeguard against database timezone
+    // differences causing yesterday's final Time In to be returned after midnight.
+    const previous =
+      !eventId && latest && !isToday(latest.timestamp) ? null : latest;
 
-  const latest = await model.findLatest(person, eventId);
-  // Daily entrance attendance starts a new in/out cycle every calendar day.
-  // Keep the timestamp check here as a safeguard against database timezone
-  // differences causing yesterday's final Time In to be returned after midnight.
-  const previous =
-    !eventId && latest && !isToday(latest.timestamp) ? null : latest;
-
-  if (
-    !eventId &&
-    previous &&
-    Number(previous.secondsAgo) >= 0 &&
-    Number(previous.secondsAgo) < ENTRANCE_DUPLICATE_WINDOW_SECONDS
-  )
-    return res.status(409).json({
-      message: "Duplicate scan ignored. Please wait a few seconds.",
-      duplicate: true,
-    });
-
-  // The university entrance kiosk has one manual/camera input. Alternate the
-  // action from today's latest record while dedicated scanner lanes continue
-  // to submit their explicitly assigned action.
-  if (action === "Auto")
-    action = previous?.action === "Time In" ? "Time Out" : "Time In";
-
-  if (!previous && action === "Time Out")
-    return res.status(409).json({
-      message: `${person.name} must record Time In before Time Out.`,
-    });
-  if (previous?.action === action)
-    return res.status(409).json({
-      message: `${person.name} already has a ${action} record.`,
-    });
-
-  if (event) {
-    const counts = await model.getActionCounts(person, eventId);
-    const limit =
-      action === "Time In"
-        ? Number(event.maxTimeIns)
-        : Number(event.maxTimeOuts);
-    const used = action === "Time In" ? counts.timeIns : counts.timeOuts;
-    if (used >= limit)
+    if (
+      !eventId &&
+      previous &&
+      Number(previous.secondsAgo) >= 0 &&
+      Number(previous.secondsAgo) < ENTRANCE_DUPLICATE_WINDOW_SECONDS
+    )
       return res.status(409).json({
-        message: `${person.name} has reached the ${action} limit for this event.`,
+        message: "Duplicate scan ignored. Please wait a few seconds.",
+        duplicate: true,
       });
-  }
 
-  const result = await model.record(person, action, eventId, location);
-  res.status(201).json({
-    id: result.insertId,
-    personId: person.id,
-    idNumber: person.idNumber,
-    name: person.name,
-    type: person.type,
-    isAlumnus: Boolean(person.isAlumnus),
-    program: person.type !== "Employee" ? person.program : null,
-    programCode: person.type !== "Employee" ? person.programCode : null,
-    college: person.type !== "Employee" ? person.college : null,
-    yearLevel: person.type === "Student" ? person.yearLevel : null,
-    sectionName: person.type === "Student" ? person.sectionName : null,
-    graduationYear: person.type === "Alumnus" ? person.graduationYear : null,
-    department: person.type === "Employee" ? person.department : null,
-    photoUrl: absoluteAssetUrl(req, person.photoUrl),
-    eventId,
-    eventName: event?.name || null,
-    action,
-    timestamp: new Date().toISOString(),
-    location: eventId ? null : location,
-    previousAction: previous?.action || null,
-    previousTimestamp: previous?.timestamp || null,
-  });
+    // The university entrance kiosk has one manual/camera input. Alternate the
+    // action from today's latest record while dedicated scanner lanes continue
+    // to submit their explicitly assigned action.
+    if (action === "Auto")
+      action = previous?.action === "Time In" ? "Time Out" : "Time In";
+
+    if (!previous && action === "Time Out")
+      return res.status(409).json({
+        message: `${person.name} must record Time In before Time Out.`,
+      });
+    if (previous?.action === action)
+      return res.status(409).json({
+        message: `${person.name} already has a ${action} record.`,
+      });
+
+    if (event) {
+      const counts = await model.getActionCounts(person, eventId, connection);
+      const limit =
+        action === "Time In"
+          ? Number(event.maxTimeIns)
+          : Number(event.maxTimeOuts);
+      const used = action === "Time In" ? counts.timeIns : counts.timeOuts;
+      if (used >= limit)
+        return res.status(409).json({
+          message: `${person.name} has reached the ${action} limit for this event.`,
+        });
+    }
+
+    const result = await model.record(person, action, eventId, location, connection);
+    res.status(201).json({
+      id: result.insertId,
+      personId: person.id,
+      idNumber: person.idNumber,
+      ...(hasCardUid ? { cardNumber: person.cardId } : {}),
+      name: person.name,
+      type: person.type,
+      isAlumnus: Boolean(person.isAlumnus),
+      program: person.type !== "Employee" ? person.program : null,
+      programCode: person.type !== "Employee" ? person.programCode : null,
+      college: person.type !== "Employee" ? person.college : null,
+      yearLevel: person.type === "Student" ? person.yearLevel : null,
+      sectionName: person.type === "Student" ? person.sectionName : null,
+      graduationYear: person.type === "Alumnus" ? person.graduationYear : null,
+      department: person.type === "Employee" ? person.department : null,
+      photoUrl: absoluteAssetUrl(req, person.photoUrl),
+      eventId,
+      eventName: event?.name || null,
+      action,
+      timestamp: new Date().toISOString(),
+      location: eventId ? null : location,
+      previousAction: previous?.action || null,
+      previousTimestamp: previous?.timestamp || null,
+    });
+  } finally {
+    // Client disconnects must not return a connection while a write still runs.
+    await releaseDatabaseLock();
+  }
 };
 
 exports.kioskRecent = async (req, res) => {

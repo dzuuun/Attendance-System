@@ -15,6 +15,7 @@ let people = [],
   currentUser = null;
 let managePopup = null;
 let manageTrigger = null;
+const openCardEnrollment = TapTrack.initCardEnrollmentDialog({ personType: "employee", onSave: render });
 
 function closeManagePopup() {
   if (manageTrigger) manageTrigger.setAttribute("aria-expanded", "false");
@@ -31,7 +32,7 @@ function openManagePopup(trigger) {
   if (!person) return;
   const popup = document.createElement("div");
   popup.className = "event-action-options event-action-popup";
-  popup.innerHTML = `<button class="edit" data-id="${person.id}">Edit</button>${["Superadmin", "Administrator"].includes(currentUser?.role) ? `<button class="card-enroll" data-id="${person.id}" ${person.isActive ? "" : "disabled"}>Enroll card</button>` : ""}<button class="person-log-export" data-person-id="${person.id}" data-person-type="employee" data-person-name="${escapeHtml(person.name)}" data-id-number="${escapeHtml(person.idNumber)}">Export</button>`;
+  popup.innerHTML = `<button class="edit" data-id="${person.id}">Edit</button><button class="card-enroll" data-id="${person.id}">Enroll card</button><button class="person-log-export" data-person-id="${person.id}" data-person-type="employee" data-person-name="${escapeHtml(person.name)}" data-id-number="${escapeHtml(person.idNumber)}">Export</button>`;
   document.body.appendChild(popup);
   const rect = trigger.getBoundingClientRect();
   const width = 172;
@@ -77,7 +78,7 @@ function render() {
   );
   $("#body").innerHTML = "";
   if (!rows.length) {
-    $("#body").innerHTML = emptyRow(6, `No ${lower}s found.`);
+    $("#body").innerHTML = emptyRow(7, `No ${lower}s found.`);
     return Promise.resolve(null);
   }
   return TapTrack.initDataTable(table, {
@@ -103,6 +104,10 @@ function render() {
         data: "contact",
         render: (value, mode) =>
           mode === "display" ? escapeHtml(value || "—") : value || "",
+      },
+      {
+        data: "cardId",
+        render: (value, mode) => mode === "display" ? (value ? `<span class="status-pill" title="${escapeHtml(value)}">Enrolled</span>` : "Not enrolled") : (value || ""),
       },
       {
         data: "isActive",
@@ -150,88 +155,6 @@ function open(person = null) {
   $("#dialog").showModal();
 }
 
-let cardEnrollmentPerson = null;
-let enrollmentCardRead = false;
-async function openCardEnrollment(person) {
-  cardEnrollmentPerson = person;
-  enrollmentCardRead = false;
-  $("#cardEnrollmentName").textContent = personName(person);
-  $("#cardEnrollmentId").textContent = `ID number: ${person.idNumber}`;
-  $("#cardEnrollmentError").textContent = "";
-  $("#cardEnrollmentStatus").textContent = "Checking the local NFC writer…";
-  $("#cardCurrentValue").textContent = "Current card text: Not read";
-  $("#readCardBtn").disabled = true;
-  $("#writeCardBtn").disabled = true;
-  $("#cardEnrollmentDialog").showModal();
-  try {
-    const status = await TapTrackNfc.status();
-    $("#cardEnrollmentStatus").textContent = status.message;
-    $("#readCardBtn").disabled = !status.available || status.busy;
-  } catch (error) {
-    $("#cardEnrollmentStatus").textContent = "NFC writer unavailable.";
-    $("#cardEnrollmentError").textContent = error.message;
-  }
-}
-
-$("#readCardBtn").addEventListener("click", async () => {
-  const button = $("#readCardBtn");
-  button.disabled = true;
-  button.textContent = "Reading…";
-  $("#writeCardBtn").disabled = true;
-  $("#cardEnrollmentError").textContent = "";
-  try {
-    const result = await TapTrackNfc.read();
-    enrollmentCardRead = true;
-    $("#cardCurrentValue").textContent =
-      `Current card text: ${result.value || "Blank card"}`;
-    $("#cardEnrollmentStatus").textContent =
-      "Card read successfully. Keep the same card in place to write.";
-    $("#writeCardBtn").disabled = false;
-  } catch (error) {
-    enrollmentCardRead = false;
-    $("#cardEnrollmentError").textContent = error.message;
-  } finally {
-    button.textContent = "Read card";
-    button.disabled = false;
-  }
-});
-
-$("#cardEnrollmentForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!cardEnrollmentPerson) return;
-  const button = $("#writeCardBtn");
-  button.disabled = true;
-  button.textContent = "Writing… keep card in place";
-  $("#cardEnrollmentError").textContent = "";
-  try {
-    const authorization = await api(
-      `/api/employee/${cardEnrollmentPerson.id}/card-enrollment`,
-      {
-        method: "POST",
-        body: JSON.stringify({ validateOnly: true }),
-      },
-    );
-    await TapTrackNfc.write(authorization.idNumber);
-    await api(`/api/employee/${cardEnrollmentPerson.id}/card-enrollment`, {
-      method: "POST",
-      body: JSON.stringify({ localVerified: true }),
-    });
-    $("#cardEnrollmentDialog").close();
-    TapTrack.toast(
-      `Card enrolled and verified for ${cardEnrollmentPerson.idNumber}.`,
-      "success",
-    );
-  } catch (error) {
-    enrollmentCardRead = false;
-    $("#cardEnrollmentError").textContent = error.message;
-    $("#cardEnrollmentStatus").textContent =
-      "Read the card again before another write attempt.";
-  } finally {
-    button.textContent = "Write and verify card";
-    button.disabled = !enrollmentCardRead;
-  }
-});
-
 $("#search").addEventListener("input", render);
 $("#showInactive").addEventListener("change", render);
 $("#addBtn").addEventListener("click", () => open());
@@ -266,8 +189,8 @@ document.addEventListener("click", (event) => {
   );
   if (!person) return;
   if (event.target.classList.contains("edit")) open(person);
-  if (event.target.classList.contains("card-enroll"))
-    openCardEnrollment(person);
+  if (event.target.classList.contains("card-enroll")) openCardEnrollment(person);
+
 });
 
 $("#form").addEventListener("submit", async (event) => {

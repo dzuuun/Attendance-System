@@ -162,17 +162,16 @@ If an inactive employee scans an ID, TapTrack directs the employee to MIS for re
 
 Bulk employee photo selections are also queued automatically with no overall photo-count limit.
 
-## 9. NFC card enrollment
+## 9. Card enrollment
 
-From a student or employee row, choose the NFC enrollment action. Card enrollment is available to Superadmin and Administrator accounts.
+Open **Card enrollment**, or choose **Enroll card** from a student, employee, or alumni row. Access follows the account's card enrollment permission; an enrollment operator can use the dedicated page without access to directory editing.
 
-1. Connect the supported NFC writer to the computer performing enrollment.
-2. Ensure the Smart Card service and the local NFC bridge are running on that computer.
-3. Place one authorized writable card on the writer.
-4. Select **Read card**.
-5. Select **Write and verify card** only after the correct person is displayed.
+1. Connect the HID card reader to the computer performing enrollment.
+2. Select the person and verify the name, ID number, and photo in the enrollment dialog.
+3. Focus **Card ID** and tap the card. The reader enters the card's default number; scanning again replaces the previous value.
+4. Select **Save card**, then confirm the enrollment in the confirmation dialog. The reader's Enter key does not save the card.
 
-TapTrack writes only the exact ID number, then reads it back for verification. Do not remove the card during writing. The local bridge is required on every client PC that has an NFC writer; a central web server cannot directly access a USB writer attached to another PC.
+Card numbers are managed through enrollment rather than the person-editing form. Alumni use a separate physical card; enroll it on the alumni record. Kiosks accept either the person's ID number or enrolled card number. Enrollment saves the number in TapTrack without writing to the card.
 
 ## 10. Academic maintenance
 
@@ -293,7 +292,7 @@ Open **Maintenance → Kiosks** to review registered devices and their recent st
 | Invalid username/password          | Check spelling and Caps Lock. Ask MIS to verify the active account; do not repeatedly guess.                   |
 | Inactive student/employee          | Refer the person to MIS and reactivate only after authorization.                                               |
 | Camera is unavailable              | Open the approved HTTPS URL, allow camera permission, close other apps using the camera, and reload.           |
-| NFC writer is unavailable          | Connect the writer, start Windows Smart Card service, start `npm run nfc-bridge` on that client PC, and retry. |
+| Card number is not entered         | Check the HID reader connection, focus the Card ID field, and tap the card again.                              |
 | Scanner types but does not submit  | Configure the keyboard-wedge scanner to append Enter after the ID.                                             |
 | Wrong scan action/location         | Confirm the assigned device direction and terminal location before scanning.                                   |
 | Kiosk asks for verification        | Have a Superadmin verify the device. If it was disabled, re-enable it in Kiosk management first.               |

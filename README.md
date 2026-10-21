@@ -3,7 +3,7 @@
 TapTrack is a Node.js, Express, and MySQL attendance system for Notre Dame of
 Marbel University. It records university entrance attendance, event attendance,
 library visits, and Internet Section visits through typed IDs, keyboard-wedge
-RFID/barcode scanners, cameras, or supported NFC writers.
+RFID/barcode scanners and cameras.
 
 ## Features
 
@@ -12,7 +12,7 @@ RFID/barcode scanners, cameras, or supported NFC writers.
 - Multiple scanning stations sharing live event attendance
 - Library and Internet Section entrance kiosks
 - Student and employee directories with Excel import/export and photo uploads
-- NFC card enrollment that writes only the person's ID number
+- Card enrollment for students, employees, and alumni using a keyboard-style HID reader
 - Academic hierarchy and academic-period maintenance
 - Role-based module permissions and activity auditing
 - Excel exports for entrance logs, events, corrections, and person logs
@@ -77,8 +77,6 @@ camera scanning because browsers block camera access from LAN HTTP origins.
 | `GOOGLE_CLIENT_SECRET`    | Optional Google OAuth client secret        |
 | `GOOGLE_WORKSPACE_DOMAIN` | Allowed institutional Google domain        |
 | `GOOGLE_REDIRECT_URI`     | Google OAuth callback URL                  |
-| `NFC_WRITER_COMMAND`      | Executable for NFC read/write operations   |
-| `NFC_WRITER_ARGS`         | JSON array of fixed executable arguments   |
 
 Minimal local configuration:
 
@@ -106,7 +104,7 @@ JWT_SECRET=replace-with-a-long-random-secret
 | `/library/entrance`         | Library entrance logs                         |
 | `/library/internet-section` | Internet Section entrance logs                |
 | `/maintenance/student`      | Student directory and card enrollment         |
-| `/maintenance/employee`     | Employee directory and card enrollment        |
+| `/maintenance/employee`     | Employee directory        |
 | `/user/permissions`         | Permission management                         |
 | `/user/activity-log`        | Newest-first activity log                     |
 
@@ -141,9 +139,7 @@ is no separate directory-access permission. Maintenance users can access both
 directories and their supporting academic records.
 
 Events are tied to the account that created them. Event users see their own
-current and past events. Administrator and Superadmin can see all events. NFC
-card enrollment controls are added to the page only for Administrator and
-Superadmin users.
+current and past events. Administrator and Superadmin can see all events.
 
 ## Attendance behavior
 
@@ -186,6 +182,20 @@ Assign the devices from `/kiosk/entrance`. The mapping is stored in that
 terminal's browser and remains available without a signed-in user. Keep
 identical scanners connected to the same USB ports.
 
+Scanner changes require confirmation; Enter from a reader cannot save them.
+Use **Clear** to remove incorrect mappings. If both slots are occupied,
+**Replace scanners** lets the next physical reader replace that direction's
+existing mappings. Assignment success is displayed as settings saved and does
+not create an attendance record.
+
+When only Time In scanners are assigned, entrance input records Time In only;
+Time Out assignments work the same way. Repeated scans never switch direction.
+This also applies if a keyboard scan arrives before the scanner bridge event or
+the event stream disconnects. With both directions assigned, a short recovery
+lookup identifies delayed reader events and preserves their assigned direction.
+Unidentified input never chooses a direction automatically. Select Record for
+deliberate manual entry.
+
 On Raspberry Pi OS/Linux, grant the service account input-device access, then
 restart its session:
 
@@ -196,65 +206,19 @@ sudo usermod -aG input "$USER"
 Without the helper, a focused keyboard-wedge reader or camera can still scan,
 but the browser cannot distinguish two identical keyboard devices.
 
-## NFC card enrollment
+## Card enrollment
 
-TapTrack writes only the exact database identifier as plain text:
+To delegate enrollment, assign the **Card Enrollment** permission to the operator's account under User management. It grants only the Enroll card page, lookup of students, employees, and alumni, and card enrollment. It does not grant student editing, exports, attendance logs, or other maintenance areas. Custom permissions can select **Card enrollment only** under Maintenance, with all other access switched off.
 
-- College student: `2026123` or `20261234`
-- Elementary/JHS/SHS student: 12-digit LRN
-- Employee: `P2026123` or `P20261234`
+Existing production databases must apply `docs/migrate-card-enrollment-permission.sql` and `docs/migrate-employee-alumni-card-id.sql` once before deploying this access option.
 
-No name, course, department, or JSON metadata is stored. TapTrack requires a
-card read before writing and verifies the value after writing.
+For an existing production database, apply `docs/migrate-student-card-id.sql` once before deploying. New databases include the column in `database.sql`.
 
-The included ACR122U helper assumes blank, initialized NTAG213-compatible Type
-2 cards and requires Python with `pyscard`. Confirm the exact card technology
-before deployment; 13.56 MHz is a frequency, not a memory format.
+Open **Enroll card** to browse the people list with profile photos and enrolled-card status. The table uses the same sorting and pagination controls as the other directories, showing 10 people per page. Optionally filter by ID, name, Students, Employees, or Alumni. Select **Enroll card** for the matching person, tap the card on the HID reader, then select **Save card** and confirm. The reader's Enter key is suppressed. The table shows whether a card is enrolled. Each student, employee, and alumni record enrolls its own physical card, and a card cannot be assigned to another record. Alumni card IDs are stored independently of their former student cards. Attendance accepts enrolled card IDs and existing ID numbers.
 
-Raspberry Pi OS/Linux example:
+The Students directory also keeps its **Enroll card** action and enrolled-card indicator.
 
-```dotenv
-NFC_WRITER_COMMAND=/usr/bin/python3
-NFC_WRITER_ARGS=["/absolute/path/to/Attendance System/scanner/acr122u-ntag213.py"]
-```
-
-Windows example:
-
-```dotenv
-NFC_WRITER_COMMAND=C:\Python312\python.exe
-NFC_WRITER_ARGS=["C:\\TapTrack\\scanner\\acr122u-ntag213.py"]
-```
-
-`NFC_WRITER_ARGS` must be valid JSON. TapTrack starts the command without a
-shell, invokes it with `--read` or `--write`, sends the identifier through
-standard input while writing, and expects a final JSON response line. See
-`scanner/nfc-writer.js` and `scanner/acr122u-ntag213.py` for the protocol.
-
-Do not permanently lock cards until the card model, layout, recovery process,
-and replacement workflow have been tested.
-
-### NFC writer on a client PC
-
-Install this project, Node.js, Python, pyscard, and the NFC reader driver on
-each enrollment PC. Configure that PC's .env with its local Python command,
-the included helper path, and the exact central TapTrack URL:
-
-\`\`\`dotenv
-NFC_WRITER_COMMAND=C:\\Python312\\python.exe
-NFC_WRITER_ARGS=["C:\\\\TapTrack\\\\scanner\\\\acr122u-ntag213.py"]
-NFC_BRIDGE_PORT=47831
-NFC_BRIDGE_ALLOWED_ORIGINS=http://192.168.1.10:4000
-\`\`\`
-
-Start the local bridge on that client PC before opening card enrollment:
-
-\`\`\`powershell
-npm run nfc-bridge
-\`\`\`
-
-The bridge listens only on 127.0.0.1; it is not exposed to other network
-devices. Add every exact server URL users may open (comma-separated) to
-NFC_BRIDGE_ALLOWED_ORIGINS.
+Entrance, Library, Internet Section, and event scan stations accept either an official ID number or an enrolled card number. Card numbers retain their leading zeroes. Both identifiers resolve to the same person and attendance logs retain the official ID number. Alumni enroll their own separate physical card.
 
 ## Imports, photos, and backups
 
@@ -279,7 +243,7 @@ Back up both MySQL and `uploads/profile-photos` regularly.
 - Serve TapTrack through HTTPS.
 - Protect `.env` and uploaded profile photos.
 - Confirm the current academic period before opening kiosks.
-- Test scanners and NFC cards on the production Windows or Raspberry Pi host.
+- Test scanners and cards on the production Windows or Raspberry Pi host.
 - Verify the Google OAuth callback before enabling institutional sign-in.
 
 ## npm commands

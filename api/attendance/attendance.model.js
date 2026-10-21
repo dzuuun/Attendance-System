@@ -29,7 +29,7 @@ async function ensurePersonNames() {
       await pool.query(`ALTER TABLE ${table} DROP COLUMN full_name`);
     }
   }
-  await require("../maintenance/section/section.model").ensureSchema();
+  await require("../maintenance/student/card-enrollment.model").ensureSchema();
 }
 async function migrateLegacyTable(table, personColumn) {
   if (!(await tableExists(table))) return;
@@ -248,28 +248,59 @@ exports.findPerson = async (idNumber, audience = "Both") => {
   await ensureSchema();
   const findStudent = () =>
     pool.query(
-      "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name program,p.code programCode,c.name college,s.year_level yearLevel,x.name sectionName,s.photo_url photoUrl,al.id IS NOT NULL isAlumnus,al.graduation_year graduationYear,'Student' type FROM students s LEFT JOIN alumni al ON al.student_id=s.id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id LEFT JOIN sections x ON x.id=s.section_id WHERE s.id_number=? AND s.is_active=TRUE",
-      [idNumber],
+      "SELECT s.id,s.id_number idNumber,TRIM(CONCAT_WS(' ',s.first_name,NULLIF(s.middle_name,''),s.last_name)) name,p.name program,p.code programCode,c.name college,s.year_level yearLevel,x.name sectionName,s.photo_url photoUrl,al.id IS NOT NULL isAlumnus,al.graduation_year graduationYear,'Student' type FROM students s LEFT JOIN alumni al ON al.student_id=s.id LEFT JOIN programs p ON p.id=s.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id LEFT JOIN sections x ON x.id=s.section_id WHERE (s.id_number=? OR s.card_id=?) AND s.is_active=TRUE",
+      [idNumber, idNumber],
     );
   const findEmployee = () =>
     pool.query(
-      "SELECT e.id,e.id_number idNumber,TRIM(CONCAT_WS(' ',e.first_name,NULLIF(e.middle_name,''),e.last_name)) name,d.name department,e.photo_url photoUrl,'Employee' type FROM employees e LEFT JOIN employee_departments d ON d.id=e.emp_dept_id WHERE e.id_number=? AND e.is_active=TRUE",
-      [idNumber],
+      "SELECT e.id,e.id_number idNumber,TRIM(CONCAT_WS(' ',e.first_name,NULLIF(e.middle_name,''),e.last_name)) name,d.name department,e.photo_url photoUrl,'Employee' type FROM employees e LEFT JOIN employee_departments d ON d.id=e.emp_dept_id WHERE (e.id_number=? OR e.card_id=?) AND e.is_active=TRUE",
+      [idNumber, idNumber],
     );
   const findAlumnus = () =>
     pool.query(
-      "SELECT a.student_id id,a.id alumniId,a.id_number idNumber,TRIM(CONCAT_WS(' ',a.first_name,NULLIF(a.middle_name,''),a.last_name)) name,p.name program,p.code programCode,c.name college,NULL yearLevel,NULL sectionName,a.graduation_year graduationYear,a.photo_url photoUrl,'Alumnus' type FROM alumni a LEFT JOIN programs p ON p.id=a.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id WHERE a.id_number=? AND a.is_active=TRUE",
-      [idNumber],
+      "SELECT a.student_id id,a.id alumniId,a.id_number idNumber,TRIM(CONCAT_WS(' ',a.first_name,NULLIF(a.middle_name,''),a.last_name)) name,p.name program,p.code programCode,c.name college,NULL yearLevel,NULL sectionName,a.graduation_year graduationYear,a.photo_url photoUrl,'Alumnus' type FROM alumni a LEFT JOIN programs p ON p.id=a.program_id LEFT JOIN departments d ON d.id=p.department_id LEFT JOIN colleges c ON c.id=d.college_id WHERE (a.id_number=? OR a.card_id=?) AND a.is_active=TRUE",
+      [idNumber, idNumber],
     );
-  if (audience === "Students") return (await findStudent())[0][0];
-  if (audience === "Employees") return (await findEmployee())[0][0];
   const [[students], [alumni], [employees]] = await Promise.all([
     findStudent(),
     findAlumnus(),
     findEmployee(),
   ]);
+  const matches = [...students, ...alumni, ...employees];
+  const sharedOfficialId = matches.length === 2 && students.length === 1 && alumni.length === 1
+    && Number(students[0].id) > 0 && Number(students[0].id) === Number(alumni[0].id)
+    && [students[0], alumni[0]].every((person) => String(person.idNumber).toUpperCase() === idNumber);
+  if (matches.length > 1 && !sharedOfficialId)
+    throw Object.assign(new Error("This ID or card number matches more than one person. Please contact the MIS Office."), {
+      code: "AMBIGUOUS_IDENTIFIER", status: 409,
+    });
+  if (audience === "Students") return students[0];
+  if (audience === "Employees") return employees[0];
   return students[0] || alumni[0] || employees[0];
 };
+exports.findPersonByCardUid = async (uid, audience = "Both") => {
+  const { cardNumberCandidates } = require("./card-uid");
+  const candidates = cardNumberCandidates(uid);
+  await ensureSchema();
+  const [matches] = await pool.query(
+    "SELECT card_id cardId,id personId,'Student' type FROM students WHERE card_id IN (?) AND is_active=TRUE UNION ALL SELECT card_id cardId,id personId,'Employee' type FROM employees WHERE card_id IN (?) AND is_active=TRUE UNION ALL SELECT card_id cardId,id personId,'Alumnus' type FROM alumni WHERE card_id IN (?) AND is_active=TRUE LIMIT 2",
+    [candidates, candidates, candidates],
+  );
+  if (matches.length > 1)
+    throw Object.assign(new Error("This card UID matches more than one enrolled card. Please contact the MIS Office."), {
+      code: "AMBIGUOUS_CARD_UID", status: 409,
+    });
+  if (!matches.length) return undefined;
+  const cardId = matches[0].cardId;
+  const person = await exports.findPerson(cardId, audience);
+  if (person && (person.type !== matches[0].type
+      || Number(person.type === "Alumnus" ? person.alumniId : person.id) !== Number(matches[0].personId)))
+    throw Object.assign(new Error("This card number conflicts with another person's ID. Please contact the MIS Office."), {
+      code: "AMBIGUOUS_CARD_UID", status: 409,
+    });
+  return person ? { ...person, cardId } : undefined;
+};
+
 exports.findInactiveStudent = async (idNumber) => {
   await ensureSchema();
   return (
@@ -297,18 +328,20 @@ exports.acquireScanLock = async (person, eventId) => {
       return null;
     }
     let released = false;
-    return async () => {
+    const release = async () => {
       if (released) return;
       released = true;
       await connection.query("SELECT RELEASE_LOCK(?)", [key]).catch(() => {});
       connection.release();
     };
+    release.connection = connection;
+    return release;
   } catch (error) {
     connection.release();
     throw error;
   }
 };
-exports.findLatest = async (person, eventId) => {
+exports.findLatest = async (person, eventId, executor = pool) => {
   await ensureSchema();
   const column = personColumn(person);
   const table = eventId ? "event_attendance_logs" : "university_entrance_logs";
@@ -317,17 +350,17 @@ exports.findLatest = async (person, eventId) => {
     : "academic_period_id=(SELECT id FROM academic_periods WHERE is_current=TRUE LIMIT 1) AND checked_in_at>=CURDATE() AND checked_in_at<CURDATE()+INTERVAL 1 DAY";
   const params = eventId ? [person.id, eventId] : [person.id];
   return (
-    await pool.query(
+    await executor.query(
       `SELECT attendance_action action,checked_in_at timestamp,TIMESTAMPDIFF(SECOND,checked_in_at,CURRENT_TIMESTAMP) secondsAgo FROM ${table} WHERE ${column}=? AND ${clause} ORDER BY checked_in_at DESC,id DESC LIMIT 1`,
       params,
     )
   )[0][0];
 };
-exports.getActionCounts = async (person, eventId) => {
+exports.getActionCounts = async (person, eventId, executor = pool) => {
   if (!eventId) return null;
   await ensureSchema();
   const column = personColumn(person);
-  const [rows] = await pool.query(
+  const [rows] = await executor.query(
     `SELECT SUM(attendance_action='Time In') timeIns,SUM(attendance_action='Time Out') timeOuts FROM event_attendance_logs WHERE ${column}=? AND event_id=?`,
     [person.id, eventId],
   );
@@ -336,9 +369,9 @@ exports.getActionCounts = async (person, eventId) => {
     timeOuts: Number(rows[0].timeOuts || 0),
   };
 };
-exports.record = async (person, action, eventId = null, location = null) => {
+exports.record = async (person, action, eventId = null, location = null, executor = pool) => {
   await ensureSchema();
-  const current = await periods.getCurrent();
+  const current = await periods.getCurrent(executor);
   if (!current) throw new Error("No current academic period is configured.");
   const column = personColumn(person);
   const table = eventId ? "event_attendance_logs" : "university_entrance_logs";
@@ -367,7 +400,7 @@ exports.record = async (person, action, eventId = null, location = null) => {
         current.id,
       ];
   return (
-    await pool.query(
+    await executor.query(
       `INSERT INTO ${table} ${columns} VALUES (${values.map(() => "?").join(",")})`,
       values,
     )

@@ -52,12 +52,6 @@ If Google sign-in is enabled, configure its public callback as:
 GOOGLE_REDIRECT_URI=https://SERVER-IP/attendance-system/api/auth/google/callback
 ```
 
-For NFC enrollment clients, the allowed origin does not include a path:
-
-```dotenv
-NFC_BRIDGE_ALLOWED_ORIGINS=https://SERVER-IP
-```
-
 After starting TapTrack, verify both applications independently:
 
 ```text

@@ -93,8 +93,8 @@ async function requireKioskSession(req, res, next) {
     await ensureSessionSchema();
     if (!kioskIdentityMatches(decoded.sub, requestedId)) {
       return res
-        .status(403)
-        .json({ message: "This enrollment belongs to another kiosk." });
+        .status(401)
+        .json({ code: "KIOSK_IDENTITY_MISMATCH", message: "This kiosk must be verified for this device." });
     }
     if (!decoded.jti) {
       const existing = await require("../kiosk-management/kiosk.model").getById(

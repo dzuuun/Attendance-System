@@ -66,7 +66,8 @@
                 <input
                   id="eventScanInput"
                   autocomplete="off"
-                  placeholder="Tap card or enter ID for Time In…"
+                  placeholder="ID number or card number for Time In"
+                  maxlength="128"
                   autofocus
                 /><button class="primary-button" id="recordScanBtn">
                   Record Time In</button
@@ -223,6 +224,6 @@
     </dialog>
     <script src="/client/shared-ui.js"></script>
     <script src="/client/camera-scanner.js"></script>
-    <script src="/client/events/scan/script.js"></script>
+    <script src="/client/events/scan/script.js?v=20261021-hid"></script>
   </body>
 </html>

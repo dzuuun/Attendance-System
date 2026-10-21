@@ -5,7 +5,7 @@ exports.scan = async (req, res) => {
     .trim()
     .toUpperCase();
   if (!idNumber)
-    return res.status(400).json({ message: "Enter an ID number." });
+    return res.status(400).json({ message: "Enter an ID number or card number." });
   const kioskId = String(req.body.kioskId || "").trim();
   if (req.kioskAuthenticated && !kioskId)
     return res
@@ -23,7 +23,7 @@ exports.scan = async (req, res) => {
     const record = await model.scan(req.params.location, idNumber);
     if (!record)
       return res.status(404).json({
-        message: `ID “${idNumber}” is not registered as an active student or employee.`,
+        message: `ID or card number “${idNumber}” is not registered as an active student, employee, or alumnus.`,
       });
     res.status(201).json(record);
   } catch (error) {

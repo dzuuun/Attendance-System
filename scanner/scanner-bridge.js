@@ -8,6 +8,9 @@ class ScannerBridge extends EventEmitter {
     this.available =
       process.platform === "win32" || process.platform === "linux";
     this.connected = false;
+    this.scanSequence = 0;
+    this.scanEpoch = require("crypto").randomUUID();
+    this.recentScans = [];
     this.start();
   }
 
@@ -28,6 +31,7 @@ class ScannerBridge extends EventEmitter {
         : ["python3", [path.join(__dirname, "linux-reader.py")]];
     this.child = spawn(helper[0], helper[1], {
       stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
     });
     let buffer = "";
     this.child.stdout.on("data", (chunk) => {
@@ -64,11 +68,24 @@ class ScannerBridge extends EventEmitter {
       return;
     }
     if (!scan.deviceId || !scan.value) return;
-    this.emit("scan", {
+    const recorded = {
       idNumber: scan.value,
       deviceId: scan.deviceId,
       name: scan.name || "USB scanner",
-    });
+      sequence: ++this.scanSequence,
+      epoch: this.scanEpoch,
+      receivedAt: Date.now(),
+    };
+    this.recentScans.push(recorded);
+    this.recentScans = this.recentScans.filter((item) => recorded.receivedAt - item.receivedAt < 10000).slice(-256);
+    this.emit("scan", recorded);
+  }
+
+  lookupScan(value, afterSequence) {
+    const now = Date.now();
+    return this.recentScans.filter((scan) => scan.sequence > afterSequence
+      && now - scan.receivedAt < 10000
+      && String(scan.idNumber).trim().toUpperCase() === value);
   }
 
   status() {
@@ -77,6 +94,8 @@ class ScannerBridge extends EventEmitter {
       connected: this.connected,
       platform: process.platform,
       assignmentStorage: "terminal-local",
+      lastScanSequence: this.scanSequence,
+      scanEpoch: this.scanEpoch,
     };
   }
 }

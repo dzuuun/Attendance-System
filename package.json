@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "node --watch index.js",
     "start": "node index.js",
-    "nfc-bridge": "node scanner/nfc-client-bridge.js",
     "check": "node scripts/check-js.js",
     "test": "node --test test/*.test.js"
   },

@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs"),
   model = require("./user_management.model"),
   permissionModel = require("../permission/permission.model");
+const { revokeUserSessions } = require("../../../auth/auth_validation");
 const validInstitutionalEmail = (email) => {
   if (!/^\S+@\S+\.\S+$/.test(email)) return false;
   const domain = String(process.env.GOOGLE_WORKSPACE_DOMAIN || "")
@@ -12,6 +13,11 @@ const protectedRole = (role) => ["Superadmin", "Administrator"].includes(role);
 const mayManageRole = (actor, role) =>
   actor?.role === "Superadmin" || !protectedRole(role);
 exports.getAll = async (_req, res) => res.json(await model.getAll());
+exports.getPermissionOptions = async (req, res) => res.json(
+  (await permissionModel.getAll())
+    .filter((permission) => mayManageRole(req.user, permission.name))
+    .map(({ id, name, isActive }) => ({ id, name, isActive })),
+);
 exports.create = async (req, res) => {
   const firstName = String(req.body.firstName || "").trim(),
     middleName = String(req.body.middleName || "").trim(),
@@ -86,7 +92,10 @@ exports.setStatus = async (req, res) => {
   res.status(204).end();
 };
 exports.update = async (req, res) => {
-  const existing = await model.getById(req.params.id);
+  const userId = Number(req.params.id);
+  if (!Number.isSafeInteger(userId) || userId < 1)
+    return res.status(400).json({ message: "Choose a valid user." });
+  const existing = await model.getById(userId);
   if (!existing) return res.status(404).json({ message: "User not found." });
   if (!mayManageRole(req.user, existing.role))
     return res.status(403).json({
@@ -122,7 +131,7 @@ exports.update = async (req, res) => {
       .status(400)
       .json({ message: "You cannot deactivate your account." });
   try {
-    const result = await model.update(req.params.id, {
+    const result = await model.update(userId, {
       fullName,
       firstName,
       middleName,
@@ -136,9 +145,10 @@ exports.update = async (req, res) => {
     });
     if (!result.affectedRows)
       return res.status(404).json({ message: "User not found." });
+    if (password) await revokeUserSessions(userId);
     req.activityDescription = `Updated user ${username} — ${fullName}.`;
     res.json({
-      id: Number(req.params.id),
+      id: userId,
       fullName,
       firstName,
       middleName,

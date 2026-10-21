@@ -107,11 +107,18 @@ $("#form").addEventListener("submit", async (event) => {
   }
 });
 (async () => {
-  const session = await init("users");
-  currentRole = session.user.role;
-  [users, permissions] = await Promise.all([
-    api("/api/users"),
-    api("/api/permissions"),
-  ]);
-  render();
+  $("#addBtn").disabled = true;
+  try {
+    const session = await init("users");
+    currentRole = session.user.role;
+    [users, permissions] = await Promise.all([
+      api("/api/users"),
+      api("/api/user/permission-options"),
+    ]);
+    render();
+    $("#addBtn").disabled = false;
+  } catch (error) {
+    $("#body").innerHTML = emptyRow(5, "User management could not be loaded.");
+    TapTrack.toast(error.message || "User management could not be loaded.", "error");
+  }
 })();

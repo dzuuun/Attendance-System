@@ -17,9 +17,6 @@
   --kiosk-radius-md: 14px;
   --kiosk-radius-sm: 10px;
   --kiosk-shadow: 0 16px 40px rgba(0, 26, 17, 0.16);
-  --kiosk-glow-in: rgba(13, 130, 84, 0.35);
-  --kiosk-glow-out: rgba(243, 201, 77, 0.4);
-  --kiosk-glow-err: rgba(217, 56, 56, 0.35);
 }
 
 html {
@@ -577,264 +574,6 @@ body.kiosk-body {
   height: 28px;
   background: rgba(255, 255, 255, 0.15);
   flex-shrink: 0;
-}
-
-/* Interactive RFID / NFC Scanner Card */
-.scanner-hero {
-  position: relative;
-  min-height: 280px;
-  background: radial-gradient(
-    circle at center,
-    #0f5139 0%,
-    #063424 70%,
-    #032418 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--kiosk-radius-lg);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 30px 20px;
-  transition: all 0.4s ease;
-}
-
-/* Radar Rings */
-.radar-emitter {
-  position: relative;
-  width: 170px;
-  height: 170px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 12px;
-}
-
-.radar-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  pointer-events: none;
-}
-
-.ring-1 {
-  animation: radar-pulse 3s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.ring-2 {
-  animation: radar-pulse 3s infinite cubic-bezier(0.2, 0.8, 0.2, 1) 1s;
-}
-
-.ring-3 {
-  animation: radar-pulse 3s infinite cubic-bezier(0.2, 0.8, 0.2, 1) 2s;
-}
-
-@keyframes radar-pulse {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.8;
-    border-color: rgba(243, 201, 77, 0.6);
-  }
-  50% {
-    border-color: rgba(98, 194, 141, 0.4);
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-    border-color: rgba(255, 255, 255, 0);
-  }
-}
-
-/* Card Visual */
-.rfid-card-visual {
-  position: relative;
-  width: 108px;
-  height: 68px;
-  background: linear-gradient(135deg, #195e47 0%, #0b3a2a 100%);
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 8px 10px;
-  z-index: 2;
-  transition: transform 0.3s ease;
-}
-
-.card-chip {
-  width: 18px;
-  height: 14px;
-  background: #f3c94d;
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
-}
-
-.card-nfc-wave {
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  display: flex;
-  gap: 2px;
-}
-
-.card-nfc-wave span {
-  display: block;
-  width: 3px;
-  height: 12px;
-  border-right: 2px solid rgba(255, 255, 255, 0.8);
-  border-radius: 0 6px 6px 0;
-}
-
-.card-nfc-wave span:nth-child(2) {
-  height: 18px;
-  margin-top: -3px;
-}
-
-.card-nfc-wave span:nth-child(3) {
-  height: 24px;
-  margin-top: -6px;
-}
-
-.card-brand-mark {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-/* Scan laser beam */
-.scan-laser-beam {
-  position: absolute;
-  left: 10%;
-  width: 80%;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    #62c28d,
-    #f3c94d,
-    #62c28d,
-    transparent
-  );
-  box-shadow:
-    0 0 14px #62c28d,
-    0 0 4px #f3c94d;
-  animation: scan-laser 2.6s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-@keyframes scan-laser {
-  0% {
-    top: 25%;
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  100% {
-    top: 75%;
-    opacity: 0.2;
-  }
-}
-
-.scanner-prompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-top: 10px;
-  z-index: 2;
-}
-
-.pulse-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #62c28d;
-  box-shadow: 0 0 8px #62c28d;
-  margin-bottom: 6px;
-  animation: pulse-dot 1.5s infinite;
-}
-
-.scanner-prompt strong {
-  font-size: 17px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: 0.01em;
-}
-
-.scanner-prompt small {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
-  margin-top: 3px;
-}
-
-/* Scanner visual state modifications */
-.scanner-hero.processing {
-  border-color: var(--kiosk-gold);
-}
-
-.scanner-hero.processing .scan-laser-beam {
-  animation-duration: 0.8s;
-  background: linear-gradient(90deg, transparent, #f3c94d, transparent);
-  box-shadow: 0 0 16px #f3c94d;
-}
-
-.scanner-hero.success-in {
-  background: radial-gradient(
-    circle at center,
-    #106f47 0%,
-    #07462c 70%,
-    #03291a 100%
-  );
-  border-color: #22c55e;
-  box-shadow: 0 0 35px var(--kiosk-glow-in);
-}
-
-.scanner-hero.success-out {
-  background: radial-gradient(
-    circle at center,
-    #6b470c 0%,
-    #4a2f05 70%,
-    #291802 100%
-  );
-  border-color: var(--kiosk-gold);
-  box-shadow: 0 0 35px var(--kiosk-glow-out);
-}
-
-.scanner-hero.error {
-  background: radial-gradient(
-    circle at center,
-    #6e1c1c 0%,
-    #4a1010 70%,
-    #290808 100%
-  );
-  border-color: var(--kiosk-red);
-  box-shadow: 0 0 35px var(--kiosk-glow-err);
-  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-}
-
-@keyframes shake {
-  10%,
-  90% {
-    transform: translate3d(-2px, 0, 0);
-  }
-  20%,
-  80% {
-    transform: translate3d(4px, 0, 0);
-  }
-  30%,
-  50%,
-  70% {
-    transform: translate3d(-6px, 0, 0);
-  }
-  40%,
-  60% {
-    transform: translate3d(6px, 0, 0);
-  }
 }
 
 /* Input Form */
@@ -1846,6 +1585,7 @@ html body.kiosk-body main.kiosk .result-hero-card.idle {
 }
 
 .assignment-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1894,6 +1634,15 @@ html body.kiosk-body main.kiosk .result-hero-card.idle {
 .pair-btn:hover {
   background: var(--kiosk-green-dark);
 }
+
+.clear-scanners { background: #fff; color: #a52a2a; border: 1px solid #e1c6c6; }
+.clear-scanners:hover { background: #fff1f1; }
+.scanner-assignment-review { width: min(480px, calc(100vw - 32px)); box-sizing: border-box; padding: 24px; border: 1px solid #dce6e0; border-radius: 18px; color: var(--kiosk-ink); font-family: inherit; }
+.scanner-assignment-review::backdrop { background: #062f23b3; }
+.scanner-assignment-review h2 { margin: 0 0 12px; font-size: 22px; }
+.scanner-assignment-review p { font-size: 14px; line-height: 1.5; }
+.scanner-assignment-review code { display: block; overflow-wrap: anywhere; font-size: 11px; padding: 12px; background: #f2f7f4; border-radius: 8px; }
+.scanner-assignment-review .review-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 
 .pair-btn:disabled,
 .pair-btn:disabled:hover {

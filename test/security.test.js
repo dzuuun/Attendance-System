@@ -198,3 +198,30 @@ test("maintenance-only people access is limited to selected directories", () => 
     false,
   );
 });
+
+test("card enrollment operators can enroll cards without directory or other module access", () => {
+  const user = {
+    role: "Card Enrollment",
+    maintenanceAccess: true,
+    maintenanceModules: ["cardEnrollment"],
+  };
+  let accepted = false;
+  requireMaintenance("cardEnrollment")({ user, method: "PATCH" }, responseStub(), () => {
+    accepted = true;
+  });
+  assert.equal(accepted, true);
+  for (const module of ["students", "alumni", "employees", "settings", "kiosks", "programs"]) {
+    for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"]) {
+      const response = responseStub();
+      requireMaintenance(module)({ user, method }, response, () => assert.fail(`${module} must be denied`));
+      assert.equal(response.statusCode, 403);
+    }
+  }
+  for (const key of ["overviewAccess", "attendanceAccess", "specialEventsAccess", "libraryAccess", "usersAccess"]) {
+    const response = responseStub();
+    requireAccess(key)({ user }, response, () => assert.fail(`${key} must be denied`));
+    assert.equal(response.statusCode, 403);
+  }
+  assert.equal(canReadPeople(user), false);
+  assert.deepEqual(visiblePeopleModules(user), []);
+});

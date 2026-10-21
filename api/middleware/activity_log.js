@@ -4,6 +4,7 @@ const labels = {
   attendance: "Attendance",
   events: "Events",
   student: "Students",
+  "card-enrollment": "Card enrollment",
   employee: "Employees",
   alumni: "Alumni",
   people: "People",

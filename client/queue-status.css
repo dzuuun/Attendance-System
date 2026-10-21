@@ -1,0 +1,42 @@
+.queue-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  margin: 0;
+  border: 1px solid #c9dfd5;
+  border-radius: 12px;
+  background: #f3faf6;
+  color: #20513e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.queue-status[hidden] {
+  display: none;
+}
+.result-hero-card > .queue-status {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 1;
+  max-width: calc(100% - 28px);
+  padding: 4px 8px;
+  font-size: 11px;
+  pointer-events: none;
+}
+.queue-status[data-state="error"],
+.queue-status[data-state="unenrolled"] {
+  color: #983c21;
+  border-color: #efcfbb;
+  background: #fff7f0;
+}
+.queue-status[data-state="enrollment"] {
+  color: #6e591f;
+  border-color: #e8d9ab;
+  background: #fffbed;
+}
+.card-current-value {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

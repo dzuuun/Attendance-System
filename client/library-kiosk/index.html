@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#043b2a" />
     <title>Library Entrance Terminal — TapTrack</title>
     <link rel="icon" type="image/png" href="/client/images/NDMU-Logo.png" />
-    <link rel="stylesheet" href="/client/kiosk/style.css" />
+    <link rel="stylesheet" href="/client/kiosk/style.css?v=20261021-cleanup" />
     <link rel="stylesheet" href="/client/kiosk/last-log.css" />
-    <link rel="stylesheet" href="/client/kiosk/fullscreen.css" />
+    <link rel="stylesheet" href="/client/kiosk/fullscreen.css?v=20261021-cleanup" />
     <link rel="stylesheet" href="/client/camera-scanner.css" />
   </head>
   <body class="kiosk-body">
@@ -87,13 +87,13 @@
             <div class="lane-tag">
               <div class="lane-info">
                 <b id="locationLane">LIBRARY ENTRANCE</b
-                ><small>Student and employee access terminal</small>
+                ><small>Student, employee, and alumni access terminal</small>
               </div>
             </div>
           </div>
           <form id="kioskForm" class="scan-input-form">
             <label for="kioskInput" class="input-label"
-              >MANUAL ID ENTRY / SCANNER BUFFER</label
+              >ID NUMBER OR CARD NUMBER</label
             >
             <div class="input-container">
               <span class="input-icon material-symbols-rounded">badge</span
@@ -101,7 +101,8 @@
                 id="kioskInput"
                 type="text"
                 autocomplete="off"
-                placeholder="Scan or enter ID number..."
+                placeholder="Scan or enter ID number or card number..."
+                maxlength="128"
                 autofocus
               /><button type="submit" class="submit-btn" id="submitScanBtn">
                 <span>Record</span
@@ -215,9 +216,10 @@
         </div>
       </footer>
     </main>
-    <script src="/client/kiosk-pairing.js?v=20261020-1"></script>
+    <script src="/client/kiosk-pairing.js?v=20261021-no-refresh"></script>
     <script src="/client/camera-scanner.js"></script>
-    <script src="/client/library-kiosk/script.js?v=20261020-1"></script>
+    <script src="/client/kiosk/scan-queue.js?v=20261020-1"></script>
+    <script src="/client/library-kiosk/script.js?v=20261021-prepend-feed"></script>
     <script src="/client/brand-ui.js?v=20260923-2" data-brand-ui></script>
   </body>
 </html>

@@ -6,9 +6,10 @@
     <meta name="theme-color" content="#043b2a" />
     <title>University Entrance Terminal — TapTrack</title>
     <link rel="icon" type="image/png" href="/client/images/NDMU-Logo.png" />
-    <link rel="stylesheet" href="/client/kiosk/style.css?v=20260903-2" />
+    <link rel="stylesheet" href="/client/kiosk/style.css?v=20261021-cleanup" />
     <link rel="stylesheet" href="/client/kiosk/last-log.css" />
-    <link rel="stylesheet" href="/client/kiosk/fullscreen.css" />
+    <link rel="stylesheet" href="/client/queue-status.css?v=20261021-local-result" />
+    <link rel="stylesheet" href="/client/kiosk/fullscreen.css?v=20261021-cleanup" />
     <link rel="stylesheet" href="/client/camera-scanner.css" />
   </head>
   <body class="kiosk-body">
@@ -121,7 +122,7 @@
           <!-- Input Bar & Camera Scanner -->
           <form id="kioskForm" class="scan-input-form">
             <label for="kioskInput" class="input-label"
-              >MANUAL ID ENTRY / SCANNER BUFFER</label
+              >ID NUMBER OR CARD NUMBER</label
             >
             <div class="input-container">
               <span class="input-icon material-symbols-rounded">badge</span>
@@ -129,7 +130,8 @@
                 id="kioskInput"
                 type="text"
                 autocomplete="off"
-                placeholder="Tap card or enter ID number..."
+                placeholder="Scan or enter ID number or card number..."
+                maxlength="128"
                 autofocus
               />
               <button type="submit" class="submit-btn" id="submitScanBtn">
@@ -160,6 +162,7 @@
             role="status"
             aria-live="polite"
           >
+            <div class="queue-status" id="attendanceQueuePanel" role="status" aria-live="polite" hidden><span class="material-symbols-rounded" aria-hidden="true">sync</span><span id="attendanceQueueStatus">No pending taps.</span></div>
             <div class="result-header">
               <div
                 class="result-person-photo"
@@ -288,7 +291,7 @@
         <div class="modal-top">
           <div class="modal-title-wrap">
             <span class="modal-kicker">HARDWARE CONFIGURATION</span>
-            <h2 id="scannerModalTitle">Scanner Bridge Settings</h2>
+            <h2 id="scannerModalTitle">Scanner Settings</h2>
           </div>
           <button
             type="button"
@@ -299,6 +302,14 @@
         </div>
 
         <div class="modal-body">
+          <div class="bridge-status-card" id="bridgeStatusBox">
+            <div class="status-indicator-row">
+              <span class="status-pill" id="bridgeStatusPill">Connecting...</span>
+              <span class="platform-info" id="bridgePlatformInfo">Platform: --</span>
+            </div>
+            <p id="bridgeStatusDesc">Checking the USB scanner helper...</p>
+          </div>
+
           <div class="pairing-section">
             <label class="section-label" for="terminalLocationInput"
               >TERMINAL LOCATION</label
@@ -316,25 +327,11 @@
             </div>
           </div>
 
-          <div class="bridge-status-card" id="bridgeStatusBox">
-            <div class="status-indicator-row">
-              <span class="status-pill" id="bridgeStatusPill"
-                >Connecting...</span
-              >
-              <span class="platform-info" id="bridgePlatformInfo"
-                >Platform: --</span
-              >
-            </div>
-            <p id="bridgeStatusDesc">
-              Checking background hardware scanner helper service...
-            </p>
-          </div>
-
           <div class="pairing-section">
             <label class="section-label">HARDWARE SCANNER ASSIGNMENTS</label>
             <p class="section-sub">
-              Pair dedicated USB / RFID scanners for automated directional
-              routing.
+              Select Assign Scanner, then scan using the
+              keyboard-style USB device to use for that direction.
             </p>
 
             <div class="assignment-card">
@@ -348,6 +345,7 @@
               <button type="button" class="pair-btn" data-pair="Time In">
                 Assign Scanner
               </button>
+              <button type="button" class="pair-btn clear-scanners" data-clear-scanners="Time In">Clear</button>
             </div>
 
             <div class="assignment-card">
@@ -361,6 +359,7 @@
               <button type="button" class="pair-btn" data-pair="Time Out">
                 Assign Scanner
               </button>
+              <button type="button" class="pair-btn clear-scanners" data-clear-scanners="Time Out">Clear</button>
             </div>
           </div>
         </div>
@@ -378,10 +377,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/client/kiosk-pairing.js?v=20261020-1"></script>
+    <script src="/client/kiosk-pairing.js?v=20261021-no-refresh"></script>
     <script src="/client/camera-scanner.js"></script>
-    <script src="/client/nfc-client-bridge.js"></script>
-    <script src="/client/kiosk/script.js?v=20261020-1"></script>
+    <script src="/client/kiosk/scan-queue.js?v=20261020-1"></script>
+      <script src="/client/kiosk/script.js?v=20261021-cleanup"></script>
     <script src="/client/brand-ui.js?v=20260923-2" data-brand-ui></script>
   </body>
 </html>

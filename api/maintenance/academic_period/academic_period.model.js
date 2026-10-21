@@ -61,10 +61,10 @@ exports.getAll = async () => {
     )
   )[0];
 };
-exports.getCurrent = async () => {
+exports.getCurrent = async (executor = pool) => {
   await ensureSchema();
   return (
-    await pool.query(
+    await executor.query(
       "SELECT id,school_year schoolYear,term,is_current isCurrent FROM academic_periods WHERE is_current=TRUE ORDER BY id DESC LIMIT 1",
     )
   )[0][0];
@@ -74,15 +74,19 @@ exports.save = async (id, data) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    if (id && !data.isCurrent) {
-      const [rows] = await connection.query(
-        "SELECT id FROM academic_periods WHERE is_current=TRUE LIMIT 1 FOR UPDATE",
-      );
-      if (Number(rows[0]?.id) === Number(id)) {
-        const error = new Error("A current academic period is required.");
-        error.code = "CURRENT_REQUIRED";
-        throw error;
-      }
+    // Serialize changes and validate the target before touching the current flag.
+    const [rows] = await connection.query(
+      "SELECT id,is_current isCurrent FROM academic_periods ORDER BY id FOR UPDATE",
+    );
+    const target = id ? rows.find((row) => Number(row.id) === Number(id)) : null;
+    if (id && !target) {
+      await connection.rollback();
+      return { affectedRows: 0 };
+    }
+    if (target?.isCurrent && !data.isCurrent) {
+      const error = new Error("A current academic period is required.");
+      error.code = "CURRENT_REQUIRED";
+      throw error;
     }
     if (data.isCurrent)
       await connection.query("UPDATE academic_periods SET is_current=FALSE");
@@ -101,6 +105,10 @@ exports.save = async (id, data) => {
           [data.schoolYear, data.term, data.isCurrent],
         )
       )[0];
+    if (id && !result.affectedRows) {
+      await connection.rollback();
+      return result;
+    }
     await connection.commit();
     return result;
   } catch (error) {

@@ -35,8 +35,8 @@ const selectedAction = () =>
   document.querySelector('input[name="scanAction"]:checked').value;
 function syncActionCopy() {
   const action = selectedAction();
-  $("#eventScanLabel").textContent = `ID NUMBER FOR ${action.toUpperCase()}`;
-  $("#eventScanInput").placeholder = `Tap card or enter ID for ${action}…`;
+  $("#eventScanLabel").textContent = `ID OR CARD NUMBER FOR ${action.toUpperCase()}`;
+  $("#eventScanInput").placeholder = `ID number or card number for ${action}`;
   $("#recordScanBtn").textContent = `Record ${action}`;
   $("#recordScanBtn").setAttribute(
     "aria-label",
@@ -386,7 +386,7 @@ function result(type, title, detail) {
   node.className = `event-scan-result ${type}`;
   node.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span>`;
 }
-async function scan(value) {
+async function scan(value, action = selectedAction()) {
   if (!eventRecord?.isActive) {
     const detail =
       "This event is disabled and is no longer accepting attendance.";
@@ -400,12 +400,12 @@ async function scan(value) {
   result(
     "",
     "Processing scan…",
-    `Recording ${selectedAction()} for ${idNumber}.`,
+    `Recording ${action} for ${idNumber}.`,
   );
   try {
     const record = await api(`/api/events/${eventId}/scan`, {
       method: "POST",
-      body: JSON.stringify({ idNumber, action: selectedAction() }),
+      body: JSON.stringify({ idNumber, action }),
     });
     await loadEventScans(true);
     renderCurrentAttendee(record);
@@ -427,13 +427,30 @@ async function scan(value) {
       detail: error.message,
     };
   } finally {
-    $("#eventScanInput").value = "";
-    $("#eventScanInput").focus();
+    if (!document.querySelector("dialog[open]")) $("#eventScanInput").focus();
   }
+}
+const recentBridgeScans = new Map();
+function submitKeyboardScan(raw) {
+  const value = String(raw || "").trim().toUpperCase();
+  if (!value) return;
+  const action = selectedAction();
+  if (!bridgeConnected) return scan(value, action);
+  // Raw-input readers also type into the page; give the bridge time to arrive.
+  setTimeout(() => {
+    if (Date.now() - (recentBridgeScans.get(value) || 0) >= 1000) scan(value, action);
+  }, 250);
 }
 $("#eventScanForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  scan($("#eventScanInput").value);
+  const value = $("#eventScanInput").value;
+  $("#eventScanInput").value = "";
+  submitKeyboardScan(value);
+});
+$("#eventScanInput").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  $("#eventScanForm").requestSubmit();
 });
 $("#eventCameraScan").addEventListener("click", () =>
   TapTrackCameraScanner.open((value) => scan(value)),
@@ -454,14 +471,21 @@ scannerEvents.addEventListener("status", (message) => {
   bridgeConnected = JSON.parse(message.data).connected;
 });
 scannerEvents.addEventListener("scan", (message) => {
-  if (eventRecord?.isActive) scan(JSON.parse(message.data).idNumber);
+  if (!eventRecord?.isActive) return;
+  const value = String(JSON.parse(message.data).idNumber || "").trim().toUpperCase();
+  const now = Date.now();
+  recentBridgeScans.set(value, now);
+  for (const [key, timestamp] of recentBridgeScans)
+    if (now - timestamp > 2000) recentBridgeScans.delete(key);
+  scan(value);
 });
 let buffer = "",
   timer;
 document.addEventListener("keydown", (event) => {
   if (event.target.closest?.("input, textarea, select, dialog")) return;
   if (event.key === "Enter" && buffer) {
-    scan(buffer);
+    event.preventDefault();
+    submitKeyboardScan(buffer);
     buffer = "";
     return;
   }
@@ -484,7 +508,7 @@ document.addEventListener("keydown", (event) => {
   const audienceCopy = {
     Students: "Accepting students only",
     Employees: "Accepting employees only",
-    Both: "Accepting students and employees",
+    Both: "Accepting students, employees, and alumni",
   };
   const audienceLabel =
     audienceCopy[eventRecord.targetAudience] ||

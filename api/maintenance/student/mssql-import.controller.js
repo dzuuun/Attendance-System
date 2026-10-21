@@ -1,6 +1,7 @@
 const sql = require("mssql");
 const pool = require("../../../db/db");
 const model = require("./student.model");
+const identifiers = require("../person-identifiers");
 const profilePhotos = require("../profile-photo");
 const academicPeriods = require("../academic_period/academic_period.model");
 
@@ -547,18 +548,25 @@ exports.import = async (req, res) => {
       importPhotos,
       ...preview(result, 0, importPhotos),
     });
+  await identifiers.ensureSchema();
   const connection = await pool.getConnection();
   const photoTargets = [];
   let inserted = 0,
     updated = 0,
     deactivated = 0;
+  let identifierLock = false;
   try {
+    await identifiers.acquire(connection);
+    identifierLock = true;
     await connection.beginTransaction();
     const pendingDeactivations = await deactivationCount(
       result.sourceIds,
       connection,
     );
     for (const item of result.items) {
+      await identifiers.assertAvailable(connection, {
+        type: "student", id: item.existing?.id || 0, idNumber: item.idNumber,
+      });
       const values = [
         item.idNumber,
         item.institutionalEmail || null,
@@ -607,6 +615,7 @@ exports.import = async (req, res) => {
     await connection.rollback();
     throw error;
   } finally {
+    if (identifierLock) await identifiers.release(connection);
     connection.release();
   }
   let photos = { imported: [], failed: [] };

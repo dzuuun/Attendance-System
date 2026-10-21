@@ -9,6 +9,7 @@ const YEAR_LEVELS = new Set([
 ]);
 
 exports.getAll = async (_req, res) => res.json(await model.getAll());
+exports.setCardId = require("../student/card-enrollment.controller").saveFor("alumni");
 
 function payload(body) {
   return {

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS sections (
 );
 
 CREATE TABLE IF NOT EXISTS students (
+  card_id VARCHAR(128) NULL UNIQUE,
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,
   contact VARCHAR(150),
@@ -115,6 +116,7 @@ CREATE TABLE IF NOT EXISTS kiosks (
 );
 
 CREATE TABLE IF NOT EXISTS alumni (
+  card_id VARCHAR(128) NULL UNIQUE,
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id INT UNSIGNED NULL UNIQUE,
   id_number VARCHAR(80) NOT NULL UNIQUE,
@@ -161,6 +163,7 @@ CREATE TABLE IF NOT EXISTS kiosk_commands (
 );
 
 CREATE TABLE IF NOT EXISTS employees (
+  card_id VARCHAR(128) NULL UNIQUE,
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_number VARCHAR(80) NOT NULL UNIQUE,
   first_name VARCHAR(80) NOT NULL,
@@ -4850,6 +4853,9 @@ ON DUPLICATE KEY UPDATE
   maintenance_modules = VALUES(maintenance_modules),
   users_access = VALUES(users_access),
   is_active = VALUES(is_active);
+
+INSERT IGNORE INTO permissions (name,description,maintenance_access,maintenance_modules)
+VALUES ('Card Enrollment','Find people and enroll cards only',TRUE,'["cardEnrollment"]');
 
 CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

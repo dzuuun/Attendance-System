@@ -1,5 +1,6 @@
 const pool = require("../../../db/db");
 const schema = require("../../../db/schema");
+const identifiers = require("../person-identifiers");
 
 let ready;
 async function ensureSchema() {
@@ -26,6 +27,7 @@ async function ensureSchema() {
       INDEX idx_alumni_program (program_id),
       INDEX idx_alumni_active_name (is_active,last_name,first_name)
     )`);
+      await schema.addColumn("alumni", "card_id", "VARCHAR(128) NULL UNIQUE");
       const [studentIdColumns] = await pool.query(
         "SELECT COLUMN_TYPE columnType,IS_NULLABLE isNullable FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='alumni' AND COLUMN_NAME='student_id'",
       );
@@ -82,7 +84,7 @@ async function ensureSchema() {
   return ready;
 }
 
-const select = `SELECT a.id,a.student_id studentId,a.id_number idNumber,TRIM(CONCAT_WS(' ',a.first_name,NULLIF(a.middle_name,''),a.last_name)) name,a.first_name firstName,a.middle_name middleName,a.last_name lastName,a.program_id programId,p.code programCode,p.name programName,a.graduation_year graduationYear,a.birthday,a.institutional_email institutionalEmail,a.photo_url photoUrl,a.gender,a.is_active isActive,EXISTS(SELECT 1 FROM students s WHERE s.id=a.student_id AND s.is_active=TRUE) studentIsActive,(SELECT COUNT(*) FROM alumni_degrees ad WHERE ad.alumni_id=a.id) degreeCount,a.transferred_at transferredAt,'Alumnus' type FROM alumni a LEFT JOIN programs p ON p.id=a.program_id`;
+const select = `SELECT a.id,a.student_id studentId,a.id_number idNumber,a.card_id cardId,TRIM(CONCAT_WS(' ',a.first_name,NULLIF(a.middle_name,''),a.last_name)) name,a.first_name firstName,a.middle_name middleName,a.last_name lastName,a.program_id programId,p.code programCode,p.name programName,a.graduation_year graduationYear,a.birthday,a.institutional_email institutionalEmail,a.photo_url photoUrl,a.gender,a.is_active isActive,EXISTS(SELECT 1 FROM students s WHERE s.id=a.student_id AND s.is_active=TRUE) studentIsActive,(SELECT COUNT(*) FROM alumni_degrees ad WHERE ad.alumni_id=a.id) degreeCount,a.transferred_at transferredAt,'Alumnus' type FROM alumni a LEFT JOIN programs p ON p.id=a.program_id`;
 
 const addDegree = (connection, alumniId, programId, graduationYear) =>
   connection.query(
@@ -148,14 +150,19 @@ exports.employeeUsesIdNumber = async (idNumber) =>
   );
 exports.create = async (data, { deactivateStudent = false } = {}) => {
   await ensureSchema();
+  await identifiers.ensureSchema();
   const connection = await pool.getConnection();
+  let identifierLock = false;
   try {
+    await identifiers.acquire(connection);
+    identifierLock = true;
     await connection.beginTransaction();
     const [students] = await connection.query(
       "SELECT id FROM students WHERE id_number=? LIMIT 1 FOR UPDATE",
       [data.idNumber],
     );
     let studentId = students[0]?.id || null;
+    await identifiers.assertAvailable(connection, { type: "alumni", studentId, idNumber: data.idNumber });
     if (!studentId) {
       const [studentResult] = await connection.query(
         `INSERT INTO students (id_number,contact,first_name,middle_name,last_name,program_id,year_level,birthday,institutional_email,photo_url,gender,is_active) VALUES (?,?,?,?,?,?,NULL,?,?,NULL,?,FALSE)`,
@@ -205,14 +212,25 @@ exports.create = async (data, { deactivateStudent = false } = {}) => {
     await connection.rollback();
     throw error;
   } finally {
+    if (identifierLock) await identifiers.release(connection);
     connection.release();
   }
 };
 exports.update = async (id, data, { deactivateStudent = false } = {}) => {
   await ensureSchema();
+  await identifiers.ensureSchema();
   const connection = await pool.getConnection();
+  let identifierLock = false;
   try {
+    await identifiers.acquire(connection);
+    identifierLock = true;
     await connection.beginTransaction();
+    const [[existing]] = await connection.query("SELECT student_id studentId FROM alumni WHERE id=? FOR UPDATE", [id]);
+    if (!existing) {
+      await connection.rollback();
+      return { affectedRows: 0 };
+    }
+    await identifiers.assertAvailable(connection, { type: "alumni", id, studentId: existing.studentId, idNumber: data.idNumber });
     const [result] = await connection.query(
       `UPDATE alumni SET id_number=?,contact=?,first_name=?,middle_name=?,last_name=?,program_id=?,graduation_year=?,birthday=?,institutional_email=?,gender=? WHERE id=?`,
       [
@@ -259,13 +277,18 @@ exports.update = async (id, data, { deactivateStudent = false } = {}) => {
     await connection.rollback();
     throw error;
   } finally {
+    if (identifierLock) await identifiers.release(connection);
     connection.release();
   }
 };
 exports.transferStudent = async (studentId, graduationYear) => {
   await ensureSchema();
+  await identifiers.ensureSchema();
   const connection = await pool.getConnection();
+  let identifierLock = false;
   try {
+    await identifiers.acquire(connection);
+    identifierLock = true;
     await connection.beginTransaction();
     const [students] = await connection.query(
       "SELECT * FROM students WHERE id=? LIMIT 1 FOR UPDATE",
@@ -277,9 +300,14 @@ exports.transferStudent = async (studentId, graduationYear) => {
       return { status: "missing" };
     }
     const [existing] = await connection.query(
-      "SELECT id FROM alumni WHERE student_id=? OR id_number=? LIMIT 1",
+      "SELECT id,student_id studentId FROM alumni WHERE student_id=? OR id_number=? LIMIT 1",
       [student.id, student.id_number],
     );
+    if (existing[0]?.studentId && Number(existing[0].studentId) !== Number(student.id))
+      throw identifiers.conflictError();
+    await identifiers.assertAvailable(connection, {
+      type: "alumni", id: existing[0]?.id || 0, studentId: student.id, idNumber: student.id_number,
+    });
     if (existing.length) {
       await connection.query(
         `UPDATE alumni SET student_id=?,id_number=?,contact=?,first_name=?,middle_name=?,last_name=?,program_id=?,graduation_year=?,birthday=?,institutional_email=?,photo_url=?,gender=?,is_active=TRUE WHERE id=?`,
@@ -344,6 +372,7 @@ exports.transferStudent = async (studentId, graduationYear) => {
     await connection.rollback();
     throw error;
   } finally {
+    if (identifierLock) await identifiers.release(connection);
     connection.release();
   }
 };
@@ -357,14 +386,30 @@ exports.transferStudentsByIdNumbers = async (idNumbers, graduationYear) => {
     ),
   ];
   if (!ids.length) return { transferred: 0, skipped: 0, movedIdNumbers: [] };
+  await identifiers.ensureSchema();
   const connection = await pool.getConnection();
+  let identifierLock = false;
   try {
+    await identifiers.acquire(connection);
+    identifierLock = true;
     await connection.beginTransaction();
     const placeholders = ids.map(() => "?").join(",");
     const [students] = await connection.query(
       `SELECT * FROM students WHERE id_number IN (${placeholders}) AND is_active=TRUE FOR UPDATE`,
       ids,
     );
+    if (students.length) {
+      const [linked] = await connection.query(
+        `SELECT id,student_id studentId FROM alumni WHERE student_id IN (${students.map(() => "?").join(",")})`,
+        students.map((student) => student.id),
+      );
+      const alumniByStudent = new Map(linked.map((item) => [Number(item.studentId), item.id]));
+      for (const student of students)
+        await identifiers.assertAvailable(connection, {
+          type: "alumni", id: alumniByStudent.get(Number(student.id)) || 0,
+          studentId: student.id, idNumber: student.id_number,
+        });
+    }
     for (let offset = 0; offset < students.length; offset += 500) {
       const batch = students.slice(offset, offset + 500);
       const values = [];
@@ -417,6 +462,7 @@ exports.transferStudentsByIdNumbers = async (idNumbers, graduationYear) => {
     await connection.rollback();
     throw error;
   } finally {
+    if (identifierLock) await identifiers.release(connection);
     connection.release();
   }
 };

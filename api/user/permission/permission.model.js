@@ -2,6 +2,7 @@ const pool = require("../../../db/db");
 const schema = require("../../../db/schema");
 const MAINTENANCE_MODULES = [
   "students",
+  "cardEnrollment",
   "alumni",
   "employees",
   "schools",
@@ -84,6 +85,9 @@ async function ensureSchema() {
       );
       await pool.query(
         "UPDATE permissions SET library_access=TRUE WHERE name='Superadmin'",
+      );
+      await pool.query(
+        "INSERT IGNORE INTO permissions (name,description,maintenance_access,maintenance_modules) VALUES ('Card Enrollment','Find people and enroll cards only',TRUE,'[\"cardEnrollment\"]')",
       );
       await pool.query(
         "UPDATE permissions SET library_access=TRUE WHERE name='Administrator'",

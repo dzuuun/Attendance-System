@@ -299,18 +299,6 @@ body {
   right: 0;
   border-width: 0 2px 2px 0;
 }
-.nfc-glyph {
-  color: white;
-  font: 600 26px Manrope;
-  letter-spacing: -8px;
-  transform: rotate(180deg);
-  position: absolute;
-  inset: 28px 24px;
-}
-.nfc-glyph b {
-  font-size: 37px;
-  margin-left: 8px;
-}
 .scan-line {
   position: absolute;
   width: 80%;

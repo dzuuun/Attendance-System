@@ -19,9 +19,6 @@ router.post(
   requireAdmin,
   controller.bulkTransferToAlumni,
 );
-router.get("/card-writer/status", requireAdmin, controller.cardWriterStatus);
-router.post("/card-writer/read", requireAdmin, controller.readCard);
-router.post("/:id/card-enrollment", requireAdmin, controller.enrollCard);
 router.post(
   "/:id/transfer-to-alumni",
   requireAdmin,
@@ -32,5 +29,6 @@ router.post("/photos/bulk", photos.bulkUpload, photos.bulk);
 router.post("/:id/photo", photos.singleUpload, photos.single);
 router.post("/deactivate-missing", requireAdmin, controller.deactivateMissing);
 router.put("/:id", controller.update);
+router.patch("/:id/card", controller.setCardId);
 router.patch("/:id/status", controller.setStatus);
 module.exports = router;

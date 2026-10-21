@@ -16,9 +16,6 @@ const attendeeDetailsContainer = document.querySelector("#attendeeDetails");
 const previousLogNotice = document.querySelector("#previousLogNotice");
 const resetProgressTrack = document.querySelector("#resetProgressTrack");
 const resetProgressBar = document.querySelector("#resetProgressBar");
-const scannerVisual = document.querySelector("#scannerVisual");
-const scannerPromptTitle = document.querySelector("#scannerPromptTitle");
-const readyMessage = document.querySelector("#readyMessage");
 const submitScanBtn = document.querySelector("#submitScanBtn");
 const statTotal = document.querySelector("#statTotal");
 const statIn = document.querySelector("#statIn");
@@ -56,7 +53,7 @@ let terminalLocation =
   localStorage.getItem(terminalLocationKey)?.trim() || "Main Entrance";
 let terminalGateId = localStorage.getItem(terminalGateKey) || "";
 const kioskIdKey = "taptrack_kiosk_id";
-let kioskId = localStorage.getItem(kioskIdKey);
+let kioskId = window.taptrackKioskId || localStorage.getItem(kioskIdKey);
 if (!kioskId) {
   kioskId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(
     /[^A-Za-z0-9_-]/g,
@@ -65,7 +62,6 @@ if (!kioskId) {
   localStorage.setItem(kioskIdKey, kioskId);
 }
 let kioskEnabled = true;
-let lastKioskActivity = Date.now();
 const kioskSessionStartedAt =
   Number(sessionStorage.getItem("taptrack_kiosk_session_started_at")) ||
   Date.now();
@@ -74,8 +70,12 @@ sessionStorage.setItem(
   String(kioskSessionStartedAt),
 );
 let pendingScannerAction = null;
+let scannerAssignmentReview = false;
 let localScannerAssignments = loadScannerAssignments();
-
+let lastScannerSequence = 0;
+let lastScannerEpoch = "";
+const handledScannerEvents = new Set();
+const pendingScannerLookups = new Map();
 function loadScannerAssignments() {
   try {
     const saved = JSON.parse(
@@ -99,6 +99,65 @@ function saveScannerAssignments() {
     scannerAssignmentKey,
     JSON.stringify(localScannerAssignments),
   );
+}
+
+async function changeScannerAssignment(action, device = null, replace = false) {
+  if (scannerAssignmentReview || !["Time In", "Time Out"].includes(action)) return false;
+  let dialog = document.querySelector("#scannerAssignmentReview");
+  if (!dialog) {
+    dialog = document.createElement("dialog");
+    dialog.id = "scannerAssignmentReview";
+    dialog.className = "scanner-assignment-review";
+    dialog.setAttribute("aria-labelledby", "scannerAssignmentReviewTitle");
+    dialog.innerHTML = '<h2 id="scannerAssignmentReviewTitle"></h2><p class="review-message"></p><code></code><p>This changes scanner settings only. It does not record attendance.</p><div class="review-actions"><button type="button" class="done-btn" data-review-cancel>Cancel</button><button type="button" class="pair-btn" data-review-save>Save assignment</button></div>';
+    document.body.appendChild(dialog);
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); }
+    });
+  }
+  dialog.querySelector("h2").textContent = device ? `Assign ${action} reader?` : `Clear ${action} assignments?`;
+  dialog.querySelector(".review-message").textContent = device
+    ? replace ? `Replace the current ${action} inputs with this reader?` : `Use this reader for ${action}?`
+    : `Remove the saved inputs for ${action} from this browser?`;
+  dialog.querySelector("code").textContent = device?.deviceId || "";
+  dialog.querySelector("code").hidden = !device;
+  dialog.returnValue = "";
+  scannerAssignmentReview = true;
+  const accepted = new Promise((resolve) => {
+    const finish = (save) => { dialog.close(save ? "save" : "cancel"); resolve(save); };
+    dialog.querySelector("[data-review-cancel]").onclick = () => finish(false);
+    dialog.querySelector("[data-review-save]").onclick = () => finish(true);
+    dialog.oncancel = (event) => { event.preventDefault(); finish(false); };
+  });
+  dialog.showModal();
+  try {
+    if (!await accepted) return false;
+    if (device) {
+      for (const direction of ["Time In", "Time Out"])
+        localScannerAssignments[direction] = (localScannerAssignments[direction] || [])
+          .filter((entry) => entry.deviceId !== device.deviceId);
+      if (replace) localScannerAssignments[action] = [];
+      localScannerAssignments[action].push(device);
+    } else localScannerAssignments[action] = [];
+    saveScannerAssignments();
+    renderScannerStatus({});
+    showResult("setup", device ? `${action} Scanner Assigned` : `${action} Assignments Cleared`,
+      device ? "Settings saved. Remove the card, close Scanners, then scan to record attendance." : "Assign the physical card reader for this direction.");
+    return true;
+  } finally {
+    scannerAssignmentReview = false;
+  }
+}
+
+function reviewScannerAssignmentLink() {
+  const url = new URL(location.href);
+  const action = url.searchParams.get("scannerAction");
+  const deviceId = url.searchParams.get("scannerDevice");
+  if (!["Time In", "Time Out"].includes(action) || !deviceId || deviceId.length > 512) return;
+  url.searchParams.delete("scannerAction");
+  url.searchParams.delete("scannerDevice");
+  history.replaceState(null, "", url.pathname + url.search + url.hash);
+  void changeScannerAssignment(action, { deviceId, name: "HID card reader" }, true);
 }
 
 function updateTerminalLocation(value, gateId = terminalGateId) {
@@ -142,7 +201,6 @@ async function checkInKiosk() {
 }
 
 function promptKioskHealthCheck() {
-  lastKioskActivity = Date.now();
   void checkInKiosk();
 }
 
@@ -397,34 +455,6 @@ if (soundToggleBtn) {
 }
 updateSoundUI();
 
-// A locally connected ACR122U can read either TapTrack NTAG cards or MIFARE
-// Classic cards. Keep one long-polling read active and submit only valid IDs.
-let localNfcPolling = false;
-async function pollLocalNfcReader() {
-  if (localNfcPolling || !window.TapTrackNfc) return;
-  localNfcPolling = true;
-  try {
-    const status = await window.TapTrackNfc.status();
-    if (!status.available) return;
-    while (true) {
-      try {
-        const result = await window.TapTrackNfc.read();
-        const value = String(result.value || "")
-          .trim()
-          .toUpperCase();
-        if (/^(?:\d{7,8}|\d{12}|P\d{7,8})$/.test(value)) scan(value);
-      } catch (_error) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
-  } catch (_error) {
-    // The local NFC bridge is optional; manual and hardware-wedge input remain.
-  } finally {
-    localNfcPolling = false;
-  }
-}
-pollLocalNfcReader();
-
 // --- Formatting Helpers ---
 const escapeHtml = (value) => {
   const node = document.createElement("div");
@@ -482,9 +512,7 @@ function renderIdleState() {
   if (resultKicker) resultKicker.textContent = "SYSTEM READY";
   if (resultTitle) resultTitle.textContent = "Ready to Scan";
   if (resultDetail) {
-    resultDetail.textContent = bridgeConnected
-      ? "The entrance terminal is ready."
-      : "Enter an ID number or use the camera scanner.";
+    resultDetail.textContent = "Tap an enrolled card, scan a barcode, or enter an ID number.";
   }
   resultCard?.classList.remove("has-person-photo");
   if (resultPersonPhotoWrap) resultPersonPhotoWrap.hidden = true;
@@ -497,43 +525,29 @@ function renderIdleState() {
   if (previousLogNotice) previousLogNotice.style.display = "none";
   if (resetProgressTrack) resetProgressTrack.style.display = "none";
 
-  if (scannerVisual) {
-    scannerVisual.className = "scanner-hero";
-  }
-  if (scannerPromptTitle)
-    scannerPromptTitle.textContent = "Tap RFID Card or Scan Barcode";
-  if (readyMessage)
-    readyMessage.textContent = "Hold card steady in front of reader";
 }
 
 function showResult(type, title, detail, previous = "", data = null) {
   clearTimeout(resetTimer);
 
-  const isSuccess =
-    type === "success" ||
-    type === "success-in" ||
-    type === "success-out" ||
-    type === "out";
   const isTimeOut =
     type === "out" ||
     type === "success-out" ||
     (data && data.action === "Time Out");
   const isError = type === "error";
+  const isPending = type === "pending";
+  const isSetup = type === "setup" || (type === "success" && !data);
 
   // Card classes
   if (resultCard) {
-    resultCard.className = `result-hero-card ${isError ? "error" : isTimeOut ? "success-out" : "success-in"}`;
+    resultCard.className = `result-hero-card ${isPending ? "" : isError ? "error" : isTimeOut ? "success-out" : "success-in"}`;
   }
 
-  // Scanner hero visual effect
-  if (scannerVisual) {
-    scannerVisual.className = `scanner-hero ${isError ? "error" : isTimeOut ? "success-out" : "success-in"}`;
-  }
 
   // Icons and kickers
   if (resultIcon) {
     resultIcon.classList.add("material-symbols-rounded");
-    resultIcon.textContent = isError
+    resultIcon.textContent = isPending ? "hourglass_top" : isError
       ? "error"
       : isTimeOut
         ? "logout"
@@ -541,7 +555,7 @@ function showResult(type, title, detail, previous = "", data = null) {
   }
 
   if (resultKicker) {
-    resultKicker.textContent = isError
+    resultKicker.textContent = isSetup ? "SCANNER SETTINGS SAVED" : isPending ? "READING SCANNER" : isError
       ? "ATTENTION REQUIRED"
       : isTimeOut
         ? "TIME OUT RECORDED"
@@ -672,54 +686,72 @@ function addRecentScan(data) {
     recentScans.pop();
   }
 
-  renderRecentScans();
+  if (recentScansList) {
+    const atTop = recentScansList.scrollTop <= 1;
+    feedEmptyState?.remove();
+    recentScansList.insertAdjacentHTML("afterbegin", recentScanRow(recentScans[0]).trim());
+    // Keep existing rows and photos mounted; remove only the oldest overflow.
+    const rows = recentScansList.querySelectorAll(":scope > .feed-item");
+    for (let index = 10; index < rows.length; index++) rows[index].remove();
+    if (atTop) recentScansList.scrollTop = 0;
+  }
+  updateFeedCount();
+}
+
+function updateFeedCount() {
+  const label = `${recentScans.length} Recent`;
+  if (feedCountBadge && feedCountBadge.textContent !== label)
+    feedCountBadge.textContent = label;
+}
+
+function recentScanRow(item) {
+  const isOut = item.action === "Time Out";
+  const initials = (item.name || "U")
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return `
+    <div class="feed-item">
+      <div class="feed-item-person">
+        <div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name || "Attendee")} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div>
+        <div class="feed-item-info">
+          <strong title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong>
+          <small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type || "Attendee")}</small>
+        </div>
+      </div>
+      <div class="feed-item-meta">
+        <span class="feed-badge ${isOut ? "out" : "in"}">${escapeHtml(item.action)}</span>
+        <span class="feed-time">${formatShortTime(item.timestamp)}</span>
+      </div>
+    </div>`;
 }
 
 function renderRecentScans() {
   if (!recentScansList) return;
-
+  updateFeedCount();
   if (recentScans.length === 0) {
-    if (feedEmptyState) feedEmptyState.style.display = "flex";
-    if (feedCountBadge) feedCountBadge.textContent = "0 Scans";
+    recentScansList.replaceChildren();
+    if (feedEmptyState) {
+      feedEmptyState.style.display = "flex";
+      recentScansList.appendChild(feedEmptyState);
+    }
     return;
   }
-
-  if (feedEmptyState) feedEmptyState.style.display = "none";
-  if (feedCountBadge)
-    feedCountBadge.textContent = `${recentScans.length} Recent`;
-
-  const itemsHtml = recentScans
-    .map((item) => {
-      const isOut = item.action === "Time Out";
-      const initials = (item.name || "U")
-        .split(" ")
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase();
-
-      return `
-        <div class="feed-item">
-          <div class="feed-item-person">
-            <div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name || "Attendee")} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div>
-            <div class="feed-item-info">
-              <strong title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong>
-              <small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type || "Attendee")}</small>
-            </div>
-          </div>
-          <div class="feed-item-meta">
-            <span class="feed-badge ${isOut ? "out" : "in"}">${escapeHtml(item.action)}</span>
-            <span class="feed-time">${formatShortTime(item.timestamp)}</span>
-          </div>
-        </div>`;
-    })
-    .join("");
-
-  recentScansList.innerHTML = itemsHtml;
+  // Full rendering is reserved for initial history loading or a gate change.
+  recentScansList.innerHTML = recentScans.map(recentScanRow).join("");
 }
 
-let scanQueue = Promise.resolve();
+const scanQueue = window.TapTrackScanQueue.create(4);
 let pendingScans = 0;
+function updatePendingScans() {
+  const panel = document.querySelector("#attendanceQueuePanel");
+  if (panel) panel.hidden = pendingScans === 0;
+  const label = document.querySelector("#attendanceQueueStatus");
+  if (label) label.textContent = pendingScans ? `Processing ${pendingScans} scan${pendingScans === 1 ? "" : "s"}...` : "No pending taps.";
+}
 const recentBridgeScans = new Map();
 const pendingManualScans = new Set();
 const recentSuccessfulScans = new Map();
@@ -743,29 +775,119 @@ function wasJustHandledByBridge(raw) {
   return Date.now() - (recentBridgeScans.get(idNumber) || 0) < 1000;
 }
 
-function submitManualScan(raw) {
+function configuredScannerAction() {
+  const actions = ["Time In", "Time Out"].filter(
+    (action) => localScannerAssignments[action]?.length,
+  );
+  if (actions.length === 1) return actions[0];
+  // A keyboard echo cannot identify which of two directional scanners sent it.
+  return actions.length ? null : "Auto";
+}
+
+function updateScannerCursor(data) {
+  const epoch = data.scanEpoch || data.epoch;
+  const sequence = data.lastScanSequence ?? data.sequence;
+  if (!epoch || !Number.isSafeInteger(sequence)) return;
+  if (lastScannerEpoch !== epoch) {
+    lastScannerEpoch = epoch;
+    lastScannerSequence = sequence;
+  } else lastScannerSequence = Math.max(lastScannerSequence, sequence);
+}
+
+function consumeScannerEvent(data) {
+  updateScannerCursor(data);
+  if (!Number.isSafeInteger(data.sequence) || !data.epoch) return true;
+  const key = `${data.epoch}:${data.sequence}`;
+  if (handledScannerEvents.has(key)) return false;
+  handledScannerEvents.add(key);
+  if (handledScannerEvents.size > 256)
+    handledScannerEvents.delete(handledScannerEvents.values().next().value);
+  return true;
+}
+
+async function recoverScannerDirection(idNumber, cursor) {
+  if (pendingScannerLookups.has(idNumber)) return;
+  const job = { handled: false };
+  pendingScannerLookups.set(idNumber, job);
+  showResult("pending", "Reading Scanner", "Checking the assigned reader...");
+  try {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (job.handled) return;
+      const query = new URLSearchParams({ value: idNumber, after: cursor.sequence, epoch: cursor.epoch });
+      const response = await fetch(`/api/kiosk/scanners/lookup?${query}`);
+      const data = await response.json().catch(() => ({}));
+      if (job.handled) return;
+      if (response.ok) {
+        updateScannerCursor(data);
+        if (!cursor.epoch && data.scanEpoch)
+          cursor = { sequence: data.lastScanSequence, epoch: data.scanEpoch };
+        const matches = (Array.isArray(data.scans) ? data.scans : []).flatMap((event) => {
+          const assignment = Object.entries(localScannerAssignments).find(
+            ([, devices]) => devices.some((device) => device.deviceId === event.deviceId),
+          );
+          return assignment ? [{ event, action: assignment[0] }] : [];
+        });
+        const actions = new Set(matches.map((match) => match.action));
+        if (actions.size > 1)
+          throw new Error("The same card was read by both directions. Scan it once with the intended reader.");
+        if (actions.size === 1) {
+          const unread = matches.filter(({ event }) => consumeScannerEvent(event));
+          if (!unread.length) return;
+          job.handled = true;
+          rememberBridgeScan(idNumber);
+          await scan(idNumber, unread[unread.length - 1].action);
+          return;
+        }
+      }
+      if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    if (!job.handled)
+      throw new Error("No assigned reader was detected. Reconnect the reader or assign it in Scanners, then scan again.");
+  } catch (error) {
+    if (!job.handled) {
+      SoundFX.error();
+      showResult("error", "Scanner Not Detected", error.message);
+    }
+  } finally {
+    pendingScannerLookups.delete(idNumber);
+  }
+}
+
+function submitManualScan(raw, allowAutomatic = false) {
   const idNumber = String(raw || "")
     .trim()
     .toUpperCase();
   if (!idNumber) return;
+  // Consume the completed HID input immediately so the next card starts empty.
+  if (input) input.value = "";
+  if (pendingScannerAction || scannerAssignmentReview) return;
+  // Capture the direction now; queued scans must keep their original assignment.
+  const action = configuredScannerAction() || (allowAutomatic ? "Auto" : null);
+  const cursor = { sequence: lastScannerSequence, epoch: lastScannerEpoch };
+  const submit = () => {
+    if (wasJustHandledByBridge(idNumber)) return;
+    if (!action) {
+      void recoverScannerDirection(idNumber, cursor);
+      return;
+    }
+    scan(idNumber, action);
+  };
   // Raw-input scanner devices also type into the focused field. Give the SSE
   // bridge event a moment to arrive, then suppress that keyboard echo.
   if (bridgeConnected) {
     if (pendingManualScans.has(idNumber)) return;
     pendingManualScans.add(idNumber);
     setTimeout(() => {
-      if (!wasJustHandledByBridge(idNumber)) scan(idNumber);
-      if (input) input.value = "";
+      submit();
       pendingManualScans.delete(idNumber);
     }, 250);
     return;
   }
-  scan(idNumber);
+  submit();
 }
 
 // --- Main Scan Request Handler ---
 function scan(raw, actionOverride) {
-  lastKioskActivity = Date.now();
   const idNumber = String(raw || "")
     .trim()
     .toUpperCase();
@@ -773,21 +895,27 @@ function scan(raw, actionOverride) {
     return Promise.resolve({
       success: false,
       title: "Scan not recorded",
-      detail: "Enter an ID number.",
+      detail: "Enter an ID number or card number.",
     });
 
+  const action = actionOverride || configuredScannerAction();
+  if (!action) return Promise.resolve({ success: false, title: "Scanner Direction Unavailable" });
+  const lookup = pendingScannerLookups.get(idNumber);
+  if (lookup) lookup.handled = true;
   pendingScans += 1;
-  if (submitScanBtn) submitScanBtn.disabled = true;
-  const request = scanQueue.then(() => performScan(idNumber, actionOverride));
-  scanQueue = request.catch(() => {});
+  updatePendingScans();
+  // A capture beep means the ID was received, not that attendance was saved.
+  // It must not wait behind another person's database request.
+  SoundFX.beep();
+  clearTimeout(resetTimer);
+  const request = scanQueue.add(idNumber, () => performScan(idNumber, action));
   return request.finally(() => {
     pendingScans -= 1;
-    if (submitScanBtn) submitScanBtn.disabled = pendingScans > 0;
+    updatePendingScans();
   });
 }
 
-async function performScan(idNumber, actionOverride) {
-  const action = actionOverride || "Auto";
+async function performScan(idNumber, action) {
   const previousSuccess = recentSuccessfulScans.get(idNumber) || 0;
   if (Date.now() - previousSuccess < duplicateScanWindowMs)
     return {
@@ -796,17 +924,6 @@ async function performScan(idNumber, actionOverride) {
       title: "Duplicate scan ignored",
       detail: "Please wait a few seconds before scanning this ID again.",
     };
-
-  // Visual processing state
-  if (scannerVisual) scannerVisual.className = "scanner-hero processing";
-  if (scannerPromptTitle)
-    scannerPromptTitle.textContent = "Validating Attendance...";
-  if (readyMessage)
-    readyMessage.textContent =
-      action === "Auto"
-        ? `Checking the next entrance action for ID: ${idNumber}`
-        : `Recording ${action} for ID: ${idNumber}`;
-  SoundFX.beep();
 
   try {
     const response = await fetch("/api/kiosk/scan", {
@@ -869,8 +986,8 @@ async function performScan(idNumber, actionOverride) {
     };
   } finally {
     if (input) {
-      input.value = "";
-      if (!document.querySelector('.kiosk-verification-backdrop')) input.focus();
+      // An earlier response must not erase a card currently being typed.
+      if (!document.querySelector('.kiosk-verification-backdrop, .scanner-modal-backdrop.open, dialog[open]')) input.focus();
     }
   }
 }
@@ -880,9 +997,15 @@ if (form) {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     SoundFX.init();
-    submitManualScan(input.value);
+    submitManualScan(input.value, event.submitter === submitScanBtn);
   });
 }
+// A reader's Enter must work while the manual submit button is busy.
+input?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  form?.requestSubmit();
+});
 
 // Camera Scanner Button
 const kioskCameraScanBtn = document.querySelector("#kioskCameraScan");
@@ -890,7 +1013,7 @@ if (kioskCameraScanBtn) {
   kioskCameraScanBtn.addEventListener("click", () => {
     SoundFX.init();
     if (window.TapTrackCameraScanner) {
-      window.TapTrackCameraScanner.open((value) => scan(value));
+      window.TapTrackCameraScanner.open((value) => scan(value, configuredScannerAction() || "Auto"));
     }
   });
 }
@@ -898,36 +1021,38 @@ if (kioskCameraScanBtn) {
 // --- Hardware Scanner Bridge & SSE Status ---
 function renderScannerStatus(status) {
   if (!status) return;
+  updateScannerCursor(status);
 
   lastBridgeStatus = { ...lastBridgeStatus, ...status };
   const bridgeAvailable = !!lastBridgeStatus.available;
   bridgeConnected = !!lastBridgeStatus.connected;
+  const anyConnected = bridgeConnected;
   if (input) {
-    input.placeholder = bridgeConnected
+    input.placeholder = anyConnected
       ? "Physical scanner connected — ready to tap..."
-      : "Tap card or enter ID number...";
+      : "Scan or enter ID number or card number...";
   }
 
   const statusBadge = document.querySelector("#terminalStatusBadge");
   const statusText = document.querySelector("#terminalStatusText");
   if (statusBadge && statusText) {
-    if (bridgeConnected) {
+    if (anyConnected) {
       statusBadge.classList.remove("disconnected");
       statusText.textContent = "ENTRANCE TERMINAL ONLINE";
     } else if (!bridgeAvailable) {
       statusBadge.classList.remove("disconnected");
-      statusText.textContent = "TERMINAL ONLINE · MANUAL INPUT";
+      statusText.textContent = "TERMINAL ONLINE · HID / MANUAL INPUT";
     } else {
       statusBadge.classList.add("disconnected");
-      statusText.textContent = "SCANNER BRIDGE OFFLINE";
+      statusText.textContent = "TERMINAL ONLINE · HID INPUT READY";
     }
   }
 
   const assignments = localScannerAssignments;
   const devicesFor = (action) => {
     const devices = assignments[action];
-    if (!devices) return [];
-    return Array.isArray(devices) ? devices : [devices];
+    const result = devices ? (Array.isArray(devices) ? [...devices] : [devices]) : [];
+    return result;
   };
   const deviceNames = (action) =>
     devicesFor(action)
@@ -967,13 +1092,12 @@ function renderScannerStatus(status) {
   const bridgePlatformInfo = document.querySelector("#bridgePlatformInfo");
 
   if (bridgeStatusPill) {
-    bridgeStatusPill.textContent = bridgeConnected
-      ? "BRIDGE CONNECTED"
+    bridgeStatusPill.textContent = bridgeConnected ? "USB SCANNERS CONNECTED"
       : bridgeAvailable
         ? "BRIDGE OFFLINE"
         : "MANUAL MODE";
-    bridgeStatusPill.style.background = bridgeConnected ? "#dcfce7" : "#fef3c7";
-    bridgeStatusPill.style.color = bridgeConnected ? "#15803d" : "#b45309";
+    bridgeStatusPill.style.background = anyConnected ? "#dcfce7" : "#fef3c7";
+    bridgeStatusPill.style.color = anyConnected ? "#15803d" : "#b45309";
   }
 
   if (bridgePlatformInfo) {
@@ -989,8 +1113,8 @@ function renderScannerStatus(status) {
 
   if (bridgeStatusDesc) {
     bridgeStatusDesc.textContent = pendingScannerAction
-      ? `Use the scanner being assigned as ${pendingScannerAction}.`
-      : bridgeConnected
+      ? `Use the USB scanner to assign ${pendingScannerAction}. This setup scan will not record attendance.`
+        : bridgeConnected
         ? "Hardware scanners are active. Assignments are stored only on this terminal."
         : bridgeAvailable
           ? "The hardware scanner helper stopped or could not start. Check its terminal output and restart the server."
@@ -998,14 +1122,22 @@ function renderScannerStatus(status) {
   }
 
   document.querySelectorAll("[data-pair]").forEach((button) => {
-    button.disabled = !bridgeConnected;
-    button.title = bridgeConnected
-      ? "Assign this physical scanner"
+    button.textContent = (localScannerAssignments[button.dataset.pair]?.length || 0) >= 2 ? "Replace scanners" : "Assign Scanner";
+    button.disabled = !anyConnected;
+    button.title = anyConnected
+      ? "Scan with the physical USB device to assign it"
       : bridgeAvailable
         ? "Start the scanner helper before assigning devices"
         : "Physical device assignment requires Windows or Raspberry Pi";
   });
+  document.querySelectorAll("[data-clear-scanners]").forEach((button) => {
+    button.disabled = !localScannerAssignments[button.dataset.clearScanners]?.length;
+  });
 }
+
+document.querySelectorAll("[data-clear-scanners]").forEach((button) => {
+  button.addEventListener("click", () => { void changeScannerAssignment(button.dataset.clearScanners); });
+});
 
 // Scanner Pairing Buttons
 document.querySelectorAll("[data-pair]").forEach((button) => {
@@ -1024,18 +1156,18 @@ document.querySelectorAll("[data-pair]").forEach((button) => {
       return;
     }
     pendingScannerAction = button.dataset.pair;
-    renderScannerStatus(lastBridgeStatus);
+    renderScannerStatus({});
     showResult(
-      "",
+      "pending",
       `Pair ${pendingScannerAction} Scanner`,
-      "Use that physical scanner now to save it on this terminal.",
+      "Use the USB scanner now. This setup scan will not record attendance.",
     );
   });
 });
 
 // EventSource for Scanner Bridge
 try {
-  const scannerEvents = new EventSource("/api/kiosk/scanners/events");
+  const scannerEvents = new EventSource(`/api/kiosk/scanners/events?kioskId=${encodeURIComponent(kioskId)}`);
 
   scannerEvents.addEventListener("status", (event) => {
     try {
@@ -1043,47 +1175,27 @@ try {
     } catch (_e) {}
   });
 
-  scannerEvents.addEventListener("scan", (event) => {
+  scannerEvents.addEventListener("error", () => {
+    renderScannerStatus({ connected: false });
+  });
+
+  scannerEvents.addEventListener("scan", async (event) => {
     try {
+      if (scannerAssignmentReview) return;
       const data = JSON.parse(event.data);
+      if (!consumeScannerEvent(data)) return;
       if (pendingScannerAction) {
         // Pairing input must not also be submitted by the focused form.
         rememberBridgeScan(data.idNumber);
         const action = pendingScannerAction;
-        const target = localScannerAssignments[action] || [];
-        const alreadyAssigned = target.some(
-          (device) => device.deviceId === data.deviceId,
-        );
-        if (!alreadyAssigned && target.length >= 2) {
+        try {
+          await changeScannerAssignment(action, {
+            deviceId: data.deviceId, name: data.name || "USB scanner",
+          }, (localScannerAssignments[action]?.length || 0) >= 2);
+        } finally {
           pendingScannerAction = null;
-          SoundFX.error();
-          showResult(
-            "error",
-            "Assignment Limit Reached",
-            `${action} already has two assigned scanners.`,
-          );
-          renderScannerStatus({ connected: bridgeConnected });
-          return;
+          renderScannerStatus({});
         }
-        for (const assignedAction of ["Time In", "Time Out"]) {
-          localScannerAssignments[assignedAction] = (
-            localScannerAssignments[assignedAction] || []
-          ).filter((device) => device.deviceId !== data.deviceId);
-        }
-        localScannerAssignments[action] ||= [];
-        localScannerAssignments[action].push({
-          deviceId: data.deviceId,
-          name: data.name || "USB scanner",
-        });
-        pendingScannerAction = null;
-        saveScannerAssignments();
-        SoundFX.timeIn();
-        showResult(
-          "success",
-          `${action} Scanner Assigned`,
-          "The hardware device was saved on this kiosk terminal.",
-        );
-        renderScannerStatus({ connected: bridgeConnected });
         return;
       }
       const assignment = Object.entries(localScannerAssignments).find(
@@ -1091,40 +1203,17 @@ try {
           devices.some((device) => device.deviceId === data.deviceId),
       );
       if (!assignment) {
-        // Do not suppress the keyboard echo. The focused form will submit it
-        // as manual input using automatic Time In/Time Out selection.
+        // The focused form follows the terminal's single assigned direction.
+        // With both directions assigned, only an identified scanner may choose
+        // its lane; an unidentified keyboard echo must not select Auto.
         return;
       }
       // Assigned devices are handled here with their directional action, so
       // suppress the duplicate value typed into the focused input.
       rememberBridgeScan(data.idNumber);
+      const lookup = pendingScannerLookups.get(String(data.idNumber || "").trim().toUpperCase());
+      if (lookup) lookup.handled = true;
       scan(data.idNumber, assignment[0]);
-    } catch (_e) {}
-  });
-
-  scannerEvents.addEventListener("assigned", (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      SoundFX.timeIn();
-      showResult(
-        "success",
-        `${data.action} Scanner Assigned`,
-        "The hardware device was saved for this kiosk.",
-      );
-      renderScannerStatus({ connected: bridgeConnected });
-    } catch (_e) {}
-  });
-
-  scannerEvents.addEventListener("unassigned", (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      SoundFX.error();
-      showResult(
-        "error",
-        "Scanner Not Assigned",
-        data.message ||
-          `${data.name || "New scanner"} must be assigned before use.`,
-      );
     } catch (_e) {}
   });
 } catch (_e) {
@@ -1227,6 +1316,8 @@ function toggleScannerModal(open) {
       .then(renderScannerStatus)
       .catch(() => {});
   } else {
+    pendingScannerAction = null;
+    renderScannerStatus({});
     scannerModalBackdrop.classList.remove("open");
     if (!document.querySelector(".kiosk-verification-backdrop")) input?.focus();
   }
@@ -1249,21 +1340,11 @@ if (terminalLocationInput) {
 
 checkInKiosk();
 setInterval(checkInKiosk, 90_000);
-document.addEventListener("keydown", () => {
-  lastKioskActivity = Date.now();
-});
-document.addEventListener("pointerdown", () => {
-  lastKioskActivity = Date.now();
-});
 window.addEventListener("online", promptKioskHealthCheck);
 window.addEventListener("focus", promptKioskHealthCheck);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") promptKioskHealthCheck();
 });
-setInterval(() => {
-  if (Date.now() - lastKioskActivity < 90_000) return;
-  checkInKiosk().finally(() => location.reload());
-}, 15_000);
 setInterval(pollKioskCommands, 5_000);
 pollKioskCommands();
 if (doneScannerModal) {
@@ -1283,6 +1364,11 @@ if (scannerModalBackdrop) {
 
 // Initial setup
 renderIdleState();
+fetch("/api/kiosk/scanners")
+  .then((response) => response.json())
+  .then(renderScannerStatus)
+  .catch(() => {});
 loadGateOptions();
 loadRecentScans();
 input?.focus();
+reviewScannerAssignmentLink();

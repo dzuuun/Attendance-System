@@ -8,7 +8,7 @@ const locationKey = location.pathname.includes("internet-section")
   : "library";
 const locationName = locationKey === "library" ? "Library" : "Internet Section";
 let resetTimer = null;
-let scanQueue = Promise.resolve();
+const scanQueue = window.TapTrackScanQueue.create(4);
 let pendingScans = 0;
 let sessionTotal = 0;
 let studentTotal = 0;
@@ -18,7 +18,7 @@ let soundEnabled =
   localStorage.getItem("taptrack_library_kiosk_sound") !== "false";
 let audioContext = null;
 const kioskIdKey = "taptrack_library_kiosk_id";
-let kioskId = localStorage.getItem(kioskIdKey);
+let kioskId = window.taptrackKioskId || localStorage.getItem(kioskIdKey);
 if (!kioskId) {
   kioskId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(
     /[^A-Za-z0-9_-]/g,
@@ -27,7 +27,6 @@ if (!kioskId) {
   localStorage.setItem(kioskIdKey, kioskId);
 }
 let kioskEnabled = true;
-let lastKioskActivity = Date.now();
 const kioskSessionStartedAt =
   Number(sessionStorage.getItem("taptrack_library_kiosk_session_started_at")) ||
   Date.now();
@@ -130,7 +129,6 @@ async function checkInKiosk() {
 }
 
 function promptKioskHealthCheck() {
-  lastKioskActivity = Date.now();
   void checkInKiosk();
 }
 
@@ -263,23 +261,29 @@ function showResult(success, title, detail, data = null) {
   resetTimer = setTimeout(idle, duration);
 }
 
-function renderRecentScans() {
+function updateRecentStats() {
   $("#statTotal").textContent = sessionTotal;
   $("#statStudents").textContent = studentTotal;
   $("#statEmployees").textContent = employeeTotal;
-  $("#feedCountBadge").textContent = `${recentScans.length} RECENT`;
+  const count = `${recentScans.length} RECENT`;
+  if ($("#feedCountBadge").textContent !== count)
+    $("#feedCountBadge").textContent = count;
+}
+
+function recentScanRow(item) {
+  const initials = (item.name || "Attendee")
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return `<div class="feed-item"><div class="feed-item-person"><div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name)} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div><div class="feed-item-info"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type)}</small></div></div><div class="feed-item-meta"><span class="feed-badge in">TIME IN</span><span class="feed-time">${formatTime(item.timestamp)}</span></div></div>`;
+}
+
+function renderRecentScans() {
+  updateRecentStats();
   $("#recentScansList").innerHTML = recentScans.length
-    ? recentScans
-        .map((item) => {
-          const initials = item.name
-            .split(/\s+/)
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase();
-          return `<div class="feed-item"><div class="feed-item-person"><div class="feed-avatar">${escapeHtml(initials)}<img src="${escapeHtml(item.photoUrl || fallbackPhotoUrl)}" alt="${escapeHtml(item.name)} photo" onerror="this.onerror=null;this.src='${fallbackPhotoUrl}'"></div><div class="feed-item-info"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.idNumber)} · ${escapeHtml(item.type)}</small></div></div><div class="feed-item-meta"><span class="feed-badge in">TIME IN</span><span class="feed-time">${formatTime(item.timestamp)}</span></div></div>`;
-        })
-        .join("")
+    ? recentScans.map(recentScanRow).join("")
     : `<div class="feed-empty-state"><span class="material-symbols-rounded" aria-hidden="true">schedule</span><span>No scans recorded yet today</span><small>New Time In records will appear here.</small></div>`;
 }
 
@@ -289,7 +293,14 @@ function addRecent(data) {
   else employeeTotal += 1;
   recentScans.unshift(data);
   recentScans = recentScans.slice(0, 10);
-  renderRecentScans();
+  updateRecentStats();
+  const list = $("#recentScansList");
+  const atTop = list.scrollTop <= 1;
+  list.querySelector(".feed-empty-state")?.remove();
+  list.insertAdjacentHTML("afterbegin", recentScanRow(data));
+  const rows = list.querySelectorAll(":scope > .feed-item");
+  for (let index = 10; index < rows.length; index++) rows[index].remove();
+  if (atTop) list.scrollTop = 0;
 }
 
 async function loadRecentScans() {
@@ -312,7 +323,6 @@ async function loadRecentScans() {
 }
 
 function scan(raw) {
-  lastKioskActivity = Date.now();
   if (!kioskEnabled)
     return Promise.resolve({
       success: false,
@@ -326,11 +336,11 @@ function scan(raw) {
     return Promise.resolve({
       success: false,
       title: "Scan not recorded",
-      detail: "Enter an ID number.",
+      detail: "Enter an ID number or card number.",
     });
   pendingScans += 1;
   $("#submitScanBtn").disabled = true;
-  const request = scanQueue.then(async () => {
+  const request = scanQueue.add(idNumber, async () => {
     try {
       const response = await fetch(`/api/library-kiosk/${locationKey}/scan`, {
         method: "POST",
@@ -362,11 +372,9 @@ function scan(raw) {
         detail: error.message,
       };
     } finally {
-      input.value = "";
-      if (!document.querySelector(".kiosk-verification-backdrop")) input.focus();
+      if (!document.querySelector(".kiosk-verification-backdrop, dialog[open]")) input.focus();
     }
   });
-  scanQueue = request.catch(() => {});
   return request.finally(() => {
     pendingScans -= 1;
     $("#submitScanBtn").disabled = pendingScans > 0;
@@ -375,7 +383,14 @@ function scan(raw) {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  scan(input.value);
+  const value = input.value;
+  input.value = "";
+  scan(value);
+});
+input.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  form.requestSubmit();
 });
 $("#kioskCameraScan").addEventListener("click", () =>
   window.TapTrackCameraScanner?.open(scan),
@@ -437,21 +452,11 @@ setInterval(updateClock, 1000);
 loadRecentScans();
 checkInKiosk();
 setInterval(checkInKiosk, 30_000);
-document.addEventListener("keydown", () => {
-  lastKioskActivity = Date.now();
-});
-document.addEventListener("pointerdown", () => {
-  lastKioskActivity = Date.now();
-});
 window.addEventListener("online", promptKioskHealthCheck);
 window.addEventListener("focus", promptKioskHealthCheck);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") promptKioskHealthCheck();
 });
-setInterval(() => {
-  if (Date.now() - lastKioskActivity < 90_000) return;
-  checkInKiosk().finally(() => location.reload());
-}, 15_000);
 setInterval(pollKioskCommands, 5_000);
 pollKioskCommands();
 input.focus();

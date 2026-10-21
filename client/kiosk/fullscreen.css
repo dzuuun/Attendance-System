@@ -27,26 +27,6 @@ body.is-fullscreen .digital-time {
   font-size: clamp(34px, 3.8vw, 48px);
 }
 
-:fullscreen .scanner-hero,
-:-webkit-full-screen .scanner-hero,
-body.is-fullscreen .scanner-hero {
-  min-height: clamp(280px, 32vh, 360px);
-}
-
-:fullscreen .radar-emitter,
-:-webkit-full-screen .radar-emitter,
-body.is-fullscreen .radar-emitter {
-  width: clamp(160px, 18vh, 210px);
-  height: clamp(160px, 18vh, 210px);
-}
-
-:fullscreen .rfid-card-visual,
-:-webkit-full-screen .rfid-card-visual,
-body.is-fullscreen .rfid-card-visual {
-  width: clamp(108px, 12vh, 140px);
-  height: clamp(68px, 7.5vh, 88px);
-}
-
 :fullscreen .result-hero-card,
 :-webkit-full-screen .result-hero-card,
 body.is-fullscreen .result-hero-card {

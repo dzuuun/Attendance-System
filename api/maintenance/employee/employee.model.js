@@ -1,9 +1,11 @@
 const pool = require("../../../db/db");
 const schema = require("../../../db/schema");
+const identifiers = require("../person-identifiers");
 let schemaReady;
 const ensureSchema = () =>
   (schemaReady ||= (async () => {
     await schema.addColumns("employees", [
+      ["card_id", "VARCHAR(128) NULL UNIQUE"],
       ["is_active", "BOOLEAN NOT NULL DEFAULT TRUE AFTER contact"],
       ["first_name", "VARCHAR(80) NULL"],
       ["middle_name", "VARCHAR(80) NULL AFTER first_name"],
@@ -78,7 +80,7 @@ exports.getAll = async () => {
   await ensureSchema();
   return (
     await pool.query(
-      "SELECT e.id,e.id_number idNumber,TRIM(CONCAT_WS(' ',e.first_name,NULLIF(e.middle_name,''),e.last_name)) name,e.first_name firstName,e.middle_name middleName,e.last_name lastName,e.emp_dept_id departmentId,d.name departmentName,d.code departmentCode,d.name groupName,e.contact,e.photo_url photoUrl,e.is_active isActive,'Employee' type FROM employees e LEFT JOIN employee_departments d ON d.id=e.emp_dept_id ORDER BY e.last_name,e.first_name",
+      "SELECT e.id,e.id_number idNumber,e.card_id cardId,TRIM(CONCAT_WS(' ',e.first_name,NULLIF(e.middle_name,''),e.last_name)) name,e.first_name firstName,e.middle_name middleName,e.last_name lastName,e.emp_dept_id departmentId,d.name departmentName,d.code departmentCode,d.name groupName,e.contact,e.photo_url photoUrl,e.is_active isActive,'Employee' type FROM employees e LEFT JOIN employee_departments d ON d.id=e.emp_dept_id ORDER BY e.last_name,e.first_name",
     )
   )[0];
 };
@@ -86,7 +88,7 @@ exports.getById = async (id) => {
   await ensureSchema();
   return (
     await pool.query(
-      "SELECT id,id_number idNumber,TRIM(CONCAT_WS(' ',first_name,NULLIF(middle_name,''),last_name)) name,photo_url photoUrl,is_active isActive FROM employees WHERE id=? LIMIT 1",
+      "SELECT id,id_number idNumber,card_id cardId,TRIM(CONCAT_WS(' ',first_name,NULLIF(middle_name,''),last_name)) name,photo_url photoUrl,is_active isActive FROM employees WHERE id=? LIMIT 1",
       [id],
     )
   )[0][0];
@@ -118,48 +120,54 @@ exports.getDepartment = async (id) => {
 };
 exports.create = async (data) => {
   await ensureSchema();
-  const [departments] = await pool.query(
-    "SELECT id,name FROM employee_departments WHERE id=? AND is_active=TRUE LIMIT 1",
-    [data.departmentId],
-  );
-  if (!departments[0]) return { affectedRows: 0, insertId: 0 };
-  return (
-    await pool.query(
-      "INSERT INTO employees (id_number,first_name,middle_name,last_name,emp_dept_id,contact,is_active) VALUES (?,?,?,?,?,?,?)",
-      [
-        data.idNumber,
-        data.firstName,
-        data.middleName || null,
-        data.lastName,
-        data.departmentId,
-        data.contact || null,
-        data.isActive !== false,
-      ],
-    )
-  )[0];
+  return identifiers.withTransaction(async (connection) => {
+    await identifiers.assertAvailable(connection, { type: "employee", idNumber: data.idNumber });
+    const [departments] = await connection.query(
+      "SELECT id,name FROM employee_departments WHERE id=? AND is_active=TRUE LIMIT 1",
+      [data.departmentId],
+    );
+    if (!departments[0]) return { affectedRows: 0, insertId: 0 };
+    return (
+      await connection.query(
+        "INSERT INTO employees (id_number,first_name,middle_name,last_name,emp_dept_id,contact,is_active) VALUES (?,?,?,?,?,?,?)",
+        [
+          data.idNumber,
+          data.firstName,
+          data.middleName || null,
+          data.lastName,
+          data.departmentId,
+          data.contact || null,
+          data.isActive !== false,
+        ],
+      )
+    )[0];
+  });
 };
 exports.update = async (id, data) => {
   await ensureSchema();
-  const [departments] = await pool.query(
-    "SELECT id,name FROM employee_departments WHERE id=? LIMIT 1",
-    [data.departmentId],
-  );
-  if (!departments[0]) return { affectedRows: 0 };
-  return (
-    await pool.query(
-      "UPDATE employees SET id_number=?,first_name=?,middle_name=?,last_name=?,emp_dept_id=?,contact=?,is_active=? WHERE id=?",
-      [
-        data.idNumber,
-        data.firstName,
-        data.middleName || null,
-        data.lastName,
-        data.departmentId,
-        data.contact || null,
-        data.isActive,
-        id,
-      ],
-    )
-  )[0];
+  return identifiers.withTransaction(async (connection) => {
+    await identifiers.assertAvailable(connection, { type: "employee", id, idNumber: data.idNumber });
+    const [departments] = await connection.query(
+      "SELECT id,name FROM employee_departments WHERE id=? LIMIT 1",
+      [data.departmentId],
+    );
+    if (!departments[0]) return { affectedRows: 0 };
+    return (
+      await connection.query(
+        "UPDATE employees SET id_number=?,first_name=?,middle_name=?,last_name=?,emp_dept_id=?,contact=?,is_active=? WHERE id=?",
+        [
+          data.idNumber,
+          data.firstName,
+          data.middleName || null,
+          data.lastName,
+          data.departmentId,
+          data.contact || null,
+          data.isActive,
+          id,
+        ],
+      )
+    )[0];
+  });
 };
 exports.remove = async (id) =>
   (await pool.query("DELETE FROM employees WHERE id=?", [id]))[0];

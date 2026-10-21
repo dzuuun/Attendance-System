@@ -48,13 +48,26 @@
   })();
   function toast(message, type = "success") {
     let container = document.querySelector("#toastContainer");
+    function raise() {
+      const owner = [...document.querySelectorAll("dialog[open]:modal")].pop() || document.body;
+      if (container.matches(":popover-open")) container.hidePopover();
+      // Modal inertness requires ownership by the active dialog. The popover
+      // renders independently at the viewport corner, outside the dialog box.
+      if (container.parentElement !== owner) owner.appendChild(container);
+      if (container.childElementCount && typeof container.showPopover === "function") container.showPopover();
+    }
     if (!container) {
       container = document.createElement("div");
       container.id = "toastContainer";
       container.className = "toast-container";
+      if (typeof container.showPopover === "function") container.setAttribute("popover", "manual");
       container.setAttribute("aria-live", "polite");
       container.setAttribute("aria-atomic", "false");
       document.body.appendChild(container);
+      document.addEventListener("close", () => { if (container.childElementCount) raise(); }, true);
+      new MutationObserver((records) => {
+        if (container.childElementCount && records.some((record) => record.target.matches("dialog"))) raise();
+      }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["open"] });
     }
     const item = document.createElement("div");
     item.className = `attendance-system-toast ${type}`;
@@ -63,10 +76,14 @@
     item.querySelector("p").textContent = message;
     const dismiss = () => {
       item.classList.add("leaving");
-      setTimeout(() => item.remove(), 180);
+      setTimeout(() => {
+        item.remove();
+        if (!container.childElementCount && container.matches(":popover-open")) container.hidePopover();
+      }, 180);
     };
     item.querySelector("button").addEventListener("click", dismiss);
     container.appendChild(item);
+    raise();
     requestAnimationFrame(() => item.classList.add("visible"));
     setTimeout(dismiss, 4000);
   }
@@ -105,7 +122,7 @@
       ),
     );
     const isNameHeading = (cell) =>
-      /^(PERSON|NAME|FULL NAME|STUDENT|EMPLOYEE|ATTENDEE|USER|SCHOOL|COLLEGE|DEPARTMENT|EMPLOYEE DEPARTMENT|PROGRAM)$/.test(
+      /^(PERSON|NAME|FULL NAME|STUDENT|EMPLOYEE|ALUMNUS|ATTENDEE|USER|SCHOOL|COLLEGE|DEPARTMENT|EMPLOYEE DEPARTMENT|PROGRAM)$/.test(
         cell.textContent.trim().toUpperCase(),
       );
     if (idIndex > 0 && !options.data) {
@@ -188,6 +205,107 @@
         ...dataTableOptions,
       });
     });
+  }
+  function initCardEnrollmentInput(input, dialog) {
+    let replaceOnNextInput = false;
+    dialog.addEventListener("close", () => { replaceOnNextInput = false; });
+    input.addEventListener("beforeinput", (event) => {
+      if (replaceOnNextInput && event.inputType.startsWith("insert")) {
+        input.value = "";
+        replaceOnNextInput = false;
+      }
+    });
+    input.addEventListener("input", () => { replaceOnNextInput = false; });
+    // HID readers finish each scan with Enter. Keep that scan visible for
+    // confirmation, then replace it in full when the next scan starts.
+    for (const type of ["keydown", "keypress", "keyup"]) {
+      window.addEventListener(type, (event) => {
+        if (!dialog.open || !(event.key === "Enter" || event.code === "NumpadEnter" || event.keyCode === 13)) return;
+        if (event.target === input) {
+          replaceOnNextInput = true;
+          input.select();
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }, true);
+    }
+  }
+  function initCardEnrollmentDialog({ personType, onSave }) {
+    const label = { student: "STUDENT CARD", employee: "EMPLOYEE CARD", alumni: "ALUMNI CARD" }[personType];
+    document.body.insertAdjacentHTML("beforeend", `
+      <dialog id="cardDialog" class="attendance-system-modal card-enrollment-dialog" aria-labelledby="cardDialogTitle" aria-describedby="cardEnrollmentHelp">
+        <form id="cardEnrollmentForm" data-confirm-save data-confirm-title="Enroll this card?" data-confirm-label="Save card">
+          <div class="modal-head">
+            <div><span class="section-kicker">${label}</span><h2 id="cardDialogTitle">Enroll card</h2></div>
+            <button class="close-button" type="button" aria-label="Close">&times;</button>
+          </div>
+          <div class="attendance-system-modal-body">
+            <div class="card-enrollment-student">
+              <div class="card-enrollment-identity"><img id="cardPersonPhoto" alt="" hidden /><strong id="cardStudentName"></strong></div>
+              <span id="cardCurrentStatus"></span>
+            </div>
+            <label for="enrollmentCardId">Card ID</label>
+            <input id="enrollmentCardId" maxlength="128" required autocomplete="off" spellcheck="false" placeholder="Tap a card on the reader" aria-describedby="cardEnrollmentHelp" autofocus />
+            <p id="cardEnrollmentHelp">Tap the card, then click Save card to enroll it.</p>
+            <p id="cardError" class="form-error" role="alert"></p>
+          </div>
+          <div class="modal-actions">
+            <button type="button" value="cancel" class="secondary-button">Cancel</button>
+            <button type="submit" id="saveCardBtn" class="primary-button">Save card</button>
+          </div>
+        </form>
+      </dialog>`);
+    const dialog = $("#cardDialog"), form = $("#cardEnrollmentForm"), input = $("#enrollmentCardId");
+    let person = null, saving = false;
+    initCardEnrollmentInput(input, dialog);
+    dialog.addEventListener("click", (event) => {
+      if (!event.target.closest('.close-button,button[value="cancel"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!saving) dialog.close();
+    });
+    dialog.addEventListener("cancel", (event) => { if (saving) event.preventDefault(); });
+    input.addEventListener("input", () => {
+      form.dataset.confirmMessage = `Save card ${input.value.trim()} for ${person?.name || "this person"}?`;
+    });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!person || saving) return;
+      saving = true;
+      $("#saveCardBtn").disabled = true;
+      input.disabled = true;
+      try {
+        const result = await api(`/api/${personType}/${person.id}/card`, {
+          method: "PATCH", body: JSON.stringify({ cardId: input.value }),
+        });
+        person.cardId = result.cardId;
+        dialog.close();
+        await onSave(person);
+        toast("Card enrolled.", "success");
+      } catch (error) {
+        $("#cardError").textContent = error.message;
+      } finally {
+        saving = false;
+        $("#saveCardBtn").disabled = false;
+        input.disabled = false;
+      }
+    });
+    return (selectedPerson) => {
+      if (!selectedPerson || saving) return;
+      person = selectedPerson;
+      $("#cardStudentName").textContent = `${person.name} (${person.idNumber})`;
+      const photo = $("#cardPersonPhoto");
+      photo.onerror = () => { photo.hidden = true; };
+      photo.hidden = !person.photoUrl;
+      photo.alt = `${person.name} photo`;
+      if (person.photoUrl) photo.src = window.taptrackUrl(person.photoUrl);
+      else photo.removeAttribute("src");
+      $("#cardCurrentStatus").textContent = person.cardId ? `Current card ID: ${person.cardId}` : "No card enrolled.";
+      input.value = "";
+      $("#cardError").textContent = "";
+      dialog.showModal();
+      input.focus();
+    };
   }
   async function api(url, options = {}) {
     const response = await fetch(url, {
@@ -459,6 +577,7 @@
     const user = await api("/api/auth/me"),
       maintenanceModules = new Set(user.maintenanceModules || []),
       maintenancePageModules = {
+        cardEnrollment: "cardEnrollment",
         students: "students",
         alumni: "alumni",
         employees: "employees",
@@ -474,6 +593,7 @@
         maintenance: "settings",
       },
       maintenanceRoutes = {
+        cardEnrollment: "/maintenance/card-enrollment",
         students: "/maintenance/student",
         alumni: "/maintenance/alumni",
         employees: "/maintenance/employee",
@@ -498,6 +618,7 @@
         user.usersAccess,
       ),
       pageAccess = {
+        cardEnrollment: "maintenanceAccess",
         dashboard: "overviewAccess",
         analytics: "overviewAccess",
         libraryAnalytics: "libraryAccess",
@@ -697,6 +818,7 @@
         group: $("#maintenanceGroup"),
         toggle: $("#maintenanceToggle"),
         pages: [
+          "cardEnrollment",
           "students",
           "alumni",
           "employees",
@@ -904,7 +1026,7 @@
         dialog.close();
         if (!pending?.form?.isConnected) return;
         confirmedModalForms.add(pending.form);
-        pendingConfirmedSave = {
+        pendingConfirmedSave = pending.form.hasAttribute("data-confirm-save") ? null : {
           form: pending.form,
           editing: pending.editing,
         };
@@ -928,7 +1050,8 @@
     "submit",
     (event) => {
       const form = event.target,
-        recordDialog = form.closest?.("dialog#dialog");
+        recordDialog = form.closest?.("dialog");
+      if (!recordDialog || (recordDialog.id !== "dialog" && !form.hasAttribute("data-confirm-save"))) return;
       if (!recordDialog || confirmedModalForms.has(form)) {
         confirmedModalForms.delete(form);
         return;
@@ -948,14 +1071,14 @@
         submitter: event.submitter,
         editing,
       };
-      document.querySelector("#recordConfirmationTitle").textContent = editing
+      document.querySelector("#recordConfirmationTitle").textContent = form.dataset.confirmTitle || (editing
         ? "Save changes?"
-        : "Create record?";
+        : "Create record?");
       document.querySelector("#recordConfirmationMessage").textContent =
-        `Are you sure you want to ${action}?`;
-      document.querySelector("#recordConfirmationSubmit").textContent = editing
+        form.dataset.confirmMessage || `Are you sure you want to ${action}?`;
+      document.querySelector("#recordConfirmationSubmit").textContent = form.dataset.confirmLabel || (editing
         ? "Save changes"
-        : "Create record";
+        : "Create record");
       dialog.showModal();
       document.querySelector("#recordConfirmationSubmit").focus();
     },
@@ -1020,6 +1143,8 @@
     emptyRow,
     destroyDataTable,
     initDataTable,
+    initCardEnrollmentInput,
+    initCardEnrollmentDialog,
     enhanceSearchableSelect,
     enhanceSearchableSelects,
     loadXlsx,

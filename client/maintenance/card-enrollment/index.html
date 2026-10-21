@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Enroll card — TapTrack</title>
+    <link rel="stylesheet" href="/client/dashboard/style.css" />
+    <link rel="stylesheet" href="/client/dashboard/events.css" />
+    <link rel="stylesheet" href="/client/page-shell.css?v=20261021-card-buttons" />
+  </head>
+  <body data-type="CardEnrollment">
+    <div class="app-shell">
+      <div id="sidebarMount"></div>
+      <main class="main">
+        <header class="topbar">
+          <div><p class="eyebrow">Card access</p><h1>Enroll card</h1></div>
+          <div class="live-time"><span id="liveTime"></span><small id="liveDate"></small></div>
+        </header>
+        <article class="table-card">
+          <div class="directory-card-header">
+            <div><span class="section-kicker">CARD ENROLLMENT</span><h2>People</h2><p>Choose a student, employee, or alumnus below to enroll their card.</p></div>
+          </div>
+          <div class="filter-row">
+            <div class="search-box">
+              <span class="material-symbols-rounded" aria-hidden="true">search</span>
+              <input id="search" aria-label="Filter by ID number or name" placeholder="Filter by ID number or name" maxlength="128" autocomplete="off" />
+            </div>
+            <select id="personType" aria-label="Person type">
+              <option value="all">All people</option>
+              <option value="student">Students</option>
+              <option value="employee">Employees</option>
+              <option value="alumni">Alumni</option>
+            </select>
+          </div>
+          <p id="searchStatus" class="form-error" role="status" hidden></p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID NUMBER</th><th>NAME</th><th>TYPE</th><th>CARD</th><th>ACTION</th></tr></thead>
+              <tbody id="body"></tbody>
+            </table>
+          </div>
+        </article>
+      </main>
+    </div>
+    <dialog id="cardDialog" class="attendance-system-modal card-enrollment-dialog" aria-labelledby="cardDialogTitle" aria-describedby="cardEnrollmentHelp">
+      <form id="cardEnrollmentForm" data-confirm-save data-confirm-title="Enroll this card?" data-confirm-label="Save card">
+        <div class="modal-head">
+          <div><span class="section-kicker" id="cardPersonType">PERSON CARD</span><h2 id="cardDialogTitle">Enroll card</h2></div>
+          <button class="close-button" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="attendance-system-modal-body">
+          <div class="card-enrollment-student">
+            <div class="card-enrollment-identity"><img id="cardPersonPhoto" alt="" hidden /><strong id="cardStudentName"></strong></div>
+            <span id="cardCurrentStatus"></span>
+          </div>
+          <label for="enrollmentCardId">Card ID</label>
+          <input id="enrollmentCardId" maxlength="128" required autocomplete="off" spellcheck="false" placeholder="Tap a card on the reader" aria-describedby="cardEnrollmentHelp" autofocus />
+          <p id="cardEnrollmentHelp">Tap the card, then click Save card to enroll it.</p>
+          <p id="cardError" class="form-error" role="alert"></p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" value="cancel" class="secondary-button">Cancel</button>
+          <button type="submit" id="saveCardBtn" class="primary-button">Save card</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/client/shared-ui.js?v=20261021-audit-fixes"></script>
+    <script src="/client/maintenance/card-enrollment/script.js?v=20261021-card-rescan"></script>
+  </body>
+</html>

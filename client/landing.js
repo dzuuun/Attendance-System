@@ -10,6 +10,7 @@
     if (user.libraryAccess) return "/library/entrance";
     if (user.maintenanceAccess) {
       const routes = {
+        cardEnrollment: "/maintenance/card-enrollment",
         students: "/maintenance/student",
         alumni: "/maintenance/alumni",
         employees: "/maintenance/employee",
