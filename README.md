@@ -20,8 +20,8 @@ RFID/barcode scanners and cameras.
 
 ## Requirements
 
-- Node.js 20 or newer
-- npm
+- Node.js 24 LTS, version 24.22.1 or newer within the 24.x line
+- npm 11.21.1 or newer within the 11.x line
 - MySQL 8.0 or newer
 - A modern browser such as Chrome or Edge
 
@@ -254,3 +254,14 @@ npm start     # production server
 npm test      # security regression tests
 npm run check # syntax-check all JavaScript files
 ```
+
+Use the Node.js version in `.nvmrc` (or a newer patched 24.x release). The
+minimum version includes the October 21, 2026 security fixes. Also update npm
+with `npm install --global npm@11.21.1` after installing Node.js. npm rejects
+older Node.js and npm versions through `engine-strict`; update both before
+running `npm ci`.
+For npm 11.21.1, also apply the temporary bundled-library security fix described
+in [the October 23 security report](docs/security-updates-2026-10-23.md).
+Development uses Node's built-in watch mode and does not require Nodemon.
+Run `npm audit` when deploying dependency updates, and keep `package-lock.json`
+with the application so deployments install the reviewed dependency versions.
